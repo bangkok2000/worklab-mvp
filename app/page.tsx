@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [question, setQuestion] = useState('');
@@ -12,32 +12,43 @@ export default function Home() {
   const [sources, setSources] = useState<any[]>([]);
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
     setUploading(true);
     setUploadStatus('Uploading and processing...');
 
-    const formData = new FormData();
-    formData.append('file', file);
+    let successCount = 0;
+    let totalChunks = 0;
 
-    try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const data = await res.json();
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-      if (data.success) {
-        setUploadStatus(`✓ Processed ${data.chunks} chunks from ${data.filename}`);
-      } else {
-        setUploadStatus(`✗ Error: ${data.error}`);
+        const data = await res.json();
+
+        if (data.success) {
+          successCount++;
+          totalChunks += data.chunks;
+        } else {
+          setUploadStatus(`✗ Error uploading ${file.name}: ${data.error}`);
+          setUploading(false);
+          return;
+        }
+      } catch (error: any) {
+        setUploadStatus(`✗ Error uploading ${file.name}: ${error.message}`);
+        setUploading(false);
+        return;
       }
-    } catch (error: any) {
-      setUploadStatus(`✗ Error: ${error.message}`);
-    } finally {
-      setUploading(false);
     }
+
+    setUploadStatus(`✓ Processed ${totalChunks} chunks from ${successCount} file(s)`);
+    setUploading(false);
   };
 
   const handleAsk = async () => {
@@ -72,20 +83,26 @@ export default function Home() {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui' }}>
       <h1 style={{ fontSize: '32px', marginBottom: '8px' }}>WorkLab MVP</h1>
-      <p style={{ color: '#666', marginBottom: '40px' }}>Upload a PDF and ask questions about it</p>
+      <p style={{ color: '#666', marginBottom: '40px' }}>Upload PDFs and ask questions about them</p>
 
       {/* Upload Section */}
       <div style={{ marginBottom: '40px', padding: '20px', border: '2px dashed #ddd', borderRadius: '8px' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>1. Upload Document</h2>
+        <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>1. Upload Documents</h2>
         <input
           type="file"
           accept=".pdf"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          multiple
+          onChange={(e) => setFiles(Array.from(e.target.files || []))}
           style={{ marginBottom: '12px', display: 'block' }}
         />
+        {files.length > 0 && (
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
+            {files.length} file(s) selected: {files.map(f => f.name).join(', ')}
+          </p>
+        )}
         <button
           onClick={handleUpload}
-          disabled={!file || uploading}
+          disabled={files.length === 0 || uploading}
           style={{
             padding: '10px 20px',
             backgroundColor: uploading ? '#ccc' : '#0070f3',
@@ -110,7 +127,7 @@ export default function Home() {
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="What would you like to know about your document?"
+          placeholder="What would you like to know about your documents?"
           style={{
             width: '100%',
             minHeight: '100px',
