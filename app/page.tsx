@@ -7,6 +7,7 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState('');
@@ -59,6 +60,36 @@ export default function Home() {
     setUploadStatus(`✓ Processed ${totalChunks} chunks from ${successCount} file(s)`);
     setUploading(false);
     setFiles([]);
+  };
+
+  const handleDelete = async (filename: string) => {
+    if (!confirm(`Delete "${filename}"?\n\nThis will remove all chunks from the database. This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingFile(filename);
+
+    try {
+      const res = await fetch('/api/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Remove from visual list
+        setUploadedFiles(prev => prev.filter(f => f !== filename));
+        alert(`✓ Deleted ${data.deletedCount} chunks from "${filename}"`);
+      } else {
+        alert(`✗ Error: ${data.error}`);
+      }
+    } catch (error: any) {
+      alert(`✗ Error: ${error.message}`);
+    } finally {
+      setDeletingFile(null);
+    }
   };
 
   const handleAsk = async () => {
@@ -222,6 +253,23 @@ export default function Home() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                       <span style={{ fontSize: '16px' }}>📄</span>
                       <span style={{ flex: 1, lineHeight: '1.4' }}>{filename}</span>
+                      <button
+                        onClick={() => handleDelete(filename)}
+                        disabled={deletingFile === filename}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          color: deletingFile === filename ? '#999' : '#dc2626',
+                          backgroundColor: 'transparent',
+                          border: '1px solid',
+                          borderColor: deletingFile === filename ? '#ddd' : '#fecaca',
+                          borderRadius: '4px',
+                          cursor: deletingFile === filename ? 'not-allowed' : 'pointer',
+                        }}
+                        title="Delete this document"
+                      >
+                        {deletingFile === filename ? '...' : '🗑️'}
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -243,11 +291,8 @@ export default function Home() {
                     cursor: 'pointer',
                   }}
                 >
-                  Clear List
+                  Clear List (files remain in database)
                 </button>
-                <p style={{ fontSize: '11px', color: '#999', marginTop: '8px', textAlign: 'center' }}>
-                  Note: Documents remain in database
-                </p>
               </div>
             )}
           </div>
