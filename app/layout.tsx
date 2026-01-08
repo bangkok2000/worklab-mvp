@@ -1,23 +1,26 @@
+import './styles/globals.css';
+
 export const metadata = {
   title: 'MoonScribe - Document Intelligence Platform',
-  description: 'Upload PDFs and ask questions with BYOK (Bring Your Own Key)',
-}
+  description: 'AI-powered document analysis with BYOK (Bring Your Own Key) support',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <head>
-        <style>{`
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="icon"
+          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>"
+        />
       </head>
       <body>{children}</body>
     </html>
-  )
+  );
 }
