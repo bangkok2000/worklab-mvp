@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { OpenAI } from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import pdf from 'pdf-parse';
+import { createServerClient } from '@/lib/supabase/client';
+import { createDocument, updateDocumentStatus } from '@/lib/supabase/documents';
+import { estimateOpenAICost, logUsage } from '@/lib/supabase/usage';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
@@ -11,9 +14,21 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
+    const collectionId = formData.get('collectionId') as string | null;
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Get user from Supabase (for now, we'll support anonymous users)
+    const supabase = createServerClient();
+    const authHeader = req.headers.get('authorization');
+    let userId: string | null = null;
+
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id || null;
     }
 
     // Convert file to buffer
@@ -24,10 +39,38 @@ export async function POST(req: NextRequest) {
     const data = await pdf(buffer);
     const text = data.text;
 
-    // Chunk text into ~500 token pieces
-    const chunks = chunkText(text, 500);
+    // Create document record in Supabase (if user is authenticated)
+    let documentId: string | null = null;
+    if (userId) {
+      try {
+        const document = await createDocument({
+          user_id: userId,
+          collection_id: collectionId || null,
+          filename: file.name,
+          original_filename: file.name,
+          file_size: file.size,
+          file_type: file.type || 'application/pdf',
+          chunk_count: 0,
+          status: 'processing',
+          metadata: {
+            page_count: data.numpages || null,
+            word_count: text.split(/\s+/).length,
+            extracted_at: new Date().toISOString(),
+          },
+        });
+        documentId = document.id;
+      } catch (dbError) {
+        console.warn('Failed to create document record:', dbError);
+        // Continue processing even if DB fails
+      }
+    }
+
+    // Chunk text into ~1500 token pieces (larger chunks for better context)
+    // This will create fewer but more comprehensive chunks
+    const chunks = chunkText(text, 1500);
     
     // Generate embeddings for all chunks
+    let totalEmbeddingTokens = 0;
     const embeddings = await Promise.all(
       chunks.map(async (chunk, idx) => {
         const response = await openai.embeddings.create({
@@ -35,14 +78,24 @@ export async function POST(req: NextRequest) {
           input: chunk,
         });
         
+        totalEmbeddingTokens += response.usage.total_tokens;
+        
+        // Build metadata object - only include document_id if it exists
+        const metadata: Record<string, any> = {
+          text: chunk,
+          source: file.name,
+          chunk_index: idx,
+        };
+        
+        // Only add document_id if user is authenticated and document was created
+        if (documentId) {
+          metadata.document_id = documentId;
+        }
+        
         return {
           id: `${file.name}-chunk-${idx}`,
           values: response.data[0].embedding,
-          metadata: {
-            text: chunk,
-            source: file.name,
-            chunk_index: idx,
-          }
+          metadata,
         };
       })
     );
@@ -50,10 +103,32 @@ export async function POST(req: NextRequest) {
     // Store in Pinecone
     await index.upsert(embeddings);
 
+    // Update document status in Supabase
+    if (documentId && userId) {
+      try {
+        await updateDocumentStatus(documentId, 'ready', chunks.length);
+        
+        // Log usage
+        const embeddingCost = estimateOpenAICost('embedding', totalEmbeddingTokens);
+        await logUsage({
+          user_id: userId,
+          api_key_id: null, // TODO: Link to API key when BYOK is implemented
+          provider: 'openai',
+          model: 'text-embedding-3-large',
+          operation: 'embedding',
+          tokens_used: totalEmbeddingTokens,
+          cost_estimate: embeddingCost,
+        });
+      } catch (dbError) {
+        console.warn('Failed to update document status:', dbError);
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       chunks: chunks.length,
-      filename: file.name 
+      filename: file.name,
+      documentId,
     });
 
   } catch (error: any) {
@@ -63,13 +138,58 @@ export async function POST(req: NextRequest) {
 }
 
 function chunkText(text: string, maxTokens: number): string[] {
-  // Simple chunking by characters (rough ~4 chars per token)
-  const chunkSize = maxTokens * 4;
+  // Improved chunking: split by sentences, then by paragraphs
+  // This creates more semantic chunks that respect document structure
+  const chunkSize = maxTokens * 4; // Character limit per chunk
   const chunks: string[] = [];
   
-  for (let i = 0; i < text.length; i += chunkSize) {
-    chunks.push(text.slice(i, i + chunkSize));
+  // First, split by paragraphs (double newlines)
+  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  
+  let currentChunk = '';
+  
+  for (const paragraph of paragraphs) {
+    // If adding this paragraph would exceed chunk size, save current chunk
+    if (currentChunk.length + paragraph.length > chunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk.trim());
+      currentChunk = '';
+    }
+    
+    // Add paragraph to current chunk
+    if (currentChunk.length > 0) {
+      currentChunk += '\n\n' + paragraph;
+    } else {
+      currentChunk = paragraph;
+    }
+    
+    // If a single paragraph is too large, split it by sentences
+    if (currentChunk.length > chunkSize) {
+      const sentences = currentChunk.split(/(?<=[.!?])\s+/);
+      currentChunk = '';
+      
+      for (const sentence of sentences) {
+        if (currentChunk.length + sentence.length > chunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim());
+          currentChunk = sentence;
+        } else {
+          currentChunk += (currentChunk.length > 0 ? ' ' : '') + sentence;
+        }
+      }
+    }
   }
   
-  return chunks;
+  // Add remaining chunk
+  if (currentChunk.trim().length > 0) {
+    chunks.push(currentChunk.trim());
+  }
+  
+  // Ensure we have at least some chunks
+  if (chunks.length === 0 && text.length > 0) {
+    // Fallback: split by character if no paragraphs found
+    for (let i = 0; i < text.length; i += chunkSize) {
+      chunks.push(text.slice(i, i + chunkSize).trim());
+    }
+  }
+  
+  return chunks.filter(chunk => chunk.length > 0);
 }
