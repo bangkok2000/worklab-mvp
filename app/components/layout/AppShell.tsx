@@ -606,6 +606,9 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
   const [inputValue, setInputValue] = useState('');
   const [selectedProject, setSelectedProject] = useState<string>('inbox');
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
   // Load projects
   React.useEffect(() => {
@@ -617,27 +620,116 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
+  // Check if URL is a YouTube video
+  const isYouTubeUrl = (url: string): boolean => {
+    return url.includes('youtube.com') || url.includes('youtu.be');
+  };
+
   const captureTypes = [
     { id: 'url', label: 'URL / Link', icon: '🔗', placeholder: 'Paste URL (YouTube, article, website...)' },
     { id: 'note', label: 'Quick Note', icon: '📝', placeholder: 'Type a quick note...' },
     { id: 'upload', label: 'Upload File', icon: '📤', placeholder: 'Drop files or click to upload' },
   ];
 
-  const handleSave = () => {
+  // Process YouTube video via API
+  const processYouTube = async (url: string): Promise<any> => {
+    setProcessingStatus('Fetching video info...');
+    
+    // Get API key from localStorage (BYOK) or use credits
+    const savedKeys = localStorage.getItem('moonscribe-api-keys');
+    let apiKey: string | undefined;
+    if (savedKeys) {
+      const keys = JSON.parse(savedKeys);
+      const openaiKey = keys.find((k: any) => k.provider === 'openai' && k.isActive);
+      if (openaiKey) {
+        apiKey = openaiKey.key;
+      }
+    }
+
+    setProcessingStatus('Extracting transcript...');
+    
+    const response = await fetch('/api/youtube', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        projectId: selectedProject === 'inbox' ? null : selectedProject,
+        apiKey, // Will use server credits if not provided
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to process YouTube video');
+    }
+
+    return data;
+  };
+
+  const handleSave = async () => {
     if (!inputValue.trim() && captureType !== 'upload') {
       return; // Don't save empty content
     }
 
-    // Detect content type from URL
+    setError('');
+
+    // Check if it's a YouTube URL - process it via API
+    if (captureType === 'url' && isYouTubeUrl(inputValue)) {
+      setIsProcessing(true);
+      try {
+        const result = await processYouTube(inputValue);
+        setProcessingStatus('Saving to library...');
+        
+        // Create the content item with YouTube metadata
+        const newItem = {
+          id: `youtube-${result.videoId}-${Date.now()}`,
+          type: 'youtube',
+          title: result.title,
+          url: result.url,
+          thumbnail: result.thumbnail,
+          author: result.author,
+          videoId: result.videoId,
+          chunksProcessed: result.chunksProcessed,
+          duration: result.totalDuration,
+          processed: true, // Mark as processed (indexed in Pinecone)
+          addedAt: new Date().toISOString(),
+        };
+
+        // Save to local storage
+        if (typeof window !== 'undefined') {
+          if (selectedProject === 'inbox') {
+            const existingInbox = localStorage.getItem('moonscribe-inbox');
+            const inbox = existingInbox ? JSON.parse(existingInbox) : [];
+            inbox.unshift(newItem);
+            localStorage.setItem('moonscribe-inbox', JSON.stringify(inbox));
+          } else {
+            const existingContent = localStorage.getItem(`moonscribe-project-content-${selectedProject}`);
+            const content = existingContent ? JSON.parse(existingContent) : [];
+            content.unshift(newItem);
+            localStorage.setItem(`moonscribe-project-content-${selectedProject}`, JSON.stringify(content));
+          }
+          
+          window.dispatchEvent(new CustomEvent('moonscribe-content-added', { detail: newItem }));
+        }
+        
+        setProcessingStatus('Done!');
+        setTimeout(() => onClose(), 500);
+        return;
+      } catch (err: any) {
+        setError(err.message || 'Failed to process YouTube video');
+        setIsProcessing(false);
+        return;
+      }
+    }
+
+    // For non-YouTube URLs and notes, use the original logic
     let detectedType: string = captureType;
     let title = inputValue.substring(0, 60);
     
     if (captureType === 'url') {
       const url = inputValue.toLowerCase();
-      if (url.includes('youtube.com') || url.includes('youtu.be')) {
-        detectedType = 'youtube';
-        title = 'YouTube Video';
-      } else if (url.includes('tiktok.com')) {
+      if (url.includes('tiktok.com')) {
         detectedType = 'tiktok';
         title = 'TikTok Video';
       } else {
@@ -759,7 +851,84 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
 
         {/* Input Area */}
         <div style={{ padding: '1.5rem' }}>
-          {captureType === 'upload' ? (
+          {/* Processing State */}
+          {isProcessing && (
+            <div style={{
+              background: 'rgba(139, 92, 246, 0.1)',
+              border: '1px solid rgba(139, 92, 246, 0.3)',
+              borderRadius: '12px',
+              padding: '2rem',
+              textAlign: 'center',
+              marginBottom: '1rem',
+            }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                border: '3px solid rgba(139, 92, 246, 0.3)',
+                borderTopColor: '#8b5cf6',
+                borderRadius: '50%',
+                margin: '0 auto 1rem',
+                animation: 'spin 1s linear infinite',
+              }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <p style={{ color: '#c4b5fd', fontWeight: 500, marginBottom: '0.25rem' }}>
+                Processing YouTube Video
+              </p>
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                {processingStatus}
+              </p>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '10px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem',
+            }}>
+              <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+              <div>
+                <p style={{ color: '#fca5a5', fontWeight: 500, marginBottom: '0.25rem' }}>
+                  Error processing video
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                  {error}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* YouTube Preview (when URL is YouTube) */}
+          {captureType === 'url' && inputValue && isYouTubeUrl(inputValue) && !isProcessing && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              borderRadius: '10px',
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>🎬</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ color: '#f1f5f9', fontSize: '0.875rem', fontWeight: 500 }}>
+                  YouTube Video Detected
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                  We'll extract the transcript and make it searchable
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!isProcessing && captureType === 'upload' ? (
             <div style={{
               border: '2px dashed rgba(139, 92, 246, 0.3)',
               borderRadius: '12px',
@@ -774,10 +943,10 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
                 PDF, Word, Audio, Video supported
               </p>
             </div>
-          ) : (
+          ) : !isProcessing && (
             <textarea
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => { setInputValue(e.target.value); setError(''); }}
               placeholder={captureTypes.find(t => t.id === captureType)?.placeholder}
               style={{
                 width: '100%',
@@ -846,35 +1015,49 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
           alignItems: 'center',
         }}>
           <span style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-            ⌘+Enter to save
+            {captureType === 'url' && inputValue && isYouTubeUrl(inputValue) 
+              ? '🎬 YouTube will be processed' 
+              : '⌘+Enter to save'}
           </span>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
               onClick={onClose}
+              disabled={isProcessing}
               style={{
                 padding: '0.625rem 1.25rem',
                 background: 'transparent',
                 border: '1px solid rgba(139, 92, 246, 0.3)',
                 borderRadius: '8px',
                 color: '#94a3b8',
-                cursor: 'pointer',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                opacity: isProcessing ? 0.5 : 1,
               }}
             >
               Cancel
             </button>
             <button 
               onClick={handleSave}
+              disabled={isProcessing || (!inputValue.trim() && captureType !== 'upload')}
               style={{
                 padding: '0.625rem 1.25rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                background: isProcessing 
+                  ? 'rgba(139, 92, 246, 0.5)' 
+                  : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
                 border: 'none',
                 borderRadius: '8px',
                 color: 'white',
                 fontWeight: 500,
-                cursor: 'pointer',
+                cursor: isProcessing || (!inputValue.trim() && captureType !== 'upload') ? 'not-allowed' : 'pointer',
+                opacity: (!inputValue.trim() && captureType !== 'upload') ? 0.5 : 1,
               }}
             >
-              {selectedProject === 'inbox' ? 'Add to Inbox' : 'Add to Project'}
+              {isProcessing 
+                ? 'Processing...' 
+                : captureType === 'url' && inputValue && isYouTubeUrl(inputValue)
+                  ? 'Process & Add'
+                  : selectedProject === 'inbox' 
+                    ? 'Add to Inbox' 
+                    : 'Add to Project'}
             </button>
           </div>
         </div>
