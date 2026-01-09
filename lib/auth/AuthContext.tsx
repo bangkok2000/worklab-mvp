@@ -13,6 +13,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithGithub: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  updateProfile: (data: { fullName?: string }) => Promise<{ error: AuthError | null; user: User | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -149,6 +150,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: { fullName?: string }) => {
+    try {
+      const supabase = getSupabase();
+      const { data: result, error } = await supabase.auth.updateUser({
+        data: {
+          full_name: data.fullName,
+        },
+      });
+      
+      if (result?.user) {
+        setUser(result.user);
+      }
+      
+      return { error, user: result?.user ?? null };
+    } catch (e) {
+      return { 
+        error: { 
+          message: 'Failed to update profile. Please try again.',
+          name: 'UpdateError',
+          status: 500,
+        } as AuthError,
+        user: null,
+      };
+    }
+  };
+
   const value = {
     user,
     session,
@@ -158,6 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signInWithGithub,
     signOut,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

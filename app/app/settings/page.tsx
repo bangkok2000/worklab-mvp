@@ -18,7 +18,13 @@ const validTabs: TabId[] = ['api-keys', 'team', 'integrations', 'privacy', 'prof
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateProfile } = useAuth();
+  
+  // Profile editing state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('api-keys');
   
   // Read tab from URL query param after mount
@@ -751,12 +757,123 @@ export default function SettingsPage() {
                     {user.user_metadata?.full_name?.charAt(0).toUpperCase() || 
                      user.email?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.25rem' }}>
-                      {user.user_metadata?.full_name || 
-                       (user.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : 'User')}
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9375rem', wordBreak: 'break-all' }}>
+                  <div style={{ flex: 1 }}>
+                    {isEditingName ? (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <input
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          placeholder="Enter your name"
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: '0.5rem 0.75rem',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            borderRadius: '6px',
+                            color: '#f1f5f9',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            outline: 'none',
+                          }}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter' && editedName.trim()) {
+                              setSavingProfile(true);
+                              setProfileMessage(null);
+                              const { error } = await updateProfile({ fullName: editedName.trim() });
+                              setSavingProfile(false);
+                              if (error) {
+                                setProfileMessage({ type: 'error', text: error.message });
+                              } else {
+                                setProfileMessage({ type: 'success', text: 'Name updated!' });
+                                setIsEditingName(false);
+                                setTimeout(() => setProfileMessage(null), 3000);
+                              }
+                            }
+                            if (e.key === 'Escape') {
+                              setIsEditingName(false);
+                              setEditedName(user.user_metadata?.full_name || '');
+                            }
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <button
+                            onClick={async () => {
+                              if (!editedName.trim()) return;
+                              setSavingProfile(true);
+                              setProfileMessage(null);
+                              const { error } = await updateProfile({ fullName: editedName.trim() });
+                              setSavingProfile(false);
+                              if (error) {
+                                setProfileMessage({ type: 'error', text: error.message });
+                              } else {
+                                setProfileMessage({ type: 'success', text: 'Name updated!' });
+                                setIsEditingName(false);
+                                setTimeout(() => setProfileMessage(null), 3000);
+                              }
+                            }}
+                            disabled={savingProfile || !editedName.trim()}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              background: 'rgba(16, 185, 129, 0.2)',
+                              border: '1px solid rgba(16, 185, 129, 0.4)',
+                              borderRadius: '6px',
+                              color: '#34d399',
+                              fontSize: '0.75rem',
+                              cursor: savingProfile || !editedName.trim() ? 'not-allowed' : 'pointer',
+                              opacity: savingProfile || !editedName.trim() ? 0.5 : 1,
+                            }}
+                          >
+                            {savingProfile ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingName(false);
+                              setEditedName(user.user_metadata?.full_name || '');
+                            }}
+                            style={{
+                              padding: '0.375rem 0.75rem',
+                              background: 'transparent',
+                              border: '1px solid rgba(100, 116, 139, 0.3)',
+                              borderRadius: '6px',
+                              color: '#94a3b8',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f1f5f9', margin: 0 }}>
+                          {user.user_metadata?.full_name || 
+                           (user.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : 'User')}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setEditedName(user.user_metadata?.full_name || '');
+                            setIsEditingName(true);
+                            setProfileMessage(null);
+                          }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            background: 'rgba(139, 92, 246, 0.1)',
+                            border: '1px solid rgba(139, 92, 246, 0.2)',
+                            borderRadius: '4px',
+                            color: '#c4b5fd',
+                            fontSize: '0.6875rem',
+                            cursor: 'pointer',
+                          }}
+                          title="Edit name"
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    )}
+                    <p style={{ color: '#94a3b8', fontSize: '0.9375rem', wordBreak: 'break-all', margin: 0 }}>
                       {user.email}
                     </p>
                     <span style={{
@@ -774,6 +891,25 @@ export default function SettingsPage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Success/Error Message */}
+                {profileMessage && (
+                  <div style={{
+                    padding: '0.75rem 1rem',
+                    background: profileMessage.type === 'success' 
+                      ? 'rgba(16, 185, 129, 0.1)' 
+                      : 'rgba(239, 68, 68, 0.1)',
+                    border: `1px solid ${profileMessage.type === 'success' 
+                      ? 'rgba(16, 185, 129, 0.3)' 
+                      : 'rgba(239, 68, 68, 0.3)'}`,
+                    borderRadius: '8px',
+                    marginBottom: '1.5rem',
+                    color: profileMessage.type === 'success' ? '#34d399' : '#f87171',
+                    fontSize: '0.875rem',
+                  }}>
+                    {profileMessage.type === 'success' ? '✓' : '⚠️'} {profileMessage.text}
+                  </div>
+                )}
 
                 {/* Account Info */}
                 <div style={{
