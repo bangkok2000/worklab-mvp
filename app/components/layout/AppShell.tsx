@@ -40,7 +40,6 @@ const navigation: NavItem[] = [
 ];
 
 const bottomNav: NavItem[] = [
-  { id: 'integrations', label: 'Integrations', icon: '🔌', href: '/app/integrations' },
   { id: 'settings', label: 'Settings', icon: '⚙️', href: '/app/settings' },
 ];
 

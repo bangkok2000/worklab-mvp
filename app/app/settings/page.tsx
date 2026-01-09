@@ -12,10 +12,24 @@ const providers = [
   { value: 'ollama', label: 'Ollama', placeholder: 'http://localhost:11434', description: 'Local models' },
 ];
 
+type TabId = 'api-keys' | 'integrations' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data';
+const validTabs: TabId[] = ['api-keys', 'integrations', 'privacy', 'profile', 'preferences', 'billing', 'data'];
+
 export default function SettingsPage() {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'api-keys' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data'>('api-keys');
+  const [activeTab, setActiveTab] = useState<TabId>('api-keys');
+  
+  // Read tab from URL query param after mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabFromUrl = params.get('tab') as TabId | null;
+      if (tabFromUrl && validTabs.includes(tabFromUrl)) {
+        setActiveTab(tabFromUrl);
+      }
+    }
+  }, []);
   const [apiKeys, setApiKeys] = useState<ApiKeyConfig[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -79,6 +93,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'api-keys', label: 'API Keys', icon: '🔑' },
+    { id: 'integrations', label: 'Integrations', icon: '🔌' },
     { id: 'privacy', label: 'Data & Privacy', icon: '🔒' },
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'preferences', label: 'Preferences', icon: '⚙️' },
@@ -379,6 +394,133 @@ export default function SettingsPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Integrations Tab */}
+        {activeTab === 'integrations' && (
+          <div style={{ maxWidth: '700px' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>Integrations</h2>
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                Connect MoonScribe with your favorite tools and services.
+              </p>
+            </div>
+
+            {/* Available Integrations */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+            }}>
+              {[
+                { 
+                  id: 'notion', 
+                  name: 'Notion', 
+                  icon: '📓', 
+                  description: 'Export insights to Notion pages',
+                  status: 'coming_soon' as const,
+                },
+                { 
+                  id: 'google-drive', 
+                  name: 'Google Drive', 
+                  icon: '📁', 
+                  description: 'Import documents from Google Drive',
+                  status: 'coming_soon' as const,
+                },
+                { 
+                  id: 'dropbox', 
+                  name: 'Dropbox', 
+                  icon: '📦', 
+                  description: 'Sync files with Dropbox',
+                  status: 'coming_soon' as const,
+                },
+                { 
+                  id: 'slack', 
+                  name: 'Slack', 
+                  icon: '💬', 
+                  description: 'Share insights to Slack channels',
+                  status: 'coming_soon' as const,
+                },
+                { 
+                  id: 'zapier', 
+                  name: 'Zapier', 
+                  icon: '⚡', 
+                  description: 'Automate workflows with Zapier',
+                  status: 'coming_soon' as const,
+                },
+                { 
+                  id: 'chrome', 
+                  name: 'Chrome Extension', 
+                  icon: '🌐', 
+                  description: 'Capture content while browsing',
+                  status: 'coming_soon' as const,
+                },
+              ].map(integration => (
+                <div key={integration.id} style={{
+                  padding: '1.25rem',
+                  background: 'rgba(15, 15, 35, 0.6)',
+                  border: '1px solid rgba(139, 92, 246, 0.15)',
+                  borderRadius: '12px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '1.5rem' }}>{integration.icon}</span>
+                      <div>
+                        <h3 style={{ fontWeight: 600, color: '#f1f5f9', marginBottom: '0.25rem' }}>
+                          {integration.name}
+                        </h3>
+                        <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
+                          {integration.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '1rem' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.75rem',
+                      background: 'rgba(251, 191, 36, 0.1)',
+                      border: '1px solid rgba(251, 191, 36, 0.3)',
+                      borderRadius: '20px',
+                      color: '#fbbf24',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                    }}>
+                      Coming Soon
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Request Integration */}
+            <div style={{
+              marginTop: '2rem',
+              padding: '1.5rem',
+              background: 'rgba(139, 92, 246, 0.08)',
+              border: '1px solid rgba(139, 92, 246, 0.2)',
+              borderRadius: '12px',
+              textAlign: 'center',
+            }}>
+              <h3 style={{ color: '#c4b5fd', fontWeight: 600, marginBottom: '0.5rem' }}>
+                Need a specific integration?
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                Let us know which tools you&apos;d like to connect with MoonScribe.
+              </p>
+              <button style={{
+                padding: '0.625rem 1.25rem',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '8px',
+                color: '#c4b5fd',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}>
+                Request Integration
+              </button>
+            </div>
           </div>
         )}
 
