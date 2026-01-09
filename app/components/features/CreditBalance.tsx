@@ -10,6 +10,23 @@ interface CreditBalanceProps {
   compact?: boolean;
 }
 
+// Check if user has an active BYOK key
+function hasActiveBYOKKey(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const savedKeys = localStorage.getItem('moonscribe-api-keys');
+    if (savedKeys) {
+      const keys = JSON.parse(savedKeys);
+      return keys.some((k: { provider: string; isActive: boolean }) => 
+        k.provider === 'openai' && k.isActive
+      );
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+  return false;
+}
+
 export default function CreditBalance({ 
   onBuyCredits, 
   showBuyButton = true,
@@ -19,15 +36,34 @@ export default function CreditBalance({
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
+  const [hasByok, setHasByok] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    // Check for BYOK on mount and when storage changes
+    const checkByok = () => setHasByok(hasActiveBYOKKey());
+    checkByok();
+    
+    // Listen for storage changes (when user adds/removes API key)
+    window.addEventListener('storage', checkByok);
+    
+    // Also listen for custom events (for same-tab updates)
+    const handleApiKeyChange = () => checkByok();
+    window.addEventListener('moonscribe-apikey-changed', handleApiKeyChange);
+    
+    return () => {
+      window.removeEventListener('storage', checkByok);
+      window.removeEventListener('moonscribe-apikey-changed', handleApiKeyChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user && !hasByok) {
       loadBalance();
     } else {
       setBalance(null);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, hasByok]);
 
   const loadBalance = async () => {
     if (!user) return;
@@ -62,6 +98,27 @@ export default function CreditBalance({
     return (
       <div style={styles.container}>
         <span style={styles.guestText}>Guest Mode</span>
+      </div>
+    );
+  }
+
+  // BYOK Mode - user has their own API key
+  if (hasByok) {
+    if (compact) {
+      return (
+        <div 
+          style={styles.byokContainer}
+          title="Using your own API key - no credits needed"
+        >
+          <span style={styles.byokIcon}>🔑</span>
+          <span style={styles.byokText}>BYOK</span>
+        </div>
+      );
+    }
+    return (
+      <div style={styles.byokContainer}>
+        <span style={styles.byokIcon}>🔑</span>
+        <span style={styles.byokLabel}>Your API Key</span>
       </div>
     );
   }
@@ -229,5 +286,28 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: 'rgba(139, 92, 246, 0.2)',
     borderRadius: '4px',
     animation: 'pulse 2s infinite',
+  },
+  byokContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.375rem',
+    padding: '0.375rem 0.625rem',
+    background: 'rgba(16, 185, 129, 0.1)',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    borderRadius: '8px',
+  },
+  byokIcon: {
+    fontSize: '0.75rem',
+  },
+  byokText: {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#34d399',
+    letterSpacing: '0.5px',
+  },
+  byokLabel: {
+    fontSize: '0.8125rem',
+    fontWeight: 500,
+    color: '#34d399',
   },
 };

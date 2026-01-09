@@ -57,6 +57,13 @@ export default function SettingsPage() {
     setApiKeys(getStoredApiKeys(null));
   }, [isMounted]);
 
+  // Dispatch event to notify other components (like CreditBalance) about key changes
+  const notifyApiKeyChange = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('moonscribe-apikey-changed'));
+    }
+  };
+
   const handleAddKey = async () => {
     if (!newKeyName.trim() || !newKeyValue.trim()) return;
     setAddingKey(true);
@@ -66,6 +73,7 @@ export default function SettingsPage() {
       setNewKeyName('');
       setNewKeyValue('');
       setShowAddKey(false);
+      notifyApiKeyChange();
     } catch (e) {
       console.error('Failed to save key:', e);
     }
@@ -76,12 +84,14 @@ export default function SettingsPage() {
     if (confirm('Delete this API key?')) {
       deleteApiKey(id, null);
       setApiKeys(getStoredApiKeys(null));
+      notifyApiKeyChange();
     }
   };
 
   const handleToggleKey = (id: string) => {
     toggleApiKey(id, null);
     setApiKeys(getStoredApiKeys(null));
+    notifyApiKeyChange();
   };
 
   const handleTestKey = async (id: string) => {
