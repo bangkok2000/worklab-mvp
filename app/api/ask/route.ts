@@ -265,7 +265,7 @@ QUESTION: ${question}
 Provide a comprehensive answer:`;
 
     // Get answer from selected provider/model
-    const selectedModel = model || (provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-sonnet-20240229');
+    // Note: selectedModel already defined above for credit cost calculation
     let completion: any;
     let tokensUsed = 0;
     
