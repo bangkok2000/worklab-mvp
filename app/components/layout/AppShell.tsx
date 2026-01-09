@@ -69,6 +69,21 @@ export default function AppShell({ children }: AppShellProps) {
     return user.email?.charAt(0).toUpperCase() || 'U';
   };
 
+  // Get display name - fallback to email username if no full_name
+  const getDisplayName = () => {
+    if (!user) return 'Guest';
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    // Extract username from email (before @)
+    if (user.email) {
+      const username = user.email.split('@')[0];
+      // Capitalize first letter and format
+      return username.charAt(0).toUpperCase() + username.slice(1);
+    }
+    return 'User';
+  };
+
   const handleSignOut = async () => {
     await signOut();
     router.push('/auth/signin');
@@ -454,7 +469,7 @@ export default function AppShell({ children }: AppShellProps) {
                     right: 0,
                     top: '100%',
                     marginTop: '0.5rem',
-                    width: '220px',
+                    width: '280px',
                     background: 'rgba(15, 15, 35, 0.95)',
                     border: '1px solid rgba(139, 92, 246, 0.2)',
                     borderRadius: '12px',
@@ -472,9 +487,16 @@ export default function AppShell({ children }: AppShellProps) {
                           marginBottom: '0.5rem',
                         }}>
                           <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#f1f5f9' }}>
-                            {user.user_metadata?.full_name || 'User'}
+                            {getDisplayName()}
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                          <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#64748b', 
+                            marginTop: '0.125rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>
                             {user.email}
                           </div>
                         </div>

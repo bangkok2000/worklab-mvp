@@ -753,9 +753,10 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.25rem' }}>
-                      {user.user_metadata?.full_name || 'User'}
+                      {user.user_metadata?.full_name || 
+                       (user.email ? user.email.split('@')[0].charAt(0).toUpperCase() + user.email.split('@')[0].slice(1) : 'User')}
                     </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '0.9375rem' }}>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9375rem', wordBreak: 'break-all' }}>
                       {user.email}
                     </p>
                     <span style={{
