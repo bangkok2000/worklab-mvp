@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import CreditBalance from '@/app/components/features/CreditBalance';
+import BuyCreditsModal from '@/app/components/features/BuyCreditsModal';
 
 interface NavItem {
   id: string;
@@ -50,6 +52,7 @@ export default function AppShell({ children }: AppShellProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>(['library']);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get user initials or email initial
@@ -298,6 +301,12 @@ export default function AppShell({ children }: AppShellProps) {
 
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* Credit Balance */}
+            <CreditBalance 
+              compact 
+              onBuyCredits={() => setShowBuyCredits(true)} 
+            />
+            
             <button style={{
               width: '36px',
               height: '36px',
@@ -462,6 +471,12 @@ export default function AppShell({ children }: AppShellProps) {
       {showQuickCapture && (
         <QuickCaptureModal onClose={() => setShowQuickCapture(false)} />
       )}
+
+      {/* Buy Credits Modal */}
+      <BuyCreditsModal 
+        isOpen={showBuyCredits} 
+        onClose={() => setShowBuyCredits(false)} 
+      />
     </div>
   );
 }
