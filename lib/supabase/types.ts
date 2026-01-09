@@ -86,3 +86,100 @@ export interface UsageLog {
   created_at: string;
 }
 
+// ============================================
+// CREDITS SYSTEM TYPES
+// ============================================
+
+export interface Credits {
+  id: string;
+  user_id: string;
+  balance: number;
+  lifetime_purchased: number;
+  lifetime_used: number;
+  free_credits_claimed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CreditTransactionType =
+  | 'purchase'           // Bought credits via Stripe
+  | 'free_starter'       // Free starter credits (one-time)
+  | 'bonus'              // Promotional bonus
+  | 'refund'             // Refund from failed operation
+  | 'ask_gpt35'          // Used for GPT-3.5 question
+  | 'ask_gpt4'           // Used for GPT-4 question
+  | 'ask_claude'         // Used for Claude question
+  | 'upload_document'    // Used for document upload/embedding
+  | 'process_youtube'    // Used for YouTube processing
+  | 'process_web'        // Used for web page processing
+  | 'transcribe_audio'   // Used for audio transcription
+  | 'admin_adjustment';  // Manual adjustment by admin
+
+export interface CreditTransaction {
+  id: string;
+  user_id: string;
+  amount: number;              // Positive = add, Negative = deduct
+  balance_after: number;
+  type: CreditTransactionType;
+  reference_id: string | null;
+  reference_type: string | null;
+  description: string | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+}
+
+export interface CreditPackage {
+  id: string;
+  name: string;
+  credits: number;
+  price_cents: number;
+  currency: string;
+  stripe_price_id: string | null;
+  description: string | null;
+  badge: string | null;        // e.g., "Most Popular", "Best Value"
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditCost {
+  id: string;
+  action: string;
+  credits_cost: number;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Helper type for credit operations
+export interface CreditDeductionResult {
+  success: boolean;
+  balance: number;
+  error?: string;
+}
+
+// Credit action identifiers (must match DB)
+export type CreditAction =
+  | 'ask_gpt35'
+  | 'ask_gpt4'
+  | 'ask_claude'
+  | 'upload_document_page'
+  | 'process_youtube'
+  | 'process_web'
+  | 'transcribe_audio_minute'
+  | 'export_insight';
+
+// Default credit costs (fallback if DB unavailable)
+export const DEFAULT_CREDIT_COSTS: Record<CreditAction, number> = {
+  ask_gpt35: 1,
+  ask_gpt4: 5,
+  ask_claude: 3,
+  upload_document_page: 1,
+  process_youtube: 2,
+  process_web: 1,
+  transcribe_audio_minute: 2,
+  export_insight: 0,
+};
+
