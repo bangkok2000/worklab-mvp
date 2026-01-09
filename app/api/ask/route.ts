@@ -63,13 +63,15 @@ export async function POST(req: NextRequest) {
     
     // Determine which model/action for credit costs
     const selectedModel = model || (provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-sonnet-20240229');
-    const isGPT4 = selectedModel.includes('gpt-4');
+    const isGPT4 = selectedModel.includes('gpt-4') && !selectedModel.includes('gpt-4o');
+    const isGPT4o = selectedModel.includes('gpt-4o');
     const isClaude = provider === 'anthropic';
     
-    // Map to credit action
-    let creditAction: CreditAction = 'ask_gpt35';
-    if (isGPT4) creditAction = 'ask_gpt4';
-    else if (isClaude) creditAction = 'ask_claude';
+    // Map to credit action (different costs per model)
+    let creditAction: CreditAction = 'ask_gpt35';  // Default: 1 credit
+    if (isGPT4) creditAction = 'ask_gpt4';         // 10 credits
+    else if (isGPT4o) creditAction = 'ask_gpt4o'; // 5 credits
+    else if (isClaude) creditAction = 'ask_claude'; // 5 credits
     
     let creditCost = 0;
     

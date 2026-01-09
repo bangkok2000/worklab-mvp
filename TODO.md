@@ -11,17 +11,20 @@
 
 ### Credit System Design
 
-#### Credit Costs
-| Action | Credits | Approx. Real Cost |
-|--------|---------|-------------------|
-| Ask a question (GPT-3.5) | 1 credit | ~$0.002 |
-| Ask a question (GPT-4) | 5 credits | ~$0.03 |
-| Ask a question (Claude) | 3 credits | ~$0.015 |
-| Upload document (per page) | 0.5 credits | ~$0.001 |
-| Process YouTube video | 2 credits | ~$0.01 |
-| Process web page | 1 credit | ~$0.005 |
-| Transcribe audio (per min) | 2 credits | ~$0.006 |
-| Export insight | 0 credits | Free |
+#### Credit Costs (Updated for Profitability)
+| Action | Credits | OpenAI Cost | Your Revenue* | Margin |
+|--------|---------|-------------|---------------|--------|
+| Ask (GPT-3.5) | 1 credit | ~$0.002 | ~$0.008 | **75%** |
+| Ask (GPT-4) | 10 credits | ~$0.04 | ~$0.08 | **50%** |
+| Ask (GPT-4o) | 5 credits | ~$0.02 | ~$0.04 | **50%** |
+| Ask (Claude) | 5 credits | ~$0.015 | ~$0.04 | **63%** |
+| Upload (per page) | 1 credit | ~$0.0001 | ~$0.008 | **99%** |
+| Process YouTube | 2 credits | ~$0.001 | ~$0.016 | **94%** |
+| Process web page | 1 credit | ~$0.001 | ~$0.008 | **88%** |
+| Transcribe audio/min | 3 credits | ~$0.006 | ~$0.024 | **75%** |
+| Export insight | 0 credits | Free | Free | - |
+
+*Based on Standard package ($0.008/credit)
 
 #### Credit Packages
 | Package | Credits | Price | Best For |

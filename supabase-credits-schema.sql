@@ -104,15 +104,18 @@ CREATE TABLE IF NOT EXISTS public.credit_costs (
 
 -- Insert default credit costs
 INSERT INTO public.credit_costs (action, credits_cost, description) VALUES
-  ('ask_gpt35', 1, 'Ask a question using GPT-3.5'),
-  ('ask_gpt4', 5, 'Ask a question using GPT-4'),
-  ('ask_claude', 3, 'Ask a question using Claude'),
-  ('upload_document_page', 1, 'Upload document (per page)'),
-  ('process_youtube', 2, 'Process YouTube video'),
+  ('ask_gpt35', 1, 'Ask a question using GPT-3.5 (~75% margin)'),
+  ('ask_gpt4', 10, 'Ask a question using GPT-4 (~60% margin)'),
+  ('ask_gpt4o', 5, 'Ask a question using GPT-4o (~75% margin)'),
+  ('ask_claude', 5, 'Ask a question using Claude (~70% margin)'),
+  ('upload_document_page', 1, 'Upload document per page (~99% margin)'),
+  ('process_youtube', 2, 'Process YouTube video transcript'),
   ('process_web', 1, 'Process web page'),
-  ('transcribe_audio_minute', 2, 'Transcribe audio (per minute)'),
+  ('transcribe_audio_minute', 3, 'Transcribe audio per minute (Whisper)'),
   ('export_insight', 0, 'Export insight (free)')
-ON CONFLICT (action) DO NOTHING;
+ON CONFLICT (action) DO UPDATE SET 
+  credits_cost = EXCLUDED.credits_cost,
+  description = EXCLUDED.description;
 
 -- Insert default credit packages
 INSERT INTO public.credit_packages (name, credits, price_cents, description, badge, sort_order) VALUES

@@ -75,15 +75,16 @@ export async function getCreditCosts(): Promise<Record<string, number>> {
 
   if (error || !data) {
     console.error('Error fetching credit costs, using defaults:', error);
-    // Return default costs as fallback
+    // Return default costs as fallback (updated for profit margins)
     return {
-      ask_gpt35: 1,
-      ask_gpt4: 5,
-      ask_claude: 3,
-      upload_document_page: 1,
+      ask_gpt35: 1,       // ~75% margin
+      ask_gpt4: 10,       // ~60% margin
+      ask_gpt4o: 5,       // ~75% margin
+      ask_claude: 5,      // ~70% margin
+      upload_document_page: 1,  // ~99% margin
       process_youtube: 2,
       process_web: 1,
-      transcribe_audio_minute: 2,
+      transcribe_audio_minute: 3,
       export_insight: 0,
     };
   }

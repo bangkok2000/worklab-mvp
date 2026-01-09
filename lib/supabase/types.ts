@@ -164,6 +164,7 @@ export interface CreditDeductionResult {
 export type CreditAction =
   | 'ask_gpt35'
   | 'ask_gpt4'
+  | 'ask_gpt4o'
   | 'ask_claude'
   | 'upload_document_page'
   | 'process_youtube'
@@ -172,14 +173,16 @@ export type CreditAction =
   | 'export_insight';
 
 // Default credit costs (fallback if DB unavailable)
+// Updated for healthy profit margins
 export const DEFAULT_CREDIT_COSTS: Record<CreditAction, number> = {
-  ask_gpt35: 1,
-  ask_gpt4: 5,
-  ask_claude: 3,
-  upload_document_page: 1,
+  ask_gpt35: 1,      // ~$0.002 cost, ~75% margin
+  ask_gpt4: 10,      // ~$0.04 cost, ~60% margin  
+  ask_gpt4o: 5,      // ~$0.02 cost, ~75% margin
+  ask_claude: 5,     // ~$0.015 cost, ~70% margin
+  upload_document_page: 1,  // ~$0.0001 cost, ~99% margin
   process_youtube: 2,
   process_web: 1,
-  transcribe_audio_minute: 2,
+  transcribe_audio_minute: 3,  // Whisper: ~$0.006/min
   export_insight: 0,
 };
 
