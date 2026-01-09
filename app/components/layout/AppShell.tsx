@@ -39,9 +39,8 @@ const navigation: NavItem[] = [
   { id: 'team', label: 'Team', icon: '👥', href: '/app/team' },
 ];
 
-const bottomNav: NavItem[] = [
-  { id: 'settings', label: 'Settings', icon: '⚙️', href: '/app/settings' },
-];
+// Settings moved to header, bottomNav now empty
+const bottomNav: NavItem[] = [];
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -57,6 +56,8 @@ export default function AppShell({ children }: AppShellProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
   const [showSignUpRequired, setShowSignUpRequired] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get user initials or email initial
@@ -173,32 +174,6 @@ export default function AppShell({ children }: AppShellProps) {
           )}
         </div>
 
-        {/* Quick Capture Button */}
-        <div style={{ padding: sidebarCollapsed ? '0.75rem' : '1rem' }}>
-          <button
-            onClick={() => setShowQuickCapture(true)}
-            style={{
-              width: '100%',
-              padding: sidebarCollapsed ? '0.75rem' : '0.75rem 1rem',
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-              border: 'none',
-              borderRadius: '10px',
-              color: 'white',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-              gap: '0.5rem',
-              transition: 'all 0.2s',
-            }}
-          >
-            <span>+</span>
-            {!sidebarCollapsed && <span>Add Content</span>}
-          </button>
-        </div>
-
         {/* Navigation */}
         <nav style={{ flex: 1, padding: '0.5rem', overflowY: 'auto' }}>
           {navigation.map(item => (
@@ -213,23 +188,11 @@ export default function AppShell({ children }: AppShellProps) {
           ))}
         </nav>
 
-        {/* Bottom Navigation */}
+        {/* Bottom - Collapse Toggle */}
         <div style={{
           padding: '0.5rem',
           borderTop: '1px solid rgba(139, 92, 246, 0.1)',
         }}>
-          {bottomNav.map(item => (
-            <NavItemComponent
-              key={item.id}
-              item={item}
-              collapsed={sidebarCollapsed}
-              isActive={isActive}
-              expandedItems={expandedItems}
-              onToggleExpand={toggleExpanded}
-            />
-          ))}
-          
-          {/* Collapse Toggle */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             style={{
@@ -245,7 +208,6 @@ export default function AppShell({ children }: AppShellProps) {
               alignItems: 'center',
               justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
               gap: '0.75rem',
-              marginTop: '0.5rem',
             }}
           >
             <span style={{ fontSize: '1rem' }}>{sidebarCollapsed ? '→' : '←'}</span>
@@ -315,34 +277,142 @@ export default function AppShell({ children }: AppShellProps) {
               />
             )}
             
-            <button style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(139, 92, 246, 0.1)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
-              color: '#c4b5fd',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              🔔
-            </button>
-            <button style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(139, 92, 246, 0.1)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
-              color: '#c4b5fd',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              ❓
-            </button>
+            {/* Notifications */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => { setShowNotifications(!showNotifications); setShowHelp(false); }}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: showNotifications ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  color: '#c4b5fd',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                🔔
+              </button>
+              {showNotifications && (
+                <>
+                  <div 
+                    onClick={() => setShowNotifications(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '0.5rem',
+                    width: '320px',
+                    background: 'rgba(15, 15, 35, 0.95)',
+                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderRadius: '12px',
+                    padding: '0.5rem',
+                    zIndex: 50,
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                  }}>
+                    <div style={{ padding: '0.75rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                      <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>Notifications</h3>
+                    </div>
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔔</div>
+                      <p style={{ color: '#64748b', fontSize: '0.875rem' }}>No new notifications</p>
+                      <p style={{ color: '#475569', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                        You're all caught up!
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Help */}
+            <div style={{ position: 'relative' }}>
+              <button 
+                onClick={() => { setShowHelp(!showHelp); setShowNotifications(false); }}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: showHelp ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  color: '#c4b5fd',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                ❓
+              </button>
+              {showHelp && (
+                <>
+                  <div 
+                    onClick={() => setShowHelp(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '0.5rem',
+                    width: '280px',
+                    background: 'rgba(15, 15, 35, 0.95)',
+                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderRadius: '12px',
+                    padding: '0.5rem',
+                    zIndex: 50,
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                  }}>
+                    <div style={{ padding: '0.75rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                      <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, margin: 0 }}>Help & Resources</h3>
+                    </div>
+                    <div style={{ padding: '0.25rem' }}>
+                      <button onClick={() => setShowHelp(false)} style={{ width: '100%', padding: '0.625rem 0.75rem', background: 'transparent', border: 'none', borderRadius: '8px', color: '#f1f5f9', fontSize: '0.8125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left' }}>
+                        <span>📚</span> Documentation
+                      </button>
+                      <button onClick={() => setShowHelp(false)} style={{ width: '100%', padding: '0.625rem 0.75rem', background: 'transparent', border: 'none', borderRadius: '8px', color: '#f1f5f9', fontSize: '0.8125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left' }}>
+                        <span>⌨️</span> Keyboard Shortcuts
+                      </button>
+                      <button onClick={() => setShowHelp(false)} style={{ width: '100%', padding: '0.625rem 0.75rem', background: 'transparent', border: 'none', borderRadius: '8px', color: '#f1f5f9', fontSize: '0.8125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left' }}>
+                        <span>💬</span> Contact Support
+                      </button>
+                      <button onClick={() => setShowHelp(false)} style={{ width: '100%', padding: '0.625rem 0.75rem', background: 'transparent', border: 'none', borderRadius: '8px', color: '#f1f5f9', fontSize: '0.8125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left' }}>
+                        <span>💡</span> Feature Requests
+                      </button>
+                      <div style={{ height: '1px', background: 'rgba(139, 92, 246, 0.15)', margin: '0.5rem 0' }} />
+                      <button onClick={() => setShowHelp(false)} style={{ width: '100%', padding: '0.625rem 0.75rem', background: 'transparent', border: 'none', borderRadius: '8px', color: '#64748b', fontSize: '0.8125rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left' }}>
+                        <span>ℹ️</span> About MoonScribe
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Settings */}
+            <Link
+              href="/app/settings"
+              prefetch={true}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: pathname.includes('/settings') ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                color: '#c4b5fd',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+              }}>
+              ⚙️
+            </Link>
             {/* User Menu */}
             <div style={{ position: 'relative' }}>
               <button
@@ -474,6 +544,41 @@ export default function AppShell({ children }: AppShellProps) {
           {children}
         </main>
       </div>
+
+      {/* Floating Action Button (FAB) for Add Content */}
+      <button
+        onClick={() => setShowQuickCapture(true)}
+        style={{
+          position: 'fixed',
+          bottom: '2rem',
+          right: '2rem',
+          width: '56px',
+          height: '56px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+          border: 'none',
+          color: 'white',
+          fontSize: '1.5rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 8px 32px rgba(139, 92, 246, 0.4)',
+          transition: 'all 0.2s ease',
+          zIndex: 50,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 12px 40px rgba(139, 92, 246, 0.5)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 8px 32px rgba(139, 92, 246, 0.4)';
+        }}
+        title="Add Content (⌘N)"
+      >
+        +
+      </button>
 
       {/* Quick Capture Modal */}
       {showQuickCapture && (
