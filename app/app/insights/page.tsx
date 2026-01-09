@@ -114,6 +114,7 @@ const STORAGE_KEY = 'moonscribe_insights';
 
 export default function InsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false); // Track if initial load is done
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
@@ -125,32 +126,39 @@ export default function InsightsPage() {
   const [filterProject, setFilterProject] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  // Load insights from localStorage
+  // Load insights from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setInsights(parsed.map((i: Insight) => ({
-          ...i,
-          isArchived: i.isArchived ?? false,
-          createdAt: new Date(i.createdAt),
-          updatedAt: new Date(i.updatedAt),
-        })));
+        // Handle case where saved data is an empty array (user deleted all)
+        if (Array.isArray(parsed)) {
+          setInsights(parsed.map((i: Insight) => ({
+            ...i,
+            isArchived: i.isArchived ?? false,
+            createdAt: new Date(i.createdAt),
+            updatedAt: new Date(i.updatedAt),
+          })));
+        } else {
+          setInsights(demoInsights);
+        }
       } catch {
         setInsights(demoInsights);
       }
     } else {
+      // First time user - load demo insights
       setInsights(demoInsights);
     }
+    setIsLoaded(true);
   }, []);
 
-  // Save insights to localStorage
+  // Save insights to localStorage whenever they change (but only after initial load)
   useEffect(() => {
-    if (insights.length > 0) {
+    if (isLoaded) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
     }
-  }, [insights]);
+  }, [insights, isLoaded]);
 
   const allTags = Array.from(new Set(insights.flatMap(i => i.tags)));
   const allProjects = Array.from(new Set(insights.filter(i => i.projectName).map(i => ({ 
