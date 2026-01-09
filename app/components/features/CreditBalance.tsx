@@ -105,10 +105,11 @@ export default function CreditBalance({
           ...styles.compactContainer,
           ...(isLow ? styles.lowBalance : {}),
         }}
-        title={`${balance} credits remaining`}
+        title={`${balance} credits remaining - Click to buy more`}
       >
         <span style={styles.icon}>⚡</span>
         <span style={styles.compactBalance}>{balance}</span>
+        <span style={styles.compactLabel}>left</span>
       </button>
     );
   }
@@ -173,6 +174,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.8125rem',
     fontWeight: 600,
     color: '#f1f5f9',
+  },
+  compactLabel: {
+    fontSize: '0.6875rem',
+    color: '#94a3b8',
+    marginLeft: '-0.125rem',
   },
   zeroBalance: {
     fontSize: '0.875rem',

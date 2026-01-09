@@ -486,12 +486,6 @@ export default function AppShell({ children }: AppShellProps) {
                         >
                           <span>⚙️</span> Settings
                         </button>
-                        <button
-                          onClick={() => { router.push('/app/settings'); setShowUserMenu(false); }}
-                          style={userMenuButtonStyle}
-                        >
-                          <span>🔑</span> API Keys
-                        </button>
                         <div style={{ height: '1px', background: 'rgba(139, 92, 246, 0.15)', margin: '0.5rem 0' }} />
                         <button
                           onClick={handleSignOut}
