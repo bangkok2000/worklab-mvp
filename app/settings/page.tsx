@@ -66,8 +66,14 @@ export default function SettingsPage() {
 
   const handleTestKey = async (id: string) => {
     setTestingKey(id);
-    const success = await testApiKey(id, null);
-    alert(success ? 'API key is valid!' : 'API key test failed');
+    // Note: Testing encrypted keys requires decryption - feature coming soon
+    const keyConfig = apiKeys.find(k => k.id === id);
+    if (!keyConfig) {
+      alert('Key not found');
+      setTestingKey(null);
+      return;
+    }
+    alert('API key testing requires decryption - feature coming soon');
     setTestingKey(null);
   };
 

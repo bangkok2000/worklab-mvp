@@ -5,12 +5,14 @@ import React from 'react';
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'purple' | 'success' | 'warning' | 'error' | 'info';
   size?: 'sm' | 'md';
+  dot?: boolean;
   children: React.ReactNode;
 }
 
 const Badge: React.FC<BadgeProps> = ({ 
   variant = 'default', 
   size = 'sm',
+  dot = false,
   children, 
   style,
   ...props 
@@ -37,6 +39,7 @@ const Badge: React.FC<BadgeProps> = ({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        gap: dot ? '0.375rem' : undefined,
         borderRadius: '6px',
         fontWeight: 500,
         ...variantStyle,
@@ -45,6 +48,16 @@ const Badge: React.FC<BadgeProps> = ({
       }}
       {...props}
     >
+      {dot && (
+        <span
+          style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: variantStyle.color,
+          }}
+        />
+      )}
       {children}
     </span>
   );

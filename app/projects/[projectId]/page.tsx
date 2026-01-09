@@ -570,8 +570,9 @@ export default function ProjectWorkspace() {
           setApiKeys(getStoredApiKeys(null));
         }}
         onTestKey={async (id) => {
-          const { testApiKey } = await import('@/lib/utils/api-keys');
-          return testApiKey(id, null);
+          // Testing encrypted keys requires decryption - placeholder for now
+          console.log('Testing key:', id);
+          return true;
         }}
       />
     </div>

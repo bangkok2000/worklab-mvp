@@ -99,5 +99,5 @@ export function generateQueryVariations(query: string): string[] {
     variations.push(`what is ${query}`);
   }
 
-  return [...new Set(variations)]; // Remove duplicates
+  return Array.from(new Set(variations)); // Remove duplicates
 }

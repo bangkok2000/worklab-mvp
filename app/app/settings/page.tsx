@@ -11,7 +11,7 @@ const providers = [
 ];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'api-keys' | 'profile' | 'preferences' | 'billing' | 'data'>('api-keys');
+  const [activeTab, setActiveTab] = useState<'api-keys' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data'>('api-keys');
   const [apiKeys, setApiKeys] = useState<ApiKeyConfig[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -36,7 +36,7 @@ export default function SettingsPage() {
     if (!newKeyName.trim() || !newKeyValue.trim()) return;
     setAddingKey(true);
     try {
-      await saveApiKey(newProvider, newKeyName.trim(), newKeyValue.trim(), null);
+      await saveApiKey(newProvider, newKeyValue.trim(), newKeyName.trim(), null);
       setApiKeys(getStoredApiKeys(null));
       setNewKeyName('');
       setNewKeyValue('');
@@ -61,8 +61,15 @@ export default function SettingsPage() {
 
   const handleTestKey = async (id: string) => {
     setTestingKey(id);
-    const success = await testApiKey(id, null);
-    alert(success ? 'API key is valid!' : 'API key test failed');
+    const keyConfig = apiKeys.find(k => k.id === id);
+    if (!keyConfig) {
+      alert('Key not found');
+      setTestingKey(null);
+      return;
+    }
+    // Note: We can't test encrypted keys without decryption
+    // For now, just show a placeholder
+    alert('API key testing requires decryption - feature coming soon');
     setTestingKey(null);
   };
 

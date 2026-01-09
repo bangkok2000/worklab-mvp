@@ -67,7 +67,7 @@ export async function createConversation(
  */
 export async function addMessage(
   conversationId: string,
-  message: Omit<Message, 'id' | 'created_at'>
+  message: Omit<Message, 'id' | 'conversation_id' | 'created_at'>
 ) {
   const { data, error } = await supabase
     .from('messages')

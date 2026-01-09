@@ -23,7 +23,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: salt,
+      salt: salt as unknown as BufferSource,
       iterations: 100000,
       hash: 'SHA-256',
     },
@@ -92,7 +92,7 @@ export async function encryptApiKey(
     combined.set(new Uint8Array(encrypted), salt.length + iv.length);
 
     // Convert to base64 for storage
-    return btoa(String.fromCharCode(...combined));
+    return btoa(String.fromCharCode.apply(null, Array.from(combined)));
   } catch (error) {
     console.error('Encryption error:', error);
     throw new Error('Failed to encrypt API key');

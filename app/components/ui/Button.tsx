@@ -6,6 +6,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
+  fullWidth?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -13,6 +16,9 @@ const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  fullWidth = false,
+  leftIcon,
+  rightIcon,
   children,
   disabled,
   style,
@@ -65,6 +71,7 @@ const Button: React.FC<ButtonProps> = ({
         gap: '0.5rem',
         transition: 'all 0.2s',
         whiteSpace: 'nowrap',
+        width: fullWidth ? '100%' : 'auto',
         ...style,
       }}
       {...props}
@@ -79,7 +86,9 @@ const Button: React.FC<ButtonProps> = ({
           animation: 'spin 0.6s linear infinite',
         }} />
       )}
+      {!isLoading && leftIcon}
       {children}
+      {!isLoading && rightIcon}
     </button>
   );
 };
