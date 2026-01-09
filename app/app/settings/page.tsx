@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredApiKeys, saveApiKey, deleteApiKey, toggleApiKey, testApiKey, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
+import TeamSettings from '@/app/components/features/TeamSettings';
 
 const providers = [
   { value: 'openai', label: 'OpenAI', placeholder: 'sk-...', description: 'GPT-4, GPT-3.5 models' },
@@ -12,8 +13,8 @@ const providers = [
   { value: 'ollama', label: 'Ollama', placeholder: 'http://localhost:11434', description: 'Local models' },
 ];
 
-type TabId = 'api-keys' | 'integrations' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data';
-const validTabs: TabId[] = ['api-keys', 'integrations', 'privacy', 'profile', 'preferences', 'billing', 'data'];
+type TabId = 'api-keys' | 'team' | 'integrations' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data';
+const validTabs: TabId[] = ['api-keys', 'team', 'integrations', 'privacy', 'profile', 'preferences', 'billing', 'data'];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -93,6 +94,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'api-keys', label: 'API Keys', icon: '🔑' },
+    { id: 'team', label: 'Team', icon: '👥' },
     { id: 'integrations', label: 'Integrations', icon: '🔌' },
     { id: 'privacy', label: 'Data & Privacy', icon: '🔒' },
     { id: 'profile', label: 'Profile', icon: '👤' },
@@ -395,6 +397,11 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Team Tab */}
+        {activeTab === 'team' && (
+          <TeamSettings />
         )}
 
         {/* Integrations Tab */}
