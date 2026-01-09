@@ -52,6 +52,69 @@ export default function TeamPage() {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+  const [sharedProjects, setSharedProjects] = useState(0);
+
+  // Load data from localStorage - must be before any conditional returns
+  useEffect(() => {
+    // Only load data if user is authenticated
+    if (!user) return;
+    
+    const loadData = () => {
+      // Load members
+      const savedMembers = localStorage.getItem(STORAGE_KEYS.members);
+      if (savedMembers) {
+        setMembers(JSON.parse(savedMembers));
+      } else {
+        // Initialize with current user as owner
+        const initialMembers: TeamMember[] = [{
+          id: 'owner-1',
+          name: 'You',
+          email: user.email || 'you@example.com',
+          role: 'owner',
+          status: 'active',
+          lastActive: new Date().toISOString(),
+          joinedAt: new Date().toISOString(),
+        }];
+        setMembers(initialMembers);
+        localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(initialMembers));
+      }
+
+      // Load workspaces
+      const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.workspaces);
+      if (savedWorkspaces) {
+        setWorkspaces(JSON.parse(savedWorkspaces));
+      } else {
+        // Initialize with default workspace
+        const initialWorkspaces: Workspace[] = [{
+          id: 'ws-default',
+          name: 'My Workspace',
+          description: 'Default workspace',
+          members: ['owner-1'],
+          projects: [],
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+        }];
+        setWorkspaces(initialWorkspaces);
+        localStorage.setItem(STORAGE_KEYS.workspaces, JSON.stringify(initialWorkspaces));
+      }
+
+      // Load activity
+      const savedActivity = localStorage.getItem(STORAGE_KEYS.activity);
+      if (savedActivity) {
+        setActivity(JSON.parse(savedActivity));
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  // Count shared projects from localStorage
+  useEffect(() => {
+    const projects = localStorage.getItem('moonscribe-projects');
+    if (projects) {
+      setSharedProjects(JSON.parse(projects).length);
+    }
+  }, []);
 
   // Show loading state while checking auth
   if (loading) {
@@ -173,57 +236,6 @@ export default function TeamPage() {
       </div>
     );
   }
-
-  // Load data from localStorage
-  useEffect(() => {
-    const loadData = () => {
-      // Load members
-      const savedMembers = localStorage.getItem(STORAGE_KEYS.members);
-      if (savedMembers) {
-        setMembers(JSON.parse(savedMembers));
-      } else {
-        // Initialize with current user as owner
-        const initialMembers: TeamMember[] = [{
-          id: 'owner-1',
-          name: 'You',
-          email: 'you@example.com',
-          role: 'owner',
-          status: 'active',
-          lastActive: new Date().toISOString(),
-          joinedAt: new Date().toISOString(),
-        }];
-        setMembers(initialMembers);
-        localStorage.setItem(STORAGE_KEYS.members, JSON.stringify(initialMembers));
-      }
-
-      // Load workspaces
-      const savedWorkspaces = localStorage.getItem(STORAGE_KEYS.workspaces);
-      if (savedWorkspaces) {
-        setWorkspaces(JSON.parse(savedWorkspaces));
-      } else {
-        // Initialize with default workspace
-        const initialWorkspaces: Workspace[] = [{
-          id: 'ws-default',
-          name: 'My Workspace',
-          description: 'Default workspace',
-          members: ['owner-1'],
-          projects: [],
-          isDefault: true,
-          createdAt: new Date().toISOString(),
-        }];
-        setWorkspaces(initialWorkspaces);
-        localStorage.setItem(STORAGE_KEYS.workspaces, JSON.stringify(initialWorkspaces));
-      }
-
-      // Load activity
-      const savedActivity = localStorage.getItem(STORAGE_KEYS.activity);
-      if (savedActivity) {
-        setActivity(JSON.parse(savedActivity));
-      }
-    };
-
-    loadData();
-  }, []);
 
   // Save functions
   const saveMembers = (newMembers: TeamMember[]) => {
@@ -359,15 +371,6 @@ export default function TeamPage() {
     { id: 'workspaces', label: 'Workspaces', icon: '🏢', count: workspaces.length },
     { id: 'activity', label: 'Activity', icon: '📜' },
   ];
-
-  // Count shared projects from localStorage
-  const [sharedProjects, setSharedProjects] = useState(0);
-  useEffect(() => {
-    const projects = localStorage.getItem('moonscribe-projects');
-    if (projects) {
-      setSharedProjects(JSON.parse(projects).length);
-    }
-  }, []);
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
