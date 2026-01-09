@@ -55,51 +55,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const supabase = getSupabase();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    return { error };
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      return { error };
+    } catch (e) {
+      return { 
+        error: { 
+          message: 'Authentication service not configured. Please contact support.',
+          name: 'ConfigurationError',
+          status: 500,
+        } as AuthError 
+      };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
-    const supabase = getSupabase();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (e) {
+      return { 
+        error: { 
+          message: 'Authentication service not configured. Please contact support or use Guest mode.',
+          name: 'ConfigurationError',
+          status: 500,
+        } as AuthError 
+      };
+    }
   };
 
   const signInWithGoogle = async () => {
-    const supabase = getSupabase();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    return { error };
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      return { error };
+    } catch (e) {
+      return { 
+        error: { 
+          message: 'Google sign-in not configured. Please use email or Guest mode.',
+          name: 'ConfigurationError',
+          status: 500,
+        } as AuthError 
+      };
+    }
   };
 
   const signInWithGithub = async () => {
-    const supabase = getSupabase();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    return { error };
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      return { error };
+    } catch (e) {
+      return { 
+        error: { 
+          message: 'GitHub sign-in not configured. Please use email or Guest mode.',
+          name: 'ConfigurationError',
+          status: 500,
+        } as AuthError 
+      };
+    }
   };
 
   const signOut = async () => {
-    const supabase = getSupabase();
-    await supabase.auth.signOut();
+    try {
+      const supabase = getSupabase();
+      await supabase.auth.signOut();
+    } catch (e) {
+      // If Supabase not configured, just clear local state
+      setUser(null);
+      setSession(null);
+    }
   };
 
   const value = {
