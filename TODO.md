@@ -245,9 +245,12 @@ Step 4: Server AI (Days 10-12)
 | Audio/podcast transcription | NotebookLM, Recall | Not started | **P1** |
 | Browser extension | Recall, Mem | Not started | **P1** |
 | Better RAG quality | All (tuned) | Basic | **P1** |
+| Protected/OCR PDFs | Adobe, ChatGPT | Not handled | **P1** |
+| Image as source (JPEG/GIF) | ChatGPT, NotebookLM | Not started | **P1** |
 | Mobile access | Most have apps | Web only | **P2** |
 | Real-time collaboration | Notion, Mem | UI mockup | **P2** |
 | User onboarding | All | None | **P2** |
+| CRM integrations | Notion, Mem | Not started | **P2** |
 
 ---
 
@@ -332,6 +335,48 @@ Step 4: Server AI (Days 10-12)
 
 **Effort:** 4-5 days
 
+### 2.5 Enhanced PDF Processing
+- [ ] **Handle Protected/Encrypted PDFs**
+  - [ ] Detect password-protected PDFs (prompt for password)
+  - [ ] Detect DRM-protected PDFs (show error with explanation)
+  - [ ] Use pdf-lib or pdf.js for password decryption
+  - [ ] Graceful fallback messaging
+- [ ] **Handle OCR/Scanned PDFs**
+  - [ ] Detect image-based PDFs (no extractable text)
+  - [ ] Integrate Tesseract.js for client-side OCR
+  - [ ] Or: Use Google Cloud Vision / AWS Textract for accuracy
+  - [ ] OCR quality indicator (confidence score)
+  - [ ] Manual text correction option
+- [ ] **PDF Quality Improvements**
+  - [ ] Table extraction and formatting
+  - [ ] Preserve document structure (headers, lists)
+  - [ ] Handle multi-column layouts
+  - [ ] Extract and index embedded images
+
+**Effort:** 5-7 days
+
+### 2.6 Image Processing (JPEG, PNG, GIF)
+- [ ] **Image Upload Support**
+  - [ ] Accept JPEG, PNG, GIF, WebP formats
+  - [ ] Image preview in library
+  - [ ] Basic metadata extraction (EXIF)
+- [ ] **Image-to-Text (OCR)**
+  - [ ] Extract text from images (Tesseract.js / Cloud Vision)
+  - [ ] Handwriting recognition (if supported)
+  - [ ] Screenshot text extraction
+- [ ] **Image Understanding (Vision AI)**
+  - [ ] GPT-4 Vision for image descriptions
+  - [ ] Describe charts, diagrams, infographics
+  - [ ] Extract data from tables in images
+  - [ ] Generate searchable captions
+- [ ] **Use Cases**
+  - [ ] Whiteboard photos → searchable notes
+  - [ ] Receipt/invoice scanning
+  - [ ] Infographic analysis
+  - [ ] Screenshot documentation
+
+**Effort:** 4-6 days
+
 ---
 
 ## 📱 Phase 3: Scale & Polish (P2)
@@ -363,8 +408,14 @@ Step 4: Server AI (Days 10-12)
 - [ ] Google Drive import
 - [ ] Zapier/Make webhooks
 - [ ] API for developers
+- [ ] **intriq Sales CRM Integration**
+  - [ ] Research intriq API capabilities
+  - [ ] Import contacts/deals as context
+  - [ ] Link insights to CRM records
+  - [ ] Push AI-generated summaries to CRM
+  - [ ] Sync meeting notes and follow-ups
 
-**Effort:** 5-7 days
+**Effort:** 5-7 days (+ 3-4 days for intriq)
 
 ### 3.4 Onboarding & Polish
 - [ ] First-run tutorial
