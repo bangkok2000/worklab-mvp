@@ -2,9 +2,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { SourcesPanel, ChatPanel, HistoryPanel, SettingsPanel } from '../../components/features';
+import { SourcesPanel, ChatPanel, HistoryPanel, SettingsPanel, SignUpRequiredModal } from '../../components/features';
 import { Button, Badge } from '../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
+import { useAuth } from '@/lib/auth';
+import { 
+  canGuestPerformAction, 
+  recordGuestAction, 
+  getGuestUsage, 
+  getGuestLimit,
+  hasGuestReachedLimit 
+} from '@/lib/utils/guest-limits';
 
 // Types
 interface Message {
@@ -59,6 +67,7 @@ export default function ProjectWorkspace() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
+  const { user } = useAuth();
 
   // Project state
   const [project, setProject] = useState<Project | null>(null);
@@ -73,6 +82,7 @@ export default function ProjectWorkspace() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [showSignUpRequired, setShowSignUpRequired] = useState(false);
 
   // API State
   const [isUploading, setIsUploading] = useState(false);
@@ -230,6 +240,15 @@ export default function ProjectWorkspace() {
   };
 
   const handleSendMessage = async (content: string) => {
+    // Check guest limits before making API call
+    if (!user) {
+      // Guest user - check if they can perform the action
+      if (!canGuestPerformAction('query')) {
+        setShowSignUpRequired(true);
+        return;
+      }
+    }
+
     setIsAsking(true);
 
     const userMessage: Message = {
@@ -269,6 +288,11 @@ export default function ProjectWorkspace() {
 
       const updatedMessages = [...newMessages, assistantMessage];
       setMessages(updatedMessages);
+
+      // Record guest usage after successful query
+      if (!user && data.answer && !data.error) {
+        recordGuestAction('query');
+      }
 
       const convTitle = content.substring(0, 50) + (content.length > 50 ? '...' : '');
       if (currentConversationId) {
@@ -574,6 +598,14 @@ export default function ProjectWorkspace() {
           console.log('Testing key:', id);
           return true;
         }}
+      />
+
+      {/* Sign Up Required Modal (for guests who hit limit) */}
+      <SignUpRequiredModal
+        isOpen={showSignUpRequired}
+        onClose={() => setShowSignUpRequired(false)}
+        queriesUsed={getGuestUsage().queriesUsed}
+        queryLimit={getGuestLimit()}
       />
     </div>
   );

@@ -5,6 +5,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import CreditBalance from '@/app/components/features/CreditBalance';
 import BuyCreditsModal from '@/app/components/features/BuyCreditsModal';
+import { GuestUsageIndicator } from '@/app/components/features/GuestUsageIndicator';
+import { SignUpRequiredModal } from '@/app/components/features/SignUpRequiredModal';
+import { getGuestUsage, getGuestLimit } from '@/lib/utils/guest-limits';
 
 interface NavItem {
   id: string;
@@ -53,6 +56,7 @@ export default function AppShell({ children }: AppShellProps) {
   const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [showSignUpRequired, setShowSignUpRequired] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get user initials or email initial
@@ -301,11 +305,17 @@ export default function AppShell({ children }: AppShellProps) {
 
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {/* Credit Balance */}
-            <CreditBalance 
-              compact 
-              onBuyCredits={() => setShowBuyCredits(true)} 
-            />
+            {/* Credit Balance for signed-in users, Guest indicator for guests */}
+            {user ? (
+              <CreditBalance 
+                compact 
+                onBuyCredits={() => setShowBuyCredits(true)} 
+              />
+            ) : (
+              <GuestUsageIndicator 
+                onSignUpClick={() => setShowSignUpRequired(true)} 
+              />
+            )}
             
             <button style={{
               width: '36px',
@@ -476,6 +486,14 @@ export default function AppShell({ children }: AppShellProps) {
       <BuyCreditsModal 
         isOpen={showBuyCredits} 
         onClose={() => setShowBuyCredits(false)} 
+      />
+
+      {/* Sign Up Required Modal (for guests who hit limit) */}
+      <SignUpRequiredModal
+        isOpen={showSignUpRequired}
+        onClose={() => setShowSignUpRequired(false)}
+        queriesUsed={getGuestUsage().queriesUsed}
+        queryLimit={getGuestLimit()}
       />
     </div>
   );
