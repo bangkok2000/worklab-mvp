@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 
 interface NavItem {
   id: string;
@@ -44,10 +45,41 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user, loading, signOut } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(['library']);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get user initials or email initial
+  const getUserInitial = () => {
+    if (!user) return 'G';
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name.charAt(0).toUpperCase();
+    }
+    return user.email?.charAt(0).toUpperCase() || 'U';
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/auth/signin');
+  };
+
+  const userMenuButtonStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '0.625rem 0.75rem',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: '8px',
+    color: '#f1f5f9',
+    fontSize: '0.8125rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.625rem',
+    textAlign: 'left',
+  };
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -294,19 +326,125 @@ export default function AppShell({ children }: AppShellProps) {
             }}>
               ❓
             </button>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}>
-              U
+            {/* User Menu */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: user 
+                    ? 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)'
+                    : 'rgba(139, 92, 246, 0.2)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: '#f1f5f9',
+                  cursor: 'pointer',
+                }}
+              >
+                {getUserInitial()}
+              </button>
+              
+              {/* Dropdown Menu */}
+              {showUserMenu && (
+                <>
+                  {/* Backdrop */}
+                  <div 
+                    onClick={() => setShowUserMenu(false)}
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      zIndex: 40,
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '0.5rem',
+                    width: '220px',
+                    background: 'rgba(15, 15, 35, 0.95)',
+                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    borderRadius: '12px',
+                    padding: '0.5rem',
+                    zIndex: 50,
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                  }}>
+                    {user ? (
+                      <>
+                        {/* User Info */}
+                        <div style={{
+                          padding: '0.75rem',
+                          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+                          marginBottom: '0.5rem',
+                        }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#f1f5f9' }}>
+                            {user.user_metadata?.full_name || 'User'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                            {user.email}
+                          </div>
+                        </div>
+                        
+                        {/* Menu Items */}
+                        <button
+                          onClick={() => { router.push('/app/settings'); setShowUserMenu(false); }}
+                          style={userMenuButtonStyle}
+                        >
+                          <span>⚙️</span> Settings
+                        </button>
+                        <button
+                          onClick={() => { router.push('/app/settings'); setShowUserMenu(false); }}
+                          style={userMenuButtonStyle}
+                        >
+                          <span>🔑</span> API Keys
+                        </button>
+                        <div style={{ height: '1px', background: 'rgba(139, 92, 246, 0.15)', margin: '0.5rem 0' }} />
+                        <button
+                          onClick={handleSignOut}
+                          style={{ ...userMenuButtonStyle, color: '#f87171' }}
+                        >
+                          <span>🚪</span> Sign Out
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Guest Mode */}
+                        <div style={{
+                          padding: '0.75rem',
+                          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+                          marginBottom: '0.5rem',
+                        }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#f1f5f9' }}>
+                            Guest Mode
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                            Sign in to sync & save
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => { router.push('/auth/signin'); setShowUserMenu(false); }}
+                          style={userMenuButtonStyle}
+                        >
+                          <span>🔑</span> Sign In
+                        </button>
+                        <button
+                          onClick={() => { router.push('/auth/signup'); setShowUserMenu(false); }}
+                          style={userMenuButtonStyle}
+                        >
+                          <span>✨</span> Create Account
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
