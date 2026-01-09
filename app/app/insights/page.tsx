@@ -110,8 +110,13 @@ Key considerations: Cost, scalability, filtering capabilities, and integration c
   },
 ];
 
-const STORAGE_KEY = 'moonscribe_insights';
-const INITIALIZED_KEY = 'moonscribe_insights_initialized';
+const STORAGE_KEY = 'moonscribe_insights_v2'; // Version 2 with proper structure
+
+interface StoredInsightsData {
+  version: number;
+  initialized: boolean;
+  insights: Insight[];
+}
 
 export default function InsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -129,35 +134,33 @@ export default function InsightsPage() {
 
   // Load insights from localStorage on mount
   useEffect(() => {
-    const hasBeenInitialized = localStorage.getItem(INITIALIZED_KEY);
-    const saved = localStorage.getItem(STORAGE_KEY);
-    
-    if (hasBeenInitialized) {
-      // User has used the app before - load their data (even if empty)
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setInsights(parsed.map((i: Insight) => ({
-              ...i,
-              isArchived: i.isArchived ?? false,
-              createdAt: new Date(i.createdAt),
-              updatedAt: new Date(i.updatedAt),
-            })));
-          } else {
-            setInsights([]);
-          }
-        } catch {
-          setInsights([]);
+        const data: StoredInsightsData = JSON.parse(saved);
+        
+        // Check if it's our new format with version
+        if (data.version && data.initialized) {
+          // User has used the app before - load their data (even if empty array)
+          const loadedInsights = (data.insights || []).map((i: Insight) => ({
+            ...i,
+            isArchived: i.isArchived ?? false,
+            createdAt: new Date(i.createdAt),
+            updatedAt: new Date(i.updatedAt),
+          }));
+          setInsights(loadedInsights);
+        } else {
+          // Old format or corrupted - treat as first time user
+          setInsights(demoInsights);
         }
       } else {
-        // Initialized but no data = user deleted everything
-        setInsights([]);
+        // First time user - load demo insights
+        setInsights(demoInsights);
       }
-    } else {
-      // First time user - load demo insights and mark as initialized
+    } catch {
+      // Error parsing - load demo insights
       setInsights(demoInsights);
-      localStorage.setItem(INITIALIZED_KEY, 'true');
     }
     setIsLoaded(true);
   }, []);
@@ -165,7 +168,12 @@ export default function InsightsPage() {
   // Save insights to localStorage whenever they change (after initial load)
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
+      const dataToSave: StoredInsightsData = {
+        version: 2,
+        initialized: true,
+        insights: insights,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     }
   }, [insights, isLoaded]);
 
