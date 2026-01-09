@@ -44,9 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
 
       return () => subscription.unsubscribe();
-    } catch (error) {
-      // Supabase not configured - allow guest mode
-      console.warn('Supabase not configured, running in guest mode');
+    } catch {
+      // Supabase not configured - allow guest mode (this is expected behavior)
+      // Only log in development to avoid cluttering production console
+      if (process.env.NODE_ENV === 'development') {
+        console.info('ℹ️ Auth: Running in guest mode (Supabase not configured)');
+      }
       setLoading(false);
     }
   }, []);
