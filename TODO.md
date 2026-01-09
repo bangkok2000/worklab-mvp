@@ -1,5 +1,37 @@
 # MoonScribe - Development Roadmap
 
+## 🐛 Known Bugs (High Priority)
+
+### Bug 1: QuickCaptureModal not using BYOK key
+- **Issue:** "Add Content" modal shows "Please sign in to use credits, add your own API key, or join a team" even when BYOK key is configured and active
+- **Root Cause:** QuickCaptureModal's `getApiKey()` function reads from wrong localStorage key
+- **Fix:** Update to read from `moonscribe-keys-anonymous` instead of `moonscribe-api-keys`
+
+### Bug 2: Project page returns 404
+- **Issue:** After creating a new project, clicking on it navigates to `/app/projects/project-{id}` which returns 404
+- **Root Cause:** Dynamic route `/app/projects/[projectId]/page.tsx` may not exist or has wrong path
+- **Fix:** Verify the dynamic route exists and matches the navigation URL
+
+### Bug 3: Old version of app appearing (cache issue?)
+- **Issue:** Sometimes the old UI appears with:
+  - "Add Content" button at top of sidebar (should be FAB)
+  - "Integrations" as separate menu item (should be in Settings)
+  - Guest indicator showing even when signed in with BYOK
+- **Root Cause:** Possible Vercel cache or build issue
+- **Fix:** Clear Vercel cache, force redeploy without cache
+
+### Bug 4: BYOK key not passed to API routes
+- **Issue:** Even with BYOK badge showing, API routes (youtube, web, upload) still say "no API key"
+- **Root Cause:** QuickCaptureModal and API routes not properly reading/passing the decrypted key
+- **Fix:** Ensure proper key retrieval and transmission flow
+
+### Bug 5: Inconsistent state between auth modes
+- **Issue:** App shows both "Guest" mode indicators AND user avatar simultaneously
+- **Root Cause:** Auth state and BYOK state are checked separately, causing race conditions
+- **Fix:** Unified auth/mode state management
+
+---
+
 ## 🎯 Phase 0: Quick Start Mode (Credits System)
 **Goal:** Remove BYOK friction - let users start immediately
 
