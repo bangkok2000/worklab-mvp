@@ -486,6 +486,50 @@ Step 4: Server AI (Days 10-12)
 
 ## 📊 Business Tools
 
+### OpenAI Business Account Setup
+- [ ] **Create OpenAI Business/Organization Account**
+  - Go to [platform.openai.com](https://platform.openai.com)
+  - Create organization (not personal account)
+  - Add business billing details
+  - Set up usage limits and alerts
+- [ ] **API Key Management**
+  - Generate production API key
+  - Add `OPENAI_API_KEY` to Vercel environment variables
+  - Set up monthly spending limits ($100-500 initially)
+  - Enable usage monitoring alerts (email at 80% of limit)
+- [ ] **Tier Progression Plan**
+  | Users | OpenAI Tier | Rate Limit | Monthly Spend |
+  |-------|-------------|------------|---------------|
+  | 0-100 | Tier 1-2 | 500-5K RPM | $50-100 |
+  | 100-500 | Tier 3 | 5K RPM | $100-250 |
+  | 500-1000 | Tier 4 | 10K RPM | $250-500 |
+  | 1000+ | Tier 5/Enterprise | Custom | Custom |
+
+### Why OpenAI is the Best Choice
+
+| Provider | Quality | Cost | Embedding | Vision | Verdict |
+|----------|---------|------|-----------|--------|---------|
+| **OpenAI** | ⭐⭐⭐⭐⭐ | $$ | ✅ Best (text-embedding-3-large) | ✅ GPT-4o | **Best overall** |
+| Anthropic | ⭐⭐⭐⭐⭐ | $$$ | ❌ No embeddings | ❌ No vision | Chat only |
+| Google | ⭐⭐⭐⭐ | $ | ✅ Good | ✅ Gemini | Cheaper but less reliable |
+| Cohere | ⭐⭐⭐ | $ | ✅ Good | ❌ | Budget option |
+
+**OpenAI Advantages for MoonScribe:**
+1. **Unified ecosystem** - One API for chat, embeddings, and vision
+2. **Best embeddings** - `text-embedding-3-large` is industry-leading for RAG
+3. **GPT-4o** - Best price/quality ratio for chat
+4. **Vision built-in** - No separate service needed for image processing
+5. **Reliable** - Best uptime and consistency
+6. **Documentation** - Excellent docs and community support
+
+**Cost Breakdown (per 1M tokens):**
+| Model | Input | Output | Use Case |
+|-------|-------|--------|----------|
+| GPT-4o | $2.50 | $10.00 | Primary chat |
+| GPT-4o-mini | $0.15 | $0.60 | Light queries |
+| text-embedding-3-large | $0.13 | - | Document indexing |
+| Whisper | $0.006/min | - | Audio (future) |
+
 ### Business Projection Calculator
 - [ ] Interactive spreadsheet/calculator for cost projections
 - [ ] Monthly user growth modeling (configurable signup rate)
