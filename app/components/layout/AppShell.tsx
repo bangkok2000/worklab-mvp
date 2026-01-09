@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import CreditBalance from '@/app/components/features/CreditBalance';
 import BuyCreditsModal from '@/app/components/features/BuyCreditsModal';
@@ -209,7 +210,6 @@ export default function AppShell({ children }: AppShellProps) {
               isActive={isActive}
               expandedItems={expandedItems}
               onToggleExpand={toggleExpanded}
-              onNavigate={(href) => router.push(href)}
             />
           ))}
         </nav>
@@ -227,7 +227,6 @@ export default function AppShell({ children }: AppShellProps) {
               isActive={isActive}
               expandedItems={expandedItems}
               onToggleExpand={toggleExpanded}
-              onNavigate={(href) => router.push(href)}
             />
           ))}
           
@@ -506,59 +505,110 @@ function NavItemComponent({
   isActive,
   expandedItems,
   onToggleExpand,
-  onNavigate,
 }: {
   item: NavItem;
   collapsed: boolean;
   isActive: (href: string) => boolean;
   expandedItems: string[];
   onToggleExpand: (id: string) => void;
-  onNavigate: (href: string) => void;
 }) {
   const active = isActive(item.href);
   const hasChildren = item.children && item.children.length > 0;
   const isExpanded = expandedItems.includes(item.id);
 
+  const navItemStyle: React.CSSProperties = {
+    width: '100%',
+    padding: collapsed ? '0.75rem' : '0.625rem 0.75rem',
+    background: active ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+    border: 'none',
+    borderRadius: '8px',
+    color: active ? '#c4b5fd' : '#94a3b8',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: collapsed ? 'center' : 'flex-start',
+    gap: '0.75rem',
+    transition: 'all 0.15s',
+    position: 'relative',
+    textDecoration: 'none',
+  };
+
+  // If has children, use button for expand/collapse
+  if (hasChildren && !collapsed) {
+    return (
+      <div style={{ marginBottom: '0.25rem' }}>
+        <button
+          onClick={() => onToggleExpand(item.id)}
+          style={navItemStyle}
+        >
+          <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>{item.icon}</span>
+          <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
+          <span style={{
+            fontSize: '0.75rem',
+            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s',
+          }}>
+            ▶
+          </span>
+          {active && (
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '3px',
+              height: '60%',
+              background: '#8b5cf6',
+              borderRadius: '0 2px 2px 0',
+            }} />
+          )}
+        </button>
+
+        {/* Children - using Link for prefetching */}
+        {isExpanded && (
+          <div style={{ paddingLeft: '1.5rem', marginTop: '0.25rem' }}>
+            {item.children!.map(child => (
+              <Link
+                key={child.id}
+                href={child.href}
+                prefetch={true}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  background: isActive(child.href) ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
+                  borderRadius: '6px',
+                  color: isActive(child.href) ? '#c4b5fd' : '#64748b',
+                  fontSize: '0.8125rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.125rem',
+                  textDecoration: 'none',
+                }}
+              >
+                <span style={{ fontSize: '0.875rem' }}>{child.icon}</span>
+                {child.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Use Link for direct navigation with prefetching
   return (
     <div style={{ marginBottom: '0.25rem' }}>
-      <button
-        onClick={() => {
-          if (hasChildren && !collapsed) {
-            onToggleExpand(item.id);
-          } else {
-            onNavigate(item.href);
-          }
-        }}
-        style={{
-          width: '100%',
-          padding: collapsed ? '0.75rem' : '0.625rem 0.75rem',
-          background: active ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-          border: 'none',
-          borderRadius: '8px',
-          color: active ? '#c4b5fd' : '#94a3b8',
-          fontSize: '0.875rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          gap: '0.75rem',
-          transition: 'all 0.15s',
-          position: 'relative',
-        }}
+      <Link
+        href={item.href}
+        prefetch={true}
+        style={navItemStyle}
       >
         <span style={{ fontSize: '1.125rem', flexShrink: 0 }}>{item.icon}</span>
         {!collapsed && (
           <>
             <span style={{ flex: 1, textAlign: 'left' }}>{item.label}</span>
-            {hasChildren && (
-              <span style={{
-                fontSize: '0.75rem',
-                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
-              }}>
-                ▶
-              </span>
-            )}
             {item.badge && (
               <span style={{
                 background: '#8b5cf6',
@@ -584,36 +634,7 @@ function NavItemComponent({
             borderRadius: '0 2px 2px 0',
           }} />
         )}
-      </button>
-
-      {/* Children */}
-      {hasChildren && !collapsed && isExpanded && (
-        <div style={{ paddingLeft: '1.5rem', marginTop: '0.25rem' }}>
-          {item.children!.map(child => (
-            <button
-              key={child.id}
-              onClick={() => onNavigate(child.href)}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                background: isActive(child.href) ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
-                border: 'none',
-                borderRadius: '6px',
-                color: isActive(child.href) ? '#c4b5fd' : '#64748b',
-                fontSize: '0.8125rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.125rem',
-              }}
-            >
-              <span style={{ fontSize: '0.875rem' }}>{child.icon}</span>
-              {child.label}
-            </button>
-          ))}
-        </div>
-      )}
+      </Link>
     </div>
   );
 }
