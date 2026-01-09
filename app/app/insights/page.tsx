@@ -151,16 +151,24 @@ export default function InsightsPage() {
           }));
           setInsights(loadedInsights);
         } else {
-          // Old format or corrupted - treat as first time user
-          setInsights(demoInsights);
+          // Old format - migrate: mark as initialized with empty insights
+          // NO demo data - user starts fresh
+          setInsights([]);
         }
       } else {
-        // First time user - load demo insights
-        setInsights(demoInsights);
+        // First time user or cleared storage - start with empty (NO demo data)
+        setInsights([]);
+        // Immediately save to mark as initialized
+        const initialData: StoredInsightsData = {
+          version: 2,
+          initialized: true,
+          insights: [],
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
       }
     } catch {
-      // Error parsing - load demo insights
-      setInsights(demoInsights);
+      // Error parsing - start fresh (NO demo data)
+      setInsights([]);
     }
     setIsLoaded(true);
   }, []);

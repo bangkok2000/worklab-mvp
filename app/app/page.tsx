@@ -21,19 +21,34 @@ interface Insight {
 
 interface RecentContent {
   id: string;
-  type: 'pdf' | 'youtube' | 'url' | 'note' | 'podcast';
+  type: string;
   title: string;
-  addedAt: Date;
+  addedAt: string;
+}
+
+interface LibraryStat {
+  label: string;
+  value: number;
+  icon: string;
+  color: string;
 }
 
 export default function Dashboard() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [recentContent, setRecentContent] = useState<RecentContent[]>([]);
+  const [libraryStats, setLibraryStats] = useState<LibraryStat[]>([
+    { label: 'Documents', value: 0, icon: '📄', color: '#8b5cf6' },
+    { label: 'Media Files', value: 0, icon: '🎬', color: '#6366f1' },
+    { label: 'Web Pages', value: 0, icon: '🌐', color: '#3b82f6' },
+  ]);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== 'undefined') {
+      // Load projects
       const savedProjects = localStorage.getItem('moonscribe-projects');
       if (savedProjects) {
         setProjects(JSON.parse(savedProjects).slice(0, 4).map((p: any) => ({
@@ -41,37 +56,83 @@ export default function Dashboard() {
           updatedAt: new Date(p.updatedAt),
         })));
       }
+
+      // Load insights from versioned storage
+      const savedInsightsData = localStorage.getItem('moonscribe_insights_v2');
+      if (savedInsightsData) {
+        const parsed = JSON.parse(savedInsightsData);
+        if (parsed.insights && parsed.insights.length > 0) {
+          const activeInsights = parsed.insights.filter((i: any) => !i.isArchived);
+          setInsights(activeInsights.slice(0, 3).map((i: any) => ({
+            id: i.id,
+            title: i.title,
+            preview: i.content?.substring(0, 100) || '',
+            projectName: i.project,
+            createdAt: new Date(i.createdAt),
+          })));
+        }
+      }
+
+      // Load all content from inbox and projects
+      const allContent: RecentContent[] = [];
+      let docCount = 0;
+      let mediaCount = 0;
+      let webCount = 0;
+
+      // Get inbox content
+      const inboxData = localStorage.getItem('moonscribe-inbox');
+      if (inboxData) {
+        const inboxItems = JSON.parse(inboxData);
+        allContent.push(...inboxItems);
+      }
+
+      // Get content from all projects
+      const projectsData = localStorage.getItem('moonscribe-projects');
+      if (projectsData) {
+        const projectsList = JSON.parse(projectsData);
+        projectsList.forEach((project: any) => {
+          const projectContent = localStorage.getItem(`moonscribe-project-content-${project.id}`);
+          if (projectContent) {
+            const items = JSON.parse(projectContent);
+            allContent.push(...items);
+          }
+        });
+      }
+
+      // Count by type and set recent content
+      allContent.forEach(item => {
+        const type = item.type?.toLowerCase() || '';
+        if (type === 'document' || type === 'pdf') docCount++;
+        else if (type === 'youtube' || type === 'podcast' || type === 'audio' || type === 'tiktok') mediaCount++;
+        else if (type === 'article' || type === 'url' || type === 'bookmark') webCount++;
+      });
+
+      // Sort by date and take recent 4
+      const sorted = allContent.sort((a, b) => 
+        new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+      ).slice(0, 4);
+      
+      setRecentContent(sorted);
+      setLibraryStats([
+        { label: 'Documents', value: docCount, icon: '📄', color: '#8b5cf6' },
+        { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#6366f1' },
+        { label: 'Web Pages', value: webCount, icon: '🌐', color: '#3b82f6' },
+      ]);
     }
   }, []);
 
-  // Demo insights
-  const demoInsights: Insight[] = [
-    { id: '1', title: 'Key Differences: RAG vs Fine-tuning', preview: 'RAG retrieves external knowledge at query time, while fine-tuning...', projectName: 'AI Research', createdAt: new Date() },
-    { id: '2', title: 'Best Practices for Chunking', preview: 'Semantic chunking preserves context better than fixed-size...', projectName: 'RAG Project', createdAt: new Date(Date.now() - 86400000) },
-    { id: '3', title: 'Vector Database Comparison', preview: 'Pinecone vs Weaviate vs Qdrant comparison for production use...', createdAt: new Date(Date.now() - 172800000) },
-  ];
-
-  // Demo recent content
-  const demoRecentContent: RecentContent[] = [
-    { id: '1', type: 'youtube', title: 'Introduction to RAG Systems', addedAt: new Date() },
-    { id: '2', type: 'pdf', title: 'Research Paper on LLMs.pdf', addedAt: new Date(Date.now() - 3600000) },
-    { id: '3', type: 'url', title: 'HuggingFace Transformers Guide', addedAt: new Date(Date.now() - 7200000) },
-    { id: '4', type: 'podcast', title: 'AI Podcast Episode 42', addedAt: new Date(Date.now() - 86400000) },
-  ];
-
   const contentTypeIcons: Record<string, string> = {
     pdf: '📄',
+    document: '📄',
     youtube: '▶️',
     url: '🔗',
+    article: '🌐',
     note: '📝',
     podcast: '🎙️',
+    audio: '🎵',
+    tiktok: '📱',
+    bookmark: '🔖',
   };
-
-  const libraryStats = [
-    { label: 'Documents', value: 24, icon: '📄', color: '#8b5cf6' },
-    { label: 'Media Files', value: 12, icon: '🎬', color: '#6366f1' },
-    { label: 'Web Pages', value: 38, icon: '🌐', color: '#3b82f6' },
-  ];
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
@@ -248,48 +309,59 @@ export default function Dashboard() {
           </button>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.75rem' }}>
-          {demoInsights.map((insight) => (
-            <div
-              key={insight.id}
-              onClick={() => router.push('/app/insights')}
-              style={{
-                padding: '1rem',
-                background: 'rgba(139, 92, 246, 0.08)',
-                border: '1px solid rgba(139, 92, 246, 0.2)',
-                borderRadius: '10px',
-                cursor: 'pointer',
-              }}
-            >
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#f1f5f9', marginBottom: '0.5rem' }}>
-                {insight.title}
-              </h3>
-              <p style={{
-                fontSize: '0.8125rem',
-                color: '#94a3b8',
-                margin: 0,
-                marginBottom: '0.75rem',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}>
-                {insight.preview}
-              </p>
-              {insight.projectName && (
-                <span style={{
-                  fontSize: '0.6875rem',
-                  color: '#8b5cf6',
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: '4px',
+        {insights.length === 0 ? (
+          <div style={{
+            padding: '2rem',
+            textAlign: 'center',
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '10px',
+          }}>
+            <p style={{ color: '#64748b', margin: 0 }}>No insights yet. Start a conversation in a project to save insights!</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.75rem' }}>
+            {insights.map((insight) => (
+              <div
+                key={insight.id}
+                onClick={() => router.push('/app/insights')}
+                style={{
+                  padding: '1rem',
+                  background: 'rgba(139, 92, 246, 0.08)',
+                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                }}
+              >
+                <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                  {insight.title}
+                </h3>
+                <p style={{
+                  fontSize: '0.8125rem',
+                  color: '#94a3b8',
+                  margin: 0,
+                  marginBottom: '0.75rem',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
                 }}>
-                  📁 {insight.projectName}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+                  {insight.preview}
+                </p>
+                {insight.projectName && (
+                  <span style={{
+                    fontSize: '0.6875rem',
+                    color: '#8b5cf6',
+                    background: 'rgba(139, 92, 246, 0.15)',
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '4px',
+                  }}>
+                    📁 {insight.projectName}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ========== SECTION 3: LIBRARY ========== */}
@@ -369,40 +441,51 @@ export default function Dashboard() {
           <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#94a3b8', marginBottom: '0.75rem' }}>
             Recently Added
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {demoRecentContent.map((content) => (
-              <div
-                key={content.id}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontSize: '1.25rem' }}>{contentTypeIcons[content.type]}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: '#f1f5f9', fontSize: '0.875rem' }}>{content.title}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.6875rem' }}>
-                    {formatRelativeDate(content.addedAt)}
+          {recentContent.length === 0 ? (
+            <div style={{
+              padding: '1.5rem',
+              textAlign: 'center',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px',
+            }}>
+              <p style={{ color: '#64748b', margin: 0 }}>No content yet. Use the + button to add content!</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {recentContent.map((content) => (
+                <div
+                  key={content.id}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: '1.25rem' }}>{contentTypeIcons[content.type] || '📄'}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: '#f1f5f9', fontSize: '0.875rem' }}>{content.title}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.6875rem' }}>
+                      {formatRelativeDate(new Date(content.addedAt))}
+                    </div>
                   </div>
+                  <span style={{
+                    padding: '0.25rem 0.5rem',
+                    background: 'rgba(139, 92, 246, 0.15)',
+                    borderRadius: '4px',
+                    fontSize: '0.6875rem',
+                    color: '#c4b5fd',
+                    textTransform: 'uppercase',
+                  }}>
+                    {content.type}
+                  </span>
                 </div>
-                <span style={{
-                  padding: '0.25rem 0.5rem',
-                  background: 'rgba(139, 92, 246, 0.15)',
-                  borderRadius: '4px',
-                  fontSize: '0.6875rem',
-                  color: '#c4b5fd',
-                  textTransform: 'uppercase',
-                }}>
-                  {content.type}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

@@ -540,6 +540,7 @@ export default function AppShell({ children }: AppShellProps) {
         <main style={{
           flex: 1,
           overflow: 'auto',
+          paddingBottom: '5rem', /* Space for FAB */
         }}>
           {children}
         </main>
@@ -550,8 +551,8 @@ export default function AppShell({ children }: AppShellProps) {
         onClick={() => setShowQuickCapture(true)}
         style={{
           position: 'fixed',
-          bottom: '2rem',
-          right: '2rem',
+          bottom: '1.5rem',
+          right: '1.5rem',
           width: '56px',
           height: '56px',
           borderRadius: '16px',
