@@ -111,10 +111,11 @@ Key considerations: Cost, scalability, filtering capabilities, and integration c
 ];
 
 const STORAGE_KEY = 'moonscribe_insights';
+const INITIALIZED_KEY = 'moonscribe_insights_initialized';
 
 export default function InsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false); // Track if initial load is done
+  const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
@@ -128,32 +129,40 @@ export default function InsightsPage() {
 
   // Load insights from localStorage on mount
   useEffect(() => {
+    const hasBeenInitialized = localStorage.getItem(INITIALIZED_KEY);
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Handle case where saved data is an empty array (user deleted all)
-        if (Array.isArray(parsed)) {
-          setInsights(parsed.map((i: Insight) => ({
-            ...i,
-            isArchived: i.isArchived ?? false,
-            createdAt: new Date(i.createdAt),
-            updatedAt: new Date(i.updatedAt),
-          })));
-        } else {
-          setInsights(demoInsights);
+    
+    if (hasBeenInitialized) {
+      // User has used the app before - load their data (even if empty)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setInsights(parsed.map((i: Insight) => ({
+              ...i,
+              isArchived: i.isArchived ?? false,
+              createdAt: new Date(i.createdAt),
+              updatedAt: new Date(i.updatedAt),
+            })));
+          } else {
+            setInsights([]);
+          }
+        } catch {
+          setInsights([]);
         }
-      } catch {
-        setInsights(demoInsights);
+      } else {
+        // Initialized but no data = user deleted everything
+        setInsights([]);
       }
     } else {
-      // First time user - load demo insights
+      // First time user - load demo insights and mark as initialized
       setInsights(demoInsights);
+      localStorage.setItem(INITIALIZED_KEY, 'true');
     }
     setIsLoaded(true);
   }, []);
 
-  // Save insights to localStorage whenever they change (but only after initial load)
+  // Save insights to localStorage whenever they change (after initial load)
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
