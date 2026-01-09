@@ -458,11 +458,12 @@ export default function LibraryPage() {
 
 function ContentCard({ item, isSelected, onSelect }: { item: ContentItem; isSelected: boolean; onSelect: () => void }) {
   const config = typeConfig[item.subtype] || { icon: '📄', color: '#8b5cf6', label: item.subtype };
-  const hasThumbnail = item.thumbnail && item.subtype === 'youtube';
+  const hasThumbnail = item.thumbnail && (item.subtype === 'youtube' || item.subtype === 'article');
+  const isVideo = item.subtype === 'youtube' || item.subtype === 'tiktok' || item.subtype === 'vimeo';
   
   const handleClick = () => {
-    // For YouTube videos, open in new tab
-    if (item.url && item.subtype === 'youtube') {
+    // For content with URLs, open in new tab
+    if (item.url) {
       window.open(item.url, '_blank');
     }
   };
@@ -493,8 +494,8 @@ function ContentCard({ item, isSelected, onSelect }: { item: ContentItem; isSele
       }}>
         {!hasThumbnail && <span style={{ fontSize: '3rem', opacity: 0.8 }}>{config.icon}</span>}
         
-        {/* Play button overlay for YouTube */}
-        {hasThumbnail && (
+        {/* Play button overlay for videos */}
+        {hasThumbnail && isVideo && (
           <div style={{
             width: '48px',
             height: '48px',
@@ -505,6 +506,24 @@ function ContentCard({ item, isSelected, onSelect }: { item: ContentItem; isSele
             justifyContent: 'center',
           }}>
             <span style={{ fontSize: '1.5rem', marginLeft: '3px' }}>▶</span>
+          </div>
+        )}
+
+        {/* Link icon overlay for articles */}
+        {hasThumbnail && !isVideo && (
+          <div style={{
+            position: 'absolute',
+            bottom: '0.5rem',
+            left: '0.5rem',
+            width: '32px',
+            height: '32px',
+            background: 'rgba(0, 0, 0, 0.7)',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: '1rem' }}>🔗</span>
           </div>
         )}
         

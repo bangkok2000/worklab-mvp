@@ -625,6 +625,27 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
     return url.includes('youtube.com') || url.includes('youtu.be');
   };
 
+  // Check if URL is a valid web URL (not YouTube)
+  const isWebUrl = (url: string): boolean => {
+    if (!url) return false;
+    const trimmed = url.trim().toLowerCase();
+    return (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.includes('.')) 
+      && !isYouTubeUrl(trimmed);
+  };
+
+  // Get API key from localStorage
+  const getApiKey = (): string | undefined => {
+    const savedKeys = localStorage.getItem('moonscribe-api-keys');
+    if (savedKeys) {
+      const keys = JSON.parse(savedKeys);
+      const openaiKey = keys.find((k: any) => k.provider === 'openai' && k.isActive);
+      if (openaiKey) {
+        return openaiKey.key;
+      }
+    }
+    return undefined;
+  };
+
   const captureTypes = [
     { id: 'url', label: 'URL / Link', icon: '🔗', placeholder: 'Paste URL (YouTube, article, website...)' },
     { id: 'note', label: 'Quick Note', icon: '📝', placeholder: 'Type a quick note...' },
@@ -634,18 +655,8 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
   // Process YouTube video via API
   const processYouTube = async (url: string): Promise<any> => {
     setProcessingStatus('Fetching video info...');
+    const apiKey = getApiKey();
     
-    // Get API key from localStorage (BYOK) or use credits
-    const savedKeys = localStorage.getItem('moonscribe-api-keys');
-    let apiKey: string | undefined;
-    if (savedKeys) {
-      const keys = JSON.parse(savedKeys);
-      const openaiKey = keys.find((k: any) => k.provider === 'openai' && k.isActive);
-      if (openaiKey) {
-        apiKey = openaiKey.key;
-      }
-    }
-
     setProcessingStatus('Extracting transcript...');
     
     const response = await fetch('/api/youtube', {
@@ -654,7 +665,7 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
       body: JSON.stringify({
         url,
         projectId: selectedProject === 'inbox' ? null : selectedProject,
-        apiKey, // Will use server credits if not provided
+        apiKey,
       }),
     });
 
@@ -662,6 +673,32 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
     
     if (!response.ok) {
       throw new Error(data.error || 'Failed to process YouTube video');
+    }
+
+    return data;
+  };
+
+  // Process web page via API
+  const processWebPage = async (url: string): Promise<any> => {
+    setProcessingStatus('Fetching page...');
+    const apiKey = getApiKey();
+    
+    setProcessingStatus('Extracting content...');
+    
+    const response = await fetch('/api/web', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        projectId: selectedProject === 'inbox' ? null : selectedProject,
+        apiKey,
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to process web page');
     }
 
     return data;
@@ -723,11 +760,63 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
       }
     }
 
-    // For non-YouTube URLs and notes, use the original logic
+    // Check if it's a web URL - process it via web scraper API
+    if (captureType === 'url' && isWebUrl(inputValue)) {
+      setIsProcessing(true);
+      try {
+        const result = await processWebPage(inputValue);
+        setProcessingStatus('Saving to library...');
+        
+        // Create the content item with web page metadata
+        const newItem = {
+          id: result.pageId,
+          type: 'article',
+          title: result.title,
+          description: result.description,
+          url: result.url,
+          domain: result.domain,
+          favicon: result.favicon,
+          thumbnail: result.image,
+          author: result.author,
+          publishedDate: result.publishedDate,
+          chunksProcessed: result.chunksProcessed,
+          processed: true, // Mark as processed (indexed in Pinecone)
+          addedAt: new Date().toISOString(),
+        };
+
+        // Save to local storage
+        if (typeof window !== 'undefined') {
+          if (selectedProject === 'inbox') {
+            const existingInbox = localStorage.getItem('moonscribe-inbox');
+            const inbox = existingInbox ? JSON.parse(existingInbox) : [];
+            inbox.unshift(newItem);
+            localStorage.setItem('moonscribe-inbox', JSON.stringify(inbox));
+          } else {
+            const existingContent = localStorage.getItem(`moonscribe-project-content-${selectedProject}`);
+            const content = existingContent ? JSON.parse(existingContent) : [];
+            content.unshift(newItem);
+            localStorage.setItem(`moonscribe-project-content-${selectedProject}`, JSON.stringify(content));
+          }
+          
+          window.dispatchEvent(new CustomEvent('moonscribe-content-added', { detail: newItem }));
+        }
+        
+        setProcessingStatus('Done!');
+        setTimeout(() => onClose(), 500);
+        return;
+      } catch (err: any) {
+        setError(err.message || 'Failed to process web page');
+        setIsProcessing(false);
+        return;
+      }
+    }
+
+    // For notes and other content, use the original logic
     let detectedType: string = captureType;
     let title = inputValue.substring(0, 60);
     
     if (captureType === 'url') {
+      // Fallback for URLs that weren't processed (shouldn't happen often)
       const url = inputValue.toLowerCase();
       if (url.includes('tiktok.com')) {
         detectedType = 'tiktok';
@@ -872,7 +961,7 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
               }} />
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
               <p style={{ color: '#c4b5fd', fontWeight: 500, marginBottom: '0.25rem' }}>
-                Processing YouTube Video
+                {isYouTubeUrl(inputValue) ? 'Processing YouTube Video' : 'Processing Web Page'}
               </p>
               <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
                 {processingStatus}
@@ -923,6 +1012,30 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
                 </p>
                 <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
                   We'll extract the transcript and make it searchable
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Web Page Preview (when URL is a web page) */}
+          {captureType === 'url' && inputValue && isWebUrl(inputValue) && !isProcessing && (
+            <div style={{
+              background: 'rgba(20, 184, 166, 0.05)',
+              border: '1px solid rgba(20, 184, 166, 0.2)',
+              borderRadius: '10px',
+              padding: '0.75rem 1rem',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>🌐</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ color: '#f1f5f9', fontSize: '0.875rem', fontWeight: 500 }}>
+                  Web Page Detected
+                </p>
+                <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                  We'll extract the article content and make it searchable
                 </p>
               </div>
             </div>
@@ -1016,8 +1129,10 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
         }}>
           <span style={{ fontSize: '0.8125rem', color: '#64748b' }}>
             {captureType === 'url' && inputValue && isYouTubeUrl(inputValue) 
-              ? '🎬 YouTube will be processed' 
-              : '⌘+Enter to save'}
+              ? '🎬 YouTube will be processed'
+              : captureType === 'url' && inputValue && isWebUrl(inputValue)
+                ? '🌐 Web page will be processed' 
+                : '⌘+Enter to save'}
           </span>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
@@ -1053,7 +1168,7 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
             >
               {isProcessing 
                 ? 'Processing...' 
-                : captureType === 'url' && inputValue && isYouTubeUrl(inputValue)
+                : captureType === 'url' && inputValue && (isYouTubeUrl(inputValue) || isWebUrl(inputValue))
                   ? 'Process & Add'
                   : selectedProject === 'inbox' 
                     ? 'Add to Inbox' 
