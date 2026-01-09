@@ -74,12 +74,70 @@ Credits running low (< 20)
 - [ ] Pre-action balance check (fail gracefully)
 - [ ] Transaction logging for audit
 
-#### 0.3 Payment Integration (Stripe)
-- [ ] Stripe account setup
-- [ ] Create checkout session for credit packages
-- [ ] Webhook to add credits on successful payment
+#### 0.3 Payment Integration (Stripe) ✅ CODE READY
+- [x] Create checkout session API route
+- [x] Webhook handler for payment completion
+- [x] Client-side Stripe utilities
+- [ ] Stripe account setup (see instructions below)
 - [ ] Receipt/invoice generation
 - [ ] Payment history page
+
+##### Stripe Setup Instructions (Do When Ready)
+
+**1. Create Stripe Account:**
+- Go to [stripe.com](https://stripe.com) and sign up
+- Complete business verification
+
+**2. Get API Keys:**
+- Go to Developers → API Keys
+- Copy the keys (use test keys first!)
+
+**3. Add Environment Variables:**
+```env
+# .env.local (local dev)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Vercel (production)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+```
+
+**4. Create Webhook Endpoint:**
+- Go to Developers → Webhooks
+- Add endpoint: `https://your-app.vercel.app/api/stripe/webhook`
+- Select events:
+  - `checkout.session.completed`
+  - `payment_intent.succeeded`
+  - `payment_intent.payment_failed`
+- Copy the webhook secret (whsec_...)
+
+**5. Create Products in Stripe Dashboard:**
+- Products → Add Product
+- Create products for each credit package:
+  - Basic (500 credits) - $5.00
+  - Standard (1500 credits) - $12.00
+  - Pro (5000 credits) - $35.00
+- Copy the Price IDs and update `credit_packages` table in Supabase
+
+**6. Test with Stripe CLI (optional but recommended):**
+```bash
+# Install Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# Login
+stripe login
+
+# Forward webhooks to local
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+
+# Test payment
+stripe trigger checkout.session.completed
+```
 
 #### 0.4 Server-Side AI
 - [ ] MoonScribe OpenAI account setup
