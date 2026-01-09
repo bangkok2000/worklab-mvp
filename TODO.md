@@ -96,17 +96,44 @@ Credits running low (< 20)
 - [ ] BYOK vs Credits toggle in Settings
 - [ ] Action cost tooltips ("This will use 1 credit")
 
-#### 0.6 Authentication (REQUIRED - Build First)
-- [ ] Supabase Auth setup
-- [ ] Sign up page (email + password)
-- [ ] Sign in page
-- [ ] OAuth providers (Google, GitHub)
-- [ ] Email verification flow
+#### 0.6 Authentication ✅ COMPLETE
+- [x] Supabase Auth setup
+- [x] Sign up page (email + password)
+- [x] Sign in page
+- [x] Email verification flow
+- [x] Session management
+- [x] Protected routes (redirect if not logged in)
+- [x] "Continue as Guest" option (limited features, no credits)
+- [ ] OAuth providers (Google, GitHub) - See setup instructions below
 - [ ] Password reset flow
-- [ ] Session management
-- [ ] Protected routes (redirect if not logged in)
 - [ ] User profile page
-- [ ] "Continue as Guest" option (limited features, no credits)
+
+##### OAuth Setup Instructions (Do Later)
+
+**Google OAuth:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create OAuth 2.0 credentials (Web application)
+3. Add authorized redirect URI: `https://YOUR_SUPABASE_URL/auth/v1/callback`
+4. Copy Client ID and Client Secret
+5. In Supabase Dashboard → Authentication → Providers → Google:
+   - Enable Google provider
+   - Paste Client ID and Client Secret
+   - Save
+
+**GitHub OAuth:**
+1. Go to GitHub → Settings → Developer settings → OAuth Apps
+2. Create new OAuth App
+3. Set Homepage URL: `https://your-app-url.com`
+4. Set Authorization callback URL: `https://YOUR_SUPABASE_URL/auth/v1/callback`
+5. Copy Client ID and Client Secret
+6. In Supabase Dashboard → Authentication → Providers → GitHub:
+   - Enable GitHub provider
+   - Paste Client ID and Client Secret
+   - Save
+
+**After enabling in Supabase:**
+- OAuth buttons already work in the app
+- Users click "Continue with Google/GitHub" → Supabase handles the flow
 
 #### 0.7 Mode Switching
 - [ ] Settings: Choose "MoonScribe AI" or "BYOK"
