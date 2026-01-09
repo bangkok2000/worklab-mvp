@@ -14,12 +14,31 @@ interface CreditBalanceProps {
 function hasActiveBYOKKey(): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    const savedKeys = localStorage.getItem('moonscribe-api-keys');
-    if (savedKeys) {
-      const keys = JSON.parse(savedKeys);
-      return keys.some((k: { provider: string; isActive: boolean }) => 
+    // Check both possible storage keys (anonymous and user-specific)
+    const anonKeys = localStorage.getItem('moonscribe-keys-anonymous');
+    if (anonKeys) {
+      const keys = JSON.parse(anonKeys);
+      if (keys.some((k: { provider: string; isActive: boolean }) => 
         k.provider === 'openai' && k.isActive
-      );
+      )) {
+        return true;
+      }
+    }
+    
+    // Also check for any user-specific keys (moonscribe-keys-*)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('moonscribe-keys-') && key !== 'moonscribe-keys-anonymous') {
+        const userKeys = localStorage.getItem(key);
+        if (userKeys) {
+          const keys = JSON.parse(userKeys);
+          if (keys.some((k: { provider: string; isActive: boolean }) => 
+            k.provider === 'openai' && k.isActive
+          )) {
+            return true;
+          }
+        }
+      }
     }
   } catch {
     // Ignore parsing errors
