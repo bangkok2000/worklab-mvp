@@ -53,8 +53,26 @@ export default function TeamPage() {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
 
-  // Show sign-up prompt for guests
-  if (!loading && !user) {
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div style={{ 
+        padding: '2rem', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        minHeight: '400px',
+      }}>
+        <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  // Show sign-up prompt for guests (user is null and not loading)
+  if (!user) {
     return (
       <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{
