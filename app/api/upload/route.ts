@@ -5,8 +5,9 @@ import pdf from 'pdf-parse';
 import { createServerClient } from '@/lib/supabase/client';
 import { createDocument, updateDocumentStatus } from '@/lib/supabase/documents';
 import { estimateOpenAICost, logUsage } from '@/lib/supabase/usage';
+import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
 
-// Note: BYOK - OpenAI API key comes from client for embeddings
+// Server-side AI: Use credits OR BYOK (user's own API key)
 
 let _pinecone: Pinecone | null = null;
 const getPinecone = () => {
@@ -36,18 +37,8 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
-    
-    // BYOK: User must provide their own API key for embeddings
-    const openaiKey = apiKey || process.env.OPENAI_API_KEY;
-    if (!openaiKey) {
-      return NextResponse.json({ 
-        error: 'API key required. Please add your OpenAI API key in Settings.' 
-      }, { status: 401 });
-    }
-    
-    const openai = new OpenAI({ apiKey: openaiKey });
 
-    // Get user from Supabase (for now, we'll support anonymous users)
+    // Get user from Supabase
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
@@ -58,13 +49,60 @@ export async function POST(req: NextRequest) {
       userId = user?.id || null;
     }
 
-    // Convert file to buffer
+    // Convert file to buffer and extract PDF info first (to estimate pages)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Extract text from PDF
     const data = await pdf(buffer);
     const text = data.text;
+    const pageCount = data.numpages || 1;
+    
+    // Determine mode: BYOK (user's key) or Credits (server key)
+    const isUsingBYOK = !!apiKey;
+    const serverOpenAIKey = process.env.OPENAI_API_KEY;
+    
+    // Credit cost is per page
+    const creditCostPerPage = await getCreditCost('upload_document_page');
+    const totalCreditCost = creditCostPerPage * pageCount;
+    
+    // If using Credits (not BYOK), check balance first
+    if (!isUsingBYOK) {
+      if (!serverOpenAIKey) {
+        return NextResponse.json({ 
+          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings).' 
+        }, { status: 503 });
+      }
+      
+      if (!userId) {
+        return NextResponse.json({ 
+          error: 'Please sign in to use credits, or add your own API key in Settings.' 
+        }, { status: 401 });
+      }
+      
+      // Check if user has enough credits
+      const balance = await getBalance(userId);
+      if (balance < totalCreditCost) {
+        return NextResponse.json({ 
+          error: `Insufficient credits. This ${pageCount}-page document needs ${totalCreditCost} credits but you have ${balance}. Buy more credits or use your own API key.`,
+          creditsNeeded: totalCreditCost,
+          currentBalance: balance,
+          pageCount,
+        }, { status: 402 }); // 402 = Payment Required
+      }
+      
+      console.log(`[Upload] Credits mode: User ${userId} has ${balance} credits, upload costs ${totalCreditCost} (${pageCount} pages)`);
+    }
+    
+    // Determine which API key to use
+    const openaiKey = isUsingBYOK ? apiKey : serverOpenAIKey;
+    
+    if (!openaiKey) {
+      return NextResponse.json({ 
+        error: 'No API key available. Please add your OpenAI API key in Settings or sign in to use credits.' 
+      }, { status: 401 });
+    }
+    
+    console.log('[Upload] Using', isUsingBYOK ? 'BYOK (user)' : 'Credits (server)', 'OpenAI key');
+    const openai = new OpenAI({ apiKey: openaiKey });
 
     // Create document record in Supabase (if user is authenticated)
     let documentId: string | null = null;
@@ -80,7 +118,7 @@ export async function POST(req: NextRequest) {
           chunk_count: 0,
           status: 'processing',
           metadata: {
-            page_count: data.numpages || null,
+            page_count: pageCount,
             word_count: text.split(/\s+/).length,
             extracted_at: new Date().toISOString(),
           },
@@ -151,11 +189,40 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Deduct credits if using credits mode (not BYOK)
+    let remainingBalance: number | null = null;
+    if (!isUsingBYOK && userId && totalCreditCost > 0) {
+      try {
+        const deductResult = await deductCredits(userId, 'upload_document_page', {
+          description: `Uploaded: ${file.name} (${pageCount} pages)`,
+          referenceId: documentId || undefined,
+          referenceType: 'document',
+          metadata: { filename: file.name, pageCount, chunks: chunks.length },
+        });
+        
+        if (deductResult.success) {
+          remainingBalance = deductResult.balance;
+          console.log(`[Upload] Deducted ${totalCreditCost} credits from user ${userId}, remaining: ${remainingBalance}`);
+        } else {
+          console.error('[Upload] Failed to deduct credits:', deductResult.error);
+        }
+      } catch (deductError) {
+        console.error('[Upload] Error deducting credits:', deductError);
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       chunks: chunks.length,
       filename: file.name,
       documentId,
+      pageCount,
+      // Credit usage info (only for credits mode)
+      credits: !isUsingBYOK ? {
+        used: totalCreditCost,
+        remaining: remainingBalance,
+      } : undefined,
+      mode: isUsingBYOK ? 'byok' : 'credits',
     });
 
   } catch (error: any) {

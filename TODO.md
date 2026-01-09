@@ -139,18 +139,23 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 stripe trigger checkout.session.completed
 ```
 
-#### 0.4 Server-Side AI
-- [ ] MoonScribe OpenAI account setup
-- [ ] Server-side API key (env variable)
+#### 0.4 Server-Side AI ✅ CODE READY
+- [x] Server-side API key (env variable) - Uses `OPENAI_API_KEY`
+- [x] Credit check before API calls
+- [x] Credit deduction after successful calls
+- [x] BYOK vs Credits mode detection
+- [x] Proper error messages for insufficient credits
+- [ ] MoonScribe OpenAI account setup (add key to env)
 - [ ] Rate limiting per user
 - [ ] Fallback handling (API errors)
 - [ ] Cost monitoring dashboard (internal)
 
-#### 0.5 UI Components
-- [ ] Credit balance display in header
-- [ ] "Buy Credits" modal
+#### 0.5 UI Components ✅ MOSTLY COMPLETE
+- [x] Credit balance display in header
+- [x] "Buy Credits" modal with packages
+- [x] Low balance warning (visual indicator)
+- [x] "Get 100 Free" button for new users
 - [ ] Credit usage breakdown page
-- [ ] Low balance warning
 - [ ] BYOK vs Credits toggle in Settings
 - [ ] Action cost tooltips ("This will use 1 credit")
 

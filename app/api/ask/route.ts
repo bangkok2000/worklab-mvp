@@ -5,8 +5,10 @@ import { createServerClient } from '@/lib/supabase/client';
 import { createConversation, addMessage } from '@/lib/supabase/conversations';
 import { estimateOpenAICost, estimateAnthropicCost, logUsage } from '@/lib/supabase/usage';
 import { expandQuery } from '@/lib/utils/query-expansion';
+import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
+import type { CreditAction } from '@/lib/supabase/types';
 
-// Note: BYOK - OpenAI API key comes from client, no server fallback required
+// Server-side AI: Use credits OR BYOK (user's own API key)
 
 // Lazy initialization for Pinecone to avoid build-time errors
 let _pinecone: Pinecone | null = null;
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
       collectionId, 
       documentIds, 
       sourceFilenames,
-      apiKey, // User-provided API key (optional)
+      apiKey, // User-provided API key (optional - for BYOK)
       provider = 'openai', // Provider: 'openai' | 'anthropic' | 'google' | 'ollama'
       model, // Model name (optional, uses default if not provided)
     } = await req.json();
@@ -55,17 +57,62 @@ export async function POST(req: NextRequest) {
       userId = user?.id || null;
     }
 
-    // BYOK: User must provide their own API key
-    // Future: Credits system will use server key as fallback
-    const openaiKey = apiKey && provider === 'openai' ? apiKey : process.env.OPENAI_API_KEY;
+    // Determine mode: BYOK (user's key) or Credits (server key)
+    const isUsingBYOK = !!apiKey;
+    const serverOpenAIKey = process.env.OPENAI_API_KEY;
+    
+    // Determine which model/action for credit costs
+    const selectedModel = model || (provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-sonnet-20240229');
+    const isGPT4 = selectedModel.includes('gpt-4');
+    const isClaude = provider === 'anthropic';
+    
+    // Map to credit action
+    let creditAction: CreditAction = 'ask_gpt35';
+    if (isGPT4) creditAction = 'ask_gpt4';
+    else if (isClaude) creditAction = 'ask_claude';
+    
+    let creditCost = 0;
+    
+    // If using Credits (not BYOK), check balance first
+    if (!isUsingBYOK) {
+      if (!serverOpenAIKey) {
+        return NextResponse.json({ 
+          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings).' 
+        }, { status: 503 });
+      }
+      
+      if (!userId) {
+        return NextResponse.json({ 
+          error: 'Please sign in to use credits, or add your own API key in Settings.' 
+        }, { status: 401 });
+      }
+      
+      // Get credit cost for this action
+      creditCost = await getCreditCost(creditAction);
+      
+      // Check if user has enough credits
+      const balance = await getBalance(userId);
+      if (balance < creditCost) {
+        return NextResponse.json({ 
+          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits or use your own API key.`,
+          creditsNeeded: creditCost,
+          currentBalance: balance,
+        }, { status: 402 }); // 402 = Payment Required
+      }
+      
+      console.log(`[API] Credits mode: User ${userId} has ${balance} credits, action costs ${creditCost}`);
+    }
+    
+    // Determine which API key to use
+    const openaiKey = isUsingBYOK ? apiKey : serverOpenAIKey;
     
     if (!openaiKey) {
       return NextResponse.json({ 
-        error: 'API key required. Please add your OpenAI API key in Settings.' 
+        error: 'No API key available. Please add your OpenAI API key in Settings or sign in to use credits.' 
       }, { status: 401 });
     }
     
-    console.log('[API] Using', apiKey ? 'user-provided' : 'server', 'OpenAI key');
+    console.log('[API] Using', isUsingBYOK ? 'BYOK (user)' : 'Credits (server)', 'OpenAI key');
     const openai = new OpenAI({ apiKey: openaiKey });
     
     // Expand query for better semantic search recall
@@ -282,6 +329,29 @@ Provide a comprehensive answer:`;
       relevance: Math.round(item.score! * 100),
     }));
 
+    // Deduct credits if using credits mode (not BYOK)
+    let remainingBalance: number | null = null;
+    if (!isUsingBYOK && userId && creditCost > 0) {
+      try {
+        const deductResult = await deductCredits(userId, creditAction, {
+          description: `Asked: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`,
+          referenceType: 'conversation',
+          metadata: { model: selectedModel, tokens: tokensUsed },
+        });
+        
+        if (deductResult.success) {
+          remainingBalance = deductResult.balance;
+          console.log(`[API] Deducted ${creditCost} credits from user ${userId}, remaining: ${remainingBalance}`);
+        } else {
+          // This shouldn't happen since we checked balance, but log it
+          console.error('[API] Failed to deduct credits:', deductResult.error);
+        }
+      } catch (deductError) {
+        console.error('[API] Error deducting credits:', deductError);
+        // Continue anyway - don't fail the request
+      }
+    }
+
     // Save conversation and messages (if user is authenticated)
     let savedConversationId = conversationId;
     if (userId) {
@@ -338,11 +408,18 @@ Provide a comprehensive answer:`;
       }
     }
 
-    // Return answer with source attribution
+    // Return answer with source attribution and credit info
     return NextResponse.json({
       answer,
       sources,
       conversationId: savedConversationId,
+      // Credit usage info (only for credits mode)
+      credits: !isUsingBYOK ? {
+        used: creditCost,
+        remaining: remainingBalance,
+      } : undefined,
+      // Mode indicator
+      mode: isUsingBYOK ? 'byok' : 'credits',
     });
 
   } catch (error: any) {
