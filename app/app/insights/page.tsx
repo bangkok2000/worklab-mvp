@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Insight {
   id: string;
@@ -14,10 +14,13 @@ interface Insight {
   projectColor?: string;
   isStarred: boolean;
   isPublic: boolean;
+  isArchived: boolean; // New: Archive support
   shareLink?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+type SortOption = 'newest' | 'oldest' | 'alphabetical' | 'project';
 
 // Demo insights
 const demoInsights: Insight[] = [
@@ -50,6 +53,7 @@ const demoInsights: Insight[] = [
     projectColor: '#8b5cf6',
     isStarred: true,
     isPublic: false,
+    isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -70,6 +74,7 @@ const demoInsights: Insight[] = [
     tags: ['RAG', 'Best Practices'],
     isStarred: false,
     isPublic: true,
+    isArchived: false,
     shareLink: 'https://moonscribe.app/share/abc123',
     createdAt: new Date(Date.now() - 86400000),
     updatedAt: new Date(Date.now() - 86400000),
@@ -99,20 +104,53 @@ Key considerations: Cost, scalability, filtering capabilities, and integration c
     projectColor: '#8b5cf6',
     isStarred: true,
     isPublic: false,
+    isArchived: false,
     createdAt: new Date(Date.now() - 172800000),
     updatedAt: new Date(Date.now() - 172800000),
   },
 ];
 
+const STORAGE_KEY = 'moonscribe_insights';
+
 export default function InsightsPage() {
-  const [insights, setInsights] = useState<Insight[]>(demoInsights);
+  const [insights, setInsights] = useState<Insight[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<Insight | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [filterProject, setFilterProject] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+  // Load insights from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setInsights(parsed.map((i: Insight) => ({
+          ...i,
+          isArchived: i.isArchived ?? false,
+          createdAt: new Date(i.createdAt),
+          updatedAt: new Date(i.updatedAt),
+        })));
+      } catch {
+        setInsights(demoInsights);
+      }
+    } else {
+      setInsights(demoInsights);
+    }
+  }, []);
+
+  // Save insights to localStorage
+  useEffect(() => {
+    if (insights.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(insights));
+    }
+  }, [insights]);
 
   const allTags = Array.from(new Set(insights.flatMap(i => i.tags)));
   const allProjects = Array.from(new Set(insights.filter(i => i.projectName).map(i => ({ 
@@ -125,22 +163,69 @@ export default function InsightsPage() {
     allProjects.findIndex(x => x.id === p.id) === idx
   );
 
-  const filteredInsights = insights.filter(insight => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch = insight.title.toLowerCase().includes(query) ||
-      insight.content.toLowerCase().includes(query) ||
-      insight.originalQuery.toLowerCase().includes(query) ||
-      (insight.projectName?.toLowerCase().includes(query) ?? false);
-    const matchesTag = !filterTag || insight.tags.includes(filterTag);
-    const matchesStarred = !showStarredOnly || insight.isStarred;
-    const matchesProject = !filterProject || insight.projectId === filterProject;
-    return matchesSearch && matchesTag && matchesStarred && matchesProject;
-  });
+  // Filter insights
+  const filteredInsights = insights
+    .filter(insight => {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = insight.title.toLowerCase().includes(query) ||
+        insight.content.toLowerCase().includes(query) ||
+        insight.originalQuery.toLowerCase().includes(query) ||
+        (insight.projectName?.toLowerCase().includes(query) ?? false);
+      const matchesTag = !filterTag || insight.tags.includes(filterTag);
+      const matchesStarred = !showStarredOnly || insight.isStarred;
+      const matchesProject = !filterProject || insight.projectId === filterProject;
+      const matchesArchived = showArchived ? insight.isArchived : !insight.isArchived;
+      return matchesSearch && matchesTag && matchesStarred && matchesProject && matchesArchived;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'alphabetical':
+          return a.title.localeCompare(b.title);
+        case 'project':
+          return (a.projectName || 'zzz').localeCompare(b.projectName || 'zzz');
+        default:
+          return 0;
+      }
+    });
+
+  const activeCount = insights.filter(i => !i.isArchived).length;
+  const archivedCount = insights.filter(i => i.isArchived).length;
 
   const toggleStar = (id: string) => {
     setInsights(prev => prev.map(i => 
-      i.id === id ? { ...i, isStarred: !i.isStarred } : i
+      i.id === id ? { ...i, isStarred: !i.isStarred, updatedAt: new Date() } : i
     ));
+    if (selectedInsight?.id === id) {
+      setSelectedInsight(prev => prev ? { ...prev, isStarred: !prev.isStarred } : null);
+    }
+  };
+
+  const toggleArchive = (id: string) => {
+    setInsights(prev => prev.map(i => 
+      i.id === id ? { ...i, isArchived: !i.isArchived, updatedAt: new Date() } : i
+    ));
+    // Deselect if archiving current selection
+    if (selectedInsight?.id === id) {
+      setSelectedInsight(null);
+    }
+  };
+
+  const deleteInsight = (id: string) => {
+    setInsights(prev => prev.filter(i => i.id !== id));
+    setSelectedInsight(null);
+    setShowDeleteConfirm(false);
+  };
+
+  const updateInsight = (updated: Insight) => {
+    setInsights(prev => prev.map(i => 
+      i.id === updated.id ? { ...updated, updatedAt: new Date() } : i
+    ));
+    setSelectedInsight(updated);
+    setShowEditModal(false);
   };
 
   return (
@@ -157,15 +242,17 @@ export default function InsightsPage() {
         <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(139, 92, 246, 0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>💡 Insights</h1>
-            <span style={{
-              background: 'rgba(139, 92, 246, 0.15)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '10px',
-              fontSize: '0.8125rem',
-              color: '#c4b5fd',
-            }}>
-              {insights.length} saved
-            </span>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <span style={{
+                background: showArchived ? 'rgba(100, 116, 139, 0.15)' : 'rgba(139, 92, 246, 0.15)',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '10px',
+                fontSize: '0.8125rem',
+                color: showArchived ? '#94a3b8' : '#c4b5fd',
+              }}>
+                {showArchived ? `${archivedCount} archived` : `${activeCount} saved`}
+              </span>
+            </div>
           </div>
 
           {/* Search */}
@@ -199,7 +286,7 @@ export default function InsightsPage() {
           </div>
 
           {/* Filters Row */}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Starred Toggle */}
             <button
               onClick={() => setShowStarredOnly(!showStarredOnly)}
@@ -214,6 +301,22 @@ export default function InsightsPage() {
               }}
             >
               ⭐ Starred
+            </button>
+
+            {/* Archive Toggle */}
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              style={{
+                padding: '0.375rem 0.75rem',
+                background: showArchived ? 'rgba(100, 116, 139, 0.2)' : 'rgba(0, 0, 0, 0.2)',
+                border: showArchived ? '1px solid rgba(100, 116, 139, 0.4)' : '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '6px',
+                color: showArchived ? '#e2e8f0' : '#94a3b8',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+              }}
+            >
+              📦 {showArchived ? 'Archived' : 'Archive'} {archivedCount > 0 && `(${archivedCount})`}
             </button>
 
             {/* Project Dropdown */}
@@ -284,6 +387,30 @@ export default function InsightsPage() {
                 ✕ Clear
               </button>
             )}
+          </div>
+
+          {/* Sort Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              style={{
+                padding: '0.375rem 0.625rem',
+                background: 'rgba(0, 0, 0, 0.2)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '6px',
+                color: '#c4b5fd',
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="alphabetical">Alphabetical (A-Z)</option>
+              <option value="project">By Project</option>
+            </select>
           </div>
         </div>
 
@@ -486,18 +613,21 @@ export default function InsightsPage() {
                   </span>
                 </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button style={{
-                  padding: '0.5rem 0.875rem',
-                  background: 'rgba(139, 92, 246, 0.1)',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  borderRadius: '8px',
-                  color: '#c4b5fd',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                }}>
+                <button 
+                  onClick={() => setShowEditModal(true)}
+                  style={{
+                    padding: '0.5rem 0.875rem',
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: '8px',
+                    color: '#c4b5fd',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                  }}
+                >
                   ✏️ Edit
                 </button>
                 <button 
@@ -678,6 +808,71 @@ export default function InsightsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Actions Bar */}
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => toggleArchive(selectedInsight.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: selectedInsight.isArchived ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                      border: selectedInsight.isArchived ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(100, 116, 139, 0.3)',
+                      borderRadius: '8px',
+                      color: selectedInsight.isArchived ? '#34d399' : '#94a3b8',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                    }}
+                  >
+                    {selectedInsight.isArchived ? '📤 Unarchive' : '📦 Archive'}
+                  </button>
+                  <button
+                    onClick={() => toggleStar(selectedInsight.id)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: selectedInsight.isStarred ? 'rgba(251, 191, 36, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                      border: selectedInsight.isStarred ? '1px solid rgba(251, 191, 36, 0.3)' : '1px solid rgba(100, 116, 139, 0.3)',
+                      borderRadius: '8px',
+                      color: selectedInsight.isStarred ? '#fbbf24' : '#94a3b8',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.375rem',
+                    }}
+                  >
+                    {selectedInsight.isStarred ? '★ Starred' : '☆ Star'}
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    color: '#f87171',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                  }}
+                >
+                  🗑️ Delete
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -701,6 +896,25 @@ export default function InsightsPage() {
         <ExportModal 
           insight={selectedInsight} 
           onClose={() => setShowExportModal(false)} 
+        />
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && selectedInsight && (
+        <EditModal 
+          insight={selectedInsight} 
+          projects={uniqueProjects}
+          onSave={updateInsight}
+          onClose={() => setShowEditModal(false)} 
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && selectedInsight && (
+        <DeleteConfirmModal
+          insightTitle={selectedInsight.title}
+          onConfirm={() => deleteInsight(selectedInsight.id)}
+          onClose={() => setShowDeleteConfirm(false)}
         />
       )}
     </div>
@@ -731,6 +945,27 @@ function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => vo
     { id: 'clipboard', icon: '📋', label: 'Copy to Clipboard', desc: 'Copy content as text' },
     { id: 'notion', icon: '📓', label: 'Send to Notion', desc: 'Export to Notion page' },
   ];
+
+  const handleExport = async (type: string) => {
+    if (type === 'clipboard') {
+      const text = `# ${insight.title}\n\n**Question:** ${insight.originalQuery}\n\n${insight.content}\n\n---\nSources:\n${insight.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
+      await navigator.clipboard.writeText(text);
+      alert('Copied to clipboard!');
+      onClose();
+    } else if (type === 'markdown') {
+      const text = `# ${insight.title}\n\n**Question:** ${insight.originalQuery}\n\n${insight.content}\n\n---\n## Sources\n${insight.sources.map((s, i) => `${i + 1}. ${s.title} (${s.relevance || 0}% match)`).join('\n')}`;
+      const blob = new Blob([text], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${insight.title.replace(/[^a-z0-9]/gi, '_')}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } else {
+      alert(`Export to ${type} coming soon!`);
+    }
+  };
 
   return (
     <div style={{
@@ -772,6 +1007,7 @@ function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => vo
           {exportOptions.map(option => (
             <button
               key={option.id}
+              onClick={() => handleExport(option.id)}
               style={{
                 width: '100%',
                 padding: '1rem',
@@ -793,6 +1029,375 @@ function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => vo
               </div>
             </button>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Edit Modal Component
+function EditModal({ 
+  insight, 
+  projects,
+  onSave, 
+  onClose 
+}: { 
+  insight: Insight; 
+  projects: { id?: string; name: string; color?: string }[];
+  onSave: (updated: Insight) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(insight.title);
+  const [content, setContent] = useState(insight.content);
+  const [tagsInput, setTagsInput] = useState(insight.tags.join(', '));
+  const [projectId, setProjectId] = useState(insight.projectId || '');
+
+  const handleSave = () => {
+    const selectedProject = projects.find(p => p.id === projectId);
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+    
+    onSave({
+      ...insight,
+      title,
+      content,
+      tags,
+      projectId: projectId || undefined,
+      projectName: selectedProject?.name,
+      projectColor: selectedProject?.color,
+    });
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0, 0, 0, 0.7)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%',
+        maxWidth: '700px',
+        maxHeight: '90vh',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)',
+        border: '1px solid rgba(139, 92, 246, 0.3)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>✏️ Edit Insight</h2>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            color: '#64748b',
+            fontSize: '1.25rem',
+            cursor: 'pointer',
+          }}>×</button>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+          {/* Title */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '0.8125rem', 
+              color: '#94a3b8', 
+              marginBottom: '0.5rem',
+              fontWeight: 500,
+            }}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Project */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '0.8125rem', 
+              color: '#94a3b8', 
+              marginBottom: '0.5rem',
+              fontWeight: 500,
+            }}>
+              Project
+            </label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">No Project (Inbox)</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Tags */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '0.8125rem', 
+              color: '#94a3b8', 
+              marginBottom: '0.5rem',
+              fontWeight: 500,
+            }}>
+              Tags (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="AI, Research, Notes"
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Content */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ 
+              display: 'block', 
+              fontSize: '0.8125rem', 
+              color: '#94a3b8', 
+              marginBottom: '0.5rem',
+              fontWeight: 500,
+            }}>
+              Content
+            </label>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={10}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                lineHeight: 1.6,
+              }}
+            />
+          </div>
+
+          {/* Original Query (read-only) */}
+          <div style={{ 
+            padding: '0.75rem 1rem', 
+            background: 'rgba(139, 92, 246, 0.08)',
+            border: '1px solid rgba(139, 92, 246, 0.15)',
+            borderRadius: '8px',
+          }}>
+            <div style={{ fontSize: '0.6875rem', color: '#8b5cf6', marginBottom: '0.25rem', fontWeight: 500 }}>
+              ORIGINAL QUESTION (read-only)
+            </div>
+            <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0 }}>
+              {insight.originalQuery}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '1rem 1.5rem',
+          borderTop: '1px solid rgba(139, 92, 246, 0.15)',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '0.75rem',
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.625rem 1.25rem',
+              background: 'rgba(100, 116, 139, 0.1)',
+              border: '1px solid rgba(100, 116, 139, 0.3)',
+              borderRadius: '8px',
+              color: '#94a3b8',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              padding: '0.625rem 1.25rem',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Delete Confirmation Modal
+function DeleteConfirmModal({ 
+  insightTitle, 
+  onConfirm, 
+  onClose 
+}: { 
+  insightTitle: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0, 0, 0, 0.7)',
+      backdropFilter: 'blur(4px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+    }} onClick={onClose}>
+      <div style={{
+        width: '100%',
+        maxWidth: '400px',
+        background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)',
+        border: '1px solid rgba(239, 68, 68, 0.3)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{
+          padding: '1.5rem',
+          textAlign: 'center',
+        }}>
+          <div style={{ 
+            fontSize: '3rem', 
+            marginBottom: '1rem',
+          }}>
+            🗑️
+          </div>
+          <h2 style={{ 
+            fontSize: '1.125rem', 
+            fontWeight: 600, 
+            margin: '0 0 0.75rem 0',
+            color: '#f1f5f9',
+          }}>
+            Delete Insight?
+          </h2>
+          <p style={{
+            color: '#94a3b8',
+            fontSize: '0.875rem',
+            marginBottom: '0.5rem',
+          }}>
+            Are you sure you want to delete
+          </p>
+          <p style={{
+            color: '#f1f5f9',
+            fontSize: '0.9375rem',
+            fontWeight: 500,
+            marginBottom: '1.5rem',
+            padding: '0.5rem 1rem',
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '6px',
+            display: 'inline-block',
+          }}>
+            &quot;{insightTitle}&quot;
+          </p>
+          <p style={{
+            color: '#f87171',
+            fontSize: '0.8125rem',
+            marginBottom: '1.5rem',
+          }}>
+            This action cannot be undone.
+          </p>
+
+          <div style={{
+            display: 'flex',
+            gap: '0.75rem',
+            justifyContent: 'center',
+          }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '0.625rem 1.5rem',
+                background: 'rgba(100, 116, 139, 0.1)',
+                border: '1px solid rgba(100, 116, 139, 0.3)',
+                borderRadius: '8px',
+                color: '#94a3b8',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              style={{
+                padding: '0.625rem 1.5rem',
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                color: '#f87171',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>
