@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 
 interface TeamMember {
   id: string;
@@ -40,6 +42,8 @@ const STORAGE_KEYS = {
 };
 
 export default function TeamPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'workspaces' | 'activity'>('overview');
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -48,6 +52,109 @@ export default function TeamPage() {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
+
+  // Show sign-up prompt for guests
+  if (!loading && !user) {
+    return (
+      <div style={{ padding: '2rem', maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{
+          padding: '3rem',
+          background: 'rgba(15, 15, 35, 0.6)',
+          border: '1px solid rgba(139, 92, 246, 0.15)',
+          borderRadius: '20px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '100px',
+            height: '100px',
+            borderRadius: '50%',
+            background: 'rgba(139, 92, 246, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '3rem',
+            margin: '0 auto 1.5rem',
+          }}>
+            👥
+          </div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.75rem', color: '#f1f5f9' }}>
+            Team Collaboration
+          </h1>
+          <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '1rem' }}>
+            Create an account to collaborate with your team
+          </p>
+          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '0.875rem' }}>
+            Invite team members, create workspaces, and share projects together.
+          </p>
+
+          <div style={{
+            background: 'rgba(139, 92, 246, 0.08)',
+            border: '1px solid rgba(139, 92, 246, 0.15)',
+            borderRadius: '12px',
+            padding: '1.25rem',
+            marginBottom: '2rem',
+            textAlign: 'left',
+          }}>
+            <h3 style={{ color: '#c4b5fd', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.75rem' }}>
+              With an account you can:
+            </h3>
+            <ul style={{ color: '#94a3b8', fontSize: '0.875rem', margin: 0, paddingLeft: '1.25rem' }}>
+              <li style={{ marginBottom: '0.5rem' }}>Invite team members via email</li>
+              <li style={{ marginBottom: '0.5rem' }}>Create shared workspaces</li>
+              <li style={{ marginBottom: '0.5rem' }}>Collaborate on projects in real-time</li>
+              <li>Control permissions (Admin, Editor, Viewer)</li>
+            </ul>
+          </div>
+
+          <div style={{
+            background: 'rgba(251, 191, 36, 0.08)',
+            border: '1px solid rgba(251, 191, 36, 0.2)',
+            borderRadius: '10px',
+            padding: '1rem',
+            marginBottom: '2rem',
+          }}>
+            <p style={{ color: '#fbbf24', fontSize: '0.8125rem', margin: 0 }}>
+              🔒 <strong>Guest Mode Limitation:</strong> Your data is stored locally in this browser only. 
+              Team features require an account so members can be identified and data can be synced.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <button
+              onClick={() => router.push('/auth/signup')}
+              style={{
+                padding: '0.875rem 2rem',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                border: 'none',
+                borderRadius: '10px',
+                color: 'white',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.9375rem',
+              }}
+            >
+              ✨ Create Free Account
+            </button>
+            <button
+              onClick={() => router.push('/auth/signin')}
+              style={{
+                padding: '0.875rem 1.5rem',
+                background: 'rgba(139, 92, 246, 0.1)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '10px',
+                color: '#c4b5fd',
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontSize: '0.9375rem',
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Load data from localStorage
   useEffect(() => {
