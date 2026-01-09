@@ -407,90 +407,107 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {/* Available Integrations */}
+            {/* Import Sources */}
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.75rem', marginTop: '0.5rem' }}>
+              📥 Import Sources
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2rem',
+            }}>
+              {[
+                { id: 'google-drive', name: 'Google Drive', icon: '📁', description: 'Import docs, slides, and files' },
+                { id: 'dropbox', name: 'Dropbox', icon: '📦', description: 'Sync files from Dropbox' },
+                { id: 'onedrive', name: 'OneDrive', icon: '☁️', description: 'Import from Microsoft OneDrive' },
+                { id: 'pocket', name: 'Pocket', icon: '👝', description: 'Import saved articles' },
+                { id: 'readwise', name: 'Readwise', icon: '📖', description: 'Sync highlights and notes' },
+                { id: 'chrome', name: 'Chrome Extension', icon: '🌐', description: 'Capture while browsing' },
+                { id: 'firefox', name: 'Firefox Extension', icon: '🦊', description: 'Capture while browsing' },
+              ].map(integration => (
+                <IntegrationCard key={integration.id} {...integration} status="coming_soon" />
+              ))}
+            </div>
+
+            {/* Export Destinations */}
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.75rem' }}>
+              📤 Export Destinations
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2rem',
+            }}>
+              {[
+                { id: 'notion', name: 'Notion', icon: '📓', description: 'Export insights to Notion pages' },
+                { id: 'obsidian', name: 'Obsidian', icon: '💎', description: 'Sync with your Obsidian vault' },
+                { id: 'roam', name: 'Roam Research', icon: '🔗', description: 'Export to Roam graphs' },
+                { id: 'evernote', name: 'Evernote', icon: '🐘', description: 'Save insights to Evernote' },
+                { id: 'google-docs', name: 'Google Docs', icon: '📝', description: 'Export as Google Docs' },
+                { id: 'markdown', name: 'Markdown Files', icon: '📄', description: 'Download as .md files' },
+              ].map(integration => (
+                <IntegrationCard key={integration.id} {...integration} status="coming_soon" />
+              ))}
+            </div>
+
+            {/* Communication */}
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.75rem' }}>
+              💬 Communication
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2rem',
+            }}>
+              {[
+                { id: 'slack', name: 'Slack', icon: '💬', description: 'Share insights to channels' },
+                { id: 'discord', name: 'Discord', icon: '🎮', description: 'Post to Discord servers' },
+                { id: 'teams', name: 'Microsoft Teams', icon: '👥', description: 'Share to Teams channels' },
+                { id: 'email', name: 'Email', icon: '📧', description: 'Send insights via email' },
+              ].map(integration => (
+                <IntegrationCard key={integration.id} {...integration} status="coming_soon" />
+              ))}
+            </div>
+
+            {/* Automation */}
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.75rem' }}>
+              ⚡ Automation
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2rem',
+            }}>
+              {[
+                { id: 'zapier', name: 'Zapier', icon: '⚡', description: 'Connect to 5000+ apps' },
+                { id: 'make', name: 'Make (Integromat)', icon: '🔧', description: 'Visual automation workflows' },
+                { id: 'ifttt', name: 'IFTTT', icon: '🔀', description: 'Simple automation triggers' },
+                { id: 'api', name: 'API Access', icon: '🔌', description: 'Build custom integrations' },
+              ].map(integration => (
+                <IntegrationCard key={integration.id} {...integration} status="coming_soon" />
+              ))}
+            </div>
+
+            {/* Media Sources */}
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.75rem' }}>
+              🎬 Media Sources
+            </h3>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: '1rem',
             }}>
               {[
-                { 
-                  id: 'notion', 
-                  name: 'Notion', 
-                  icon: '📓', 
-                  description: 'Export insights to Notion pages',
-                  status: 'coming_soon' as const,
-                },
-                { 
-                  id: 'google-drive', 
-                  name: 'Google Drive', 
-                  icon: '📁', 
-                  description: 'Import documents from Google Drive',
-                  status: 'coming_soon' as const,
-                },
-                { 
-                  id: 'dropbox', 
-                  name: 'Dropbox', 
-                  icon: '📦', 
-                  description: 'Sync files with Dropbox',
-                  status: 'coming_soon' as const,
-                },
-                { 
-                  id: 'slack', 
-                  name: 'Slack', 
-                  icon: '💬', 
-                  description: 'Share insights to Slack channels',
-                  status: 'coming_soon' as const,
-                },
-                { 
-                  id: 'zapier', 
-                  name: 'Zapier', 
-                  icon: '⚡', 
-                  description: 'Automate workflows with Zapier',
-                  status: 'coming_soon' as const,
-                },
-                { 
-                  id: 'chrome', 
-                  name: 'Chrome Extension', 
-                  icon: '🌐', 
-                  description: 'Capture content while browsing',
-                  status: 'coming_soon' as const,
-                },
+                { id: 'youtube', name: 'YouTube', icon: '▶️', description: 'Import video transcripts' },
+                { id: 'spotify', name: 'Spotify Podcasts', icon: '🎧', description: 'Transcribe podcast episodes' },
+                { id: 'apple-podcasts', name: 'Apple Podcasts', icon: '🎙️', description: 'Import podcast transcripts' },
+                { id: 'vimeo', name: 'Vimeo', icon: '🎬', description: 'Import video content' },
               ].map(integration => (
-                <div key={integration.id} style={{
-                  padding: '1.25rem',
-                  background: 'rgba(15, 15, 35, 0.6)',
-                  border: '1px solid rgba(139, 92, 246, 0.15)',
-                  borderRadius: '12px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '1.5rem' }}>{integration.icon}</span>
-                      <div>
-                        <h3 style={{ fontWeight: 600, color: '#f1f5f9', marginBottom: '0.25rem' }}>
-                          {integration.name}
-                        </h3>
-                        <p style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-                          {integration.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: '1rem' }}>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '0.25rem 0.75rem',
-                      background: 'rgba(251, 191, 36, 0.1)',
-                      border: '1px solid rgba(251, 191, 36, 0.3)',
-                      borderRadius: '20px',
-                      color: '#fbbf24',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                    }}>
-                      Coming Soon
-                    </span>
-                  </div>
-                </div>
+                <IntegrationCard key={integration.id} {...integration} status="coming_soon" />
               ))}
             </div>
 
@@ -1028,6 +1045,82 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Integration Card Component
+function IntegrationCard({ 
+  name, 
+  icon, 
+  description, 
+  status 
+}: { 
+  name: string; 
+  icon: string; 
+  description: string; 
+  status: 'connected' | 'available' | 'coming_soon';
+}) {
+  return (
+    <div style={{
+      padding: '1rem',
+      background: 'rgba(15, 15, 35, 0.6)',
+      border: '1px solid rgba(139, 92, 246, 0.15)',
+      borderRadius: '10px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+        <span style={{ fontSize: '1.25rem' }}>{icon}</span>
+        <div style={{ flex: 1 }}>
+          <h4 style={{ fontWeight: 600, color: '#f1f5f9', fontSize: '0.9375rem', margin: 0 }}>
+            {name}
+          </h4>
+          <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+            {description}
+          </p>
+        </div>
+      </div>
+      {status === 'coming_soon' && (
+        <span style={{
+          display: 'inline-block',
+          padding: '0.2rem 0.5rem',
+          background: 'rgba(251, 191, 36, 0.1)',
+          border: '1px solid rgba(251, 191, 36, 0.2)',
+          borderRadius: '4px',
+          color: '#fbbf24',
+          fontSize: '0.6875rem',
+          fontWeight: 500,
+        }}>
+          Coming Soon
+        </span>
+      )}
+      {status === 'available' && (
+        <button style={{
+          padding: '0.375rem 0.75rem',
+          background: 'rgba(139, 92, 246, 0.15)',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+          borderRadius: '6px',
+          color: '#c4b5fd',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}>
+          Connect
+        </button>
+      )}
+      {status === 'connected' && (
+        <span style={{
+          display: 'inline-block',
+          padding: '0.2rem 0.5rem',
+          background: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          borderRadius: '4px',
+          color: '#34d399',
+          fontSize: '0.6875rem',
+          fontWeight: 500,
+        }}>
+          ✓ Connected
+        </span>
+      )}
     </div>
   );
 }
