@@ -6,8 +6,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { createDocument, updateDocumentStatus } from '@/lib/supabase/documents';
 import { estimateOpenAICost, logUsage } from '@/lib/supabase/usage';
 
-// Lazy initialization to avoid build-time errors
-const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Note: BYOK - OpenAI API key comes from client for embeddings
 
 let _pinecone: Pinecone | null = null;
 const getPinecone = () => {
@@ -32,10 +31,21 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const collectionId = formData.get('collectionId') as string | null;
+    const apiKey = formData.get('apiKey') as string | null; // BYOK: User's OpenAI key
     
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
+    
+    // BYOK: User must provide their own API key for embeddings
+    const openaiKey = apiKey || process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return NextResponse.json({ 
+        error: 'API key required. Please add your OpenAI API key in Settings.' 
+      }, { status: 401 });
+    }
+    
+    const openai = new OpenAI({ apiKey: openaiKey });
 
     // Get user from Supabase (for now, we'll support anonymous users)
     const supabase = createServerClient();
@@ -90,7 +100,7 @@ export async function POST(req: NextRequest) {
     let totalEmbeddingTokens = 0;
     const embeddings = await Promise.all(
       chunks.map(async (chunk, idx) => {
-        const response = await getOpenAI().embeddings.create({
+        const response = await openai.embeddings.create({
           model: 'text-embedding-3-large',
           input: chunk,
         });

@@ -6,8 +6,7 @@ import { createConversation, addMessage } from '@/lib/supabase/conversations';
 import { estimateOpenAICost, estimateAnthropicCost, logUsage } from '@/lib/supabase/usage';
 import { expandQuery } from '@/lib/utils/query-expansion';
 
-// Default OpenAI client (fallback if no user key provided)
-const getDefaultOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Note: BYOK - OpenAI API key comes from client, no server fallback required
 
 // Lazy initialization for Pinecone to avoid build-time errors
 let _pinecone: Pinecone | null = null;
@@ -56,14 +55,17 @@ export async function POST(req: NextRequest) {
       userId = user?.id || null;
     }
 
-    // Use user-provided API key or fallback to server key
+    // BYOK: User must provide their own API key
+    // Future: Credits system will use server key as fallback
     const openaiKey = apiKey && provider === 'openai' ? apiKey : process.env.OPENAI_API_KEY;
-    const usingUserKey = !!(apiKey && provider === 'openai');
-    if (usingUserKey) {
-      console.log('[API] Using user-provided OpenAI key');
-    } else {
-      console.log('[API] Using server OpenAI key from env');
+    
+    if (!openaiKey) {
+      return NextResponse.json({ 
+        error: 'API key required. Please add your OpenAI API key in Settings.' 
+      }, { status: 401 });
     }
+    
+    console.log('[API] Using', apiKey ? 'user-provided' : 'server', 'OpenAI key');
     const openai = new OpenAI({ apiKey: openaiKey });
     
     // Expand query for better semantic search recall
@@ -262,9 +264,8 @@ Provide a comprehensive answer:`;
       completion = { choices: [{ message: { content: anthropicData.content[0].text } }] };
       tokensUsed = anthropicData.usage?.input_tokens + anthropicData.usage?.output_tokens || 0;
     } else {
-      // Fallback to OpenAI
-      const openaiClient = getDefaultOpenAI();
-      const result = await openaiClient.chat.completions.create({
+      // Fallback to OpenAI (using BYOK key already initialized)
+      const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
