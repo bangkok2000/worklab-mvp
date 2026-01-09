@@ -4,6 +4,7 @@ import { OpenAI } from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createServerClient } from '@/lib/supabase/client';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
+import { getTeamApiKey } from '@/lib/supabase/teams';
 import type { CreditAction } from '@/lib/supabase/types';
 
 // Lazy initialization for Pinecone
@@ -315,25 +316,44 @@ export async function POST(req: NextRequest) {
       userId = user?.id || null;
     }
 
-    // Determine mode: BYOK (user's key) or Credits (server key)
-    const isUsingBYOK = !!apiKey;
-    const serverOpenAIKey = process.env.OPENAI_API_KEY;
-    
     // Credit action for web processing
     const creditAction: CreditAction = 'process_web';
     let creditCost = 0;
     
-    // If using Credits (not BYOK), check balance first
-    if (!isUsingBYOK) {
+    // Determine API key source (priority: user BYOK > team key > server credits)
+    let openaiKey: string | null = null;
+    let keySource: 'byok' | 'team' | 'credits' = 'credits';
+    let teamName: string | null = null;
+    const serverOpenAIKey = process.env.OPENAI_API_KEY;
+    
+    // 1. Check for user-provided BYOK key (highest priority)
+    if (apiKey) {
+      openaiKey = apiKey;
+      keySource = 'byok';
+      console.log('[Web] Using BYOK (user-provided) key');
+    }
+    // 2. Check for team API key
+    else if (userId) {
+      const teamResult = await getTeamApiKey(userId);
+      if (teamResult.hasKey && teamResult.apiKey) {
+        openaiKey = teamResult.apiKey;
+        keySource = 'team';
+        teamName = teamResult.teamName;
+        console.log(`[Web] Using Team API key from "${teamName}"`);
+      }
+    }
+    
+    // 3. If no BYOK or team key, use credits mode
+    if (!openaiKey) {
       if (!serverOpenAIKey) {
         return NextResponse.json({ 
-          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings).' 
+          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings) or join a team.' 
         }, { status: 503 });
       }
       
       if (!userId) {
         return NextResponse.json({ 
-          error: 'Please sign in to use credits, or add your own API key in Settings.' 
+          error: 'Please sign in to use credits, add your own API key, or join a team.' 
         }, { status: 401 });
       }
       
@@ -344,23 +364,24 @@ export async function POST(req: NextRequest) {
       const balance = await getBalance(userId);
       if (balance < creditCost) {
         return NextResponse.json({ 
-          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits or use your own API key.`,
+          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits, use your own API key, or join a team.`,
           creditsNeeded: creditCost,
           currentBalance: balance,
         }, { status: 402 });
       }
       
+      openaiKey = serverOpenAIKey;
+      keySource = 'credits';
       console.log(`[Web] Credits mode: User ${userId} has ${balance} credits, action costs ${creditCost}`);
     }
     
-    // Determine which API key to use
-    const openaiKey = isUsingBYOK ? apiKey : serverOpenAIKey;
-    
     if (!openaiKey) {
       return NextResponse.json({ 
-        error: 'No API key available. Please add your OpenAI API key in Settings or sign in to use credits.' 
+        error: 'No API key available. Please add your OpenAI API key in Settings, join a team, or sign in to use credits.' 
       }, { status: 401 });
     }
+    
+    const isUsingBYOK = keySource !== 'credits';
 
     // Fetch the web page
     let html: string;
@@ -509,11 +530,12 @@ export async function POST(req: NextRequest) {
       chunksProcessed: chunks.length,
       contentLength: extracted.content.length,
       // Credit usage info (only for credits mode)
-      credits: !isUsingBYOK ? {
+      credits: keySource === 'credits' ? {
         used: creditCost,
         remaining: remainingBalance,
       } : undefined,
-      mode: isUsingBYOK ? 'byok' : 'credits',
+      mode: keySource,
+      teamName: keySource === 'team' ? teamName : undefined,
     });
 
   } catch (error: any) {

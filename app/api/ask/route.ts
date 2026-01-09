@@ -6,9 +6,10 @@ import { createConversation, addMessage } from '@/lib/supabase/conversations';
 import { estimateOpenAICost, estimateAnthropicCost, logUsage } from '@/lib/supabase/usage';
 import { expandQuery } from '@/lib/utils/query-expansion';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
+import { getTeamApiKey } from '@/lib/supabase/teams';
 import type { CreditAction } from '@/lib/supabase/types';
 
-// Server-side AI: Use credits OR BYOK (user's own API key)
+// Server-side AI: Use Team API Key OR personal BYOK OR Credits
 
 // Lazy initialization for Pinecone to avoid build-time errors
 let _pinecone: Pinecone | null = null;
@@ -57,10 +58,6 @@ export async function POST(req: NextRequest) {
       userId = user?.id || null;
     }
 
-    // Determine mode: BYOK (user's key) or Credits (server key)
-    const isUsingBYOK = !!apiKey;
-    const serverOpenAIKey = process.env.OPENAI_API_KEY;
-    
     // Determine which model/action for credit costs
     const selectedModel = model || (provider === 'openai' ? 'gpt-3.5-turbo' : 'claude-3-sonnet-20240229');
     const isGPT4 = selectedModel.includes('gpt-4') && !selectedModel.includes('gpt-4o');
@@ -73,19 +70,41 @@ export async function POST(req: NextRequest) {
     else if (isGPT4o) creditAction = 'ask_gpt4o'; // 5 credits
     else if (isClaude) creditAction = 'ask_claude'; // 5 credits
     
+    // Determine API key source (priority: user BYOK > team key > server credits)
+    let openaiKey: string | null = null;
+    let keySource: 'byok' | 'team' | 'credits' = 'credits';
+    let teamName: string | null = null;
     let creditCost = 0;
+    const serverOpenAIKey = process.env.OPENAI_API_KEY;
     
-    // If using Credits (not BYOK), check balance first
-    if (!isUsingBYOK) {
+    // 1. Check for user-provided BYOK key (highest priority)
+    if (apiKey) {
+      openaiKey = apiKey;
+      keySource = 'byok';
+      console.log('[API] Using BYOK (user-provided) key');
+    }
+    // 2. Check for team API key
+    else if (userId) {
+      const teamResult = await getTeamApiKey(userId);
+      if (teamResult.hasKey && teamResult.apiKey) {
+        openaiKey = teamResult.apiKey;
+        keySource = 'team';
+        teamName = teamResult.teamName;
+        console.log(`[API] Using Team API key from "${teamName}"`);
+      }
+    }
+    
+    // 3. If no BYOK or team key, use credits mode
+    if (!openaiKey) {
       if (!serverOpenAIKey) {
         return NextResponse.json({ 
-          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings).' 
+          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings) or join a team.' 
         }, { status: 503 });
       }
       
       if (!userId) {
         return NextResponse.json({ 
-          error: 'Please sign in to use credits, or add your own API key in Settings.' 
+          error: 'Please sign in to use credits, add your own API key, or join a team.' 
         }, { status: 401 });
       }
       
@@ -96,25 +115,24 @@ export async function POST(req: NextRequest) {
       const balance = await getBalance(userId);
       if (balance < creditCost) {
         return NextResponse.json({ 
-          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits or use your own API key.`,
+          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits, use your own API key, or join a team.`,
           creditsNeeded: creditCost,
           currentBalance: balance,
         }, { status: 402 }); // 402 = Payment Required
       }
       
+      openaiKey = serverOpenAIKey;
+      keySource = 'credits';
       console.log(`[API] Credits mode: User ${userId} has ${balance} credits, action costs ${creditCost}`);
     }
     
-    // Determine which API key to use
-    const openaiKey = isUsingBYOK ? apiKey : serverOpenAIKey;
-    
     if (!openaiKey) {
       return NextResponse.json({ 
-        error: 'No API key available. Please add your OpenAI API key in Settings or sign in to use credits.' 
+        error: 'No API key available. Please add your OpenAI API key in Settings, join a team, or sign in to use credits.' 
       }, { status: 401 });
     }
     
-    console.log('[API] Using', isUsingBYOK ? 'BYOK (user)' : 'Credits (server)', 'OpenAI key');
+    const isUsingBYOK = keySource !== 'credits';
     const openai = new OpenAI({ apiKey: openaiKey });
     
     // Expand query for better semantic search recall
@@ -416,12 +434,13 @@ Provide a comprehensive answer:`;
       sources,
       conversationId: savedConversationId,
       // Credit usage info (only for credits mode)
-      credits: !isUsingBYOK ? {
+      credits: keySource === 'credits' ? {
         used: creditCost,
         remaining: remainingBalance,
       } : undefined,
       // Mode indicator
-      mode: isUsingBYOK ? 'byok' : 'credits',
+      mode: keySource,
+      teamName: keySource === 'team' ? teamName : undefined,
     });
 
   } catch (error: any) {

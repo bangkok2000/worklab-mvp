@@ -6,8 +6,9 @@ import { createServerClient } from '@/lib/supabase/client';
 import { createDocument, updateDocumentStatus } from '@/lib/supabase/documents';
 import { estimateOpenAICost, logUsage } from '@/lib/supabase/usage';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
+import { getTeamApiKey } from '@/lib/supabase/teams';
 
-// Server-side AI: Use credits OR BYOK (user's own API key)
+// Server-side AI: Use Team API Key OR personal BYOK OR Credits
 
 let _pinecone: Pinecone | null = null;
 const getPinecone = () => {
@@ -52,29 +53,115 @@ export async function POST(req: NextRequest) {
     // Convert file to buffer and extract PDF info first (to estimate pages)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const data = await pdf(buffer);
-    const text = data.text;
-    const pageCount = data.numpages || 1;
     
-    // Determine mode: BYOK (user's key) or Credits (server key)
-    const isUsingBYOK = !!apiKey;
-    const serverOpenAIKey = process.env.OPENAI_API_KEY;
+    // Try to parse the PDF - handle protected/encrypted PDFs
+    let data;
+    let text: string;
+    let pageCount: number;
+    let isOcrRequired = false;
+    let ocrWarning: string | null = null;
+    
+    try {
+      data = await pdf(buffer);
+      text = data.text;
+      pageCount = data.numpages || 1;
+      
+      // Check if PDF is likely scanned/image-based (very little text extracted)
+      const avgCharsPerPage = text.length / pageCount;
+      const minExpectedCharsPerPage = 100; // A real text PDF should have at least 100 chars/page
+      
+      if (avgCharsPerPage < minExpectedCharsPerPage && pageCount > 0) {
+        isOcrRequired = true;
+        ocrWarning = `This PDF appears to be scanned or image-based (only ${Math.round(avgCharsPerPage)} characters per page detected). Text extraction may be incomplete. For better results, consider using OCR software to convert the PDF first.`;
+        console.log(`[Upload] Low text density detected: ${avgCharsPerPage} chars/page - likely scanned PDF`);
+      }
+      
+      // If text is completely empty, provide a clear message
+      if (!text || text.trim().length === 0) {
+        return NextResponse.json({ 
+          error: 'This PDF contains no extractable text. It may be a scanned document or contain only images. Please use OCR software (like Adobe Acrobat or online tools) to convert it to searchable text first.',
+          isScannedPdf: true,
+          pageCount,
+        }, { status: 400 });
+      }
+      
+    } catch (pdfError: any) {
+      console.error('[Upload] PDF parsing error:', pdfError);
+      
+      // Check for password-protected PDF
+      if (pdfError.message?.includes('password') || 
+          pdfError.message?.includes('encrypted') ||
+          pdfError.message?.includes('Password')) {
+        return NextResponse.json({ 
+          error: 'This PDF is password-protected. Please remove the password protection or provide an unprotected version.',
+          isPasswordProtected: true,
+        }, { status: 400 });
+      }
+      
+      // Check for DRM/copy protection
+      if (pdfError.message?.includes('permission') || 
+          pdfError.message?.includes('restricted') ||
+          pdfError.message?.includes('copy')) {
+        return NextResponse.json({ 
+          error: 'This PDF has copy restrictions that prevent text extraction. Please use a version without DRM protection.',
+          isDrmProtected: true,
+        }, { status: 400 });
+      }
+      
+      // Check for corrupted PDF
+      if (pdfError.message?.includes('Invalid') || 
+          pdfError.message?.includes('corrupt') ||
+          pdfError.message?.includes('malformed')) {
+        return NextResponse.json({ 
+          error: 'This PDF file appears to be corrupted or invalid. Please try re-downloading or recreating the file.',
+          isCorrupted: true,
+        }, { status: 400 });
+      }
+      
+      // Generic PDF error
+      return NextResponse.json({ 
+        error: `Failed to process PDF: ${pdfError.message}. Please ensure the file is a valid PDF document.`,
+      }, { status: 400 });
+    }
     
     // Credit cost is per page
     const creditCostPerPage = await getCreditCost('upload_document_page');
     const totalCreditCost = creditCostPerPage * pageCount;
     
-    // If using Credits (not BYOK), check balance first
-    if (!isUsingBYOK) {
+    // Determine API key source (priority: user BYOK > team key > server credits)
+    let openaiKey: string | null = null;
+    let keySource: 'byok' | 'team' | 'credits' = 'credits';
+    let teamName: string | null = null;
+    const serverOpenAIKey = process.env.OPENAI_API_KEY;
+    
+    // 1. Check for user-provided BYOK key (highest priority)
+    if (apiKey) {
+      openaiKey = apiKey;
+      keySource = 'byok';
+      console.log('[Upload] Using BYOK (user-provided) key');
+    }
+    // 2. Check for team API key
+    else if (userId) {
+      const teamResult = await getTeamApiKey(userId);
+      if (teamResult.hasKey && teamResult.apiKey) {
+        openaiKey = teamResult.apiKey;
+        keySource = 'team';
+        teamName = teamResult.teamName;
+        console.log(`[Upload] Using Team API key from "${teamName}"`);
+      }
+    }
+    
+    // 3. If no BYOK or team key, use credits mode
+    if (!openaiKey) {
       if (!serverOpenAIKey) {
         return NextResponse.json({ 
-          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings).' 
+          error: 'Server AI not configured. Please use BYOK mode (add your API key in Settings) or join a team.' 
         }, { status: 503 });
       }
       
       if (!userId) {
         return NextResponse.json({ 
-          error: 'Please sign in to use credits, or add your own API key in Settings.' 
+          error: 'Please sign in to use credits, add your own API key, or join a team.' 
         }, { status: 401 });
       }
       
@@ -82,26 +169,25 @@ export async function POST(req: NextRequest) {
       const balance = await getBalance(userId);
       if (balance < totalCreditCost) {
         return NextResponse.json({ 
-          error: `Insufficient credits. This ${pageCount}-page document needs ${totalCreditCost} credits but you have ${balance}. Buy more credits or use your own API key.`,
+          error: `Insufficient credits. This ${pageCount}-page document needs ${totalCreditCost} credits but you have ${balance}. Buy more credits, use your own API key, or join a team.`,
           creditsNeeded: totalCreditCost,
           currentBalance: balance,
           pageCount,
         }, { status: 402 }); // 402 = Payment Required
       }
       
+      openaiKey = serverOpenAIKey;
+      keySource = 'credits';
       console.log(`[Upload] Credits mode: User ${userId} has ${balance} credits, upload costs ${totalCreditCost} (${pageCount} pages)`);
     }
     
-    // Determine which API key to use
-    const openaiKey = isUsingBYOK ? apiKey : serverOpenAIKey;
-    
     if (!openaiKey) {
       return NextResponse.json({ 
-        error: 'No API key available. Please add your OpenAI API key in Settings or sign in to use credits.' 
+        error: 'No API key available. Please add your OpenAI API key in Settings, join a team, or sign in to use credits.' 
       }, { status: 401 });
     }
     
-    console.log('[Upload] Using', isUsingBYOK ? 'BYOK (user)' : 'Credits (server)', 'OpenAI key');
+    const isUsingBYOK = keySource !== 'credits';
     const openai = new OpenAI({ apiKey: openaiKey });
 
     // Create document record in Supabase (if user is authenticated)
@@ -217,12 +303,16 @@ export async function POST(req: NextRequest) {
       filename: file.name,
       documentId,
       pageCount,
+      // OCR warning if text extraction was limited
+      warning: ocrWarning || undefined,
+      isOcrRequired: isOcrRequired || undefined,
       // Credit usage info (only for credits mode)
-      credits: !isUsingBYOK ? {
+      credits: keySource === 'credits' ? {
         used: totalCreditCost,
         remaining: remainingBalance,
       } : undefined,
-      mode: isUsingBYOK ? 'byok' : 'credits',
+      mode: keySource,
+      teamName: keySource === 'team' ? teamName : undefined,
     });
 
   } catch (error: any) {

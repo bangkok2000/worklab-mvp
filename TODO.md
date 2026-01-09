@@ -471,6 +471,31 @@ Step 4: Server AI (Days 10-12)
 - [x] Team page (UI only)
 - [x] Integrations page (UI only)
 
+### Team System ✅ COMPLETE
+- [x] Teams database schema (Supabase)
+- [x] Server-side encryption for API keys
+- [x] Team management API routes
+- [x] Create team with auto-generated code (MOON-XXXX-XXXX)
+- [x] Join team via team code
+- [x] Team Settings UI (create/join/manage)
+- [x] Team API key sharing (encrypted in Supabase)
+- [x] All API routes support team API keys (priority: BYOK > Team > Credits)
+- [x] Team members use leader's API key (no individual keys needed)
+
+---
+
+## 📊 Business Tools
+
+### Business Projection Calculator
+- [ ] Interactive spreadsheet/calculator for cost projections
+- [ ] Monthly user growth modeling (configurable signup rate)
+- [ ] Revenue vs cost breakdown
+- [ ] OpenAI API cost estimates by usage patterns
+- [ ] Infrastructure cost tiers (Vercel, Supabase, Pinecone)
+- [ ] Break-even analysis
+- [ ] Churn rate adjustments
+- [ ] Export to CSV/Excel
+
 ---
 
 ## 📈 Success Metrics
