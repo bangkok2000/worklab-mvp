@@ -6,9 +6,26 @@ import { createServerClient } from '@/lib/supabase/client';
 import { createDocument, updateDocumentStatus } from '@/lib/supabase/documents';
 import { estimateOpenAICost, logUsage } from '@/lib/supabase/usage';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-const index = pinecone.index(process.env.PINECONE_INDEX!);
+// Lazy initialization to avoid build-time errors
+const getOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+let _pinecone: Pinecone | null = null;
+const getPinecone = () => {
+  if (!_pinecone) {
+    if (!process.env.PINECONE_API_KEY) {
+      throw new Error('Missing PINECONE_API_KEY environment variable');
+    }
+    _pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+  }
+  return _pinecone;
+};
+
+const getIndex = () => {
+  if (!process.env.PINECONE_INDEX) {
+    throw new Error('Missing PINECONE_INDEX environment variable');
+  }
+  return getPinecone().index(process.env.PINECONE_INDEX);
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -73,7 +90,7 @@ export async function POST(req: NextRequest) {
     let totalEmbeddingTokens = 0;
     const embeddings = await Promise.all(
       chunks.map(async (chunk, idx) => {
-        const response = await openai.embeddings.create({
+        const response = await getOpenAI().embeddings.create({
           model: 'text-embedding-3-large',
           input: chunk,
         });
@@ -101,7 +118,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Store in Pinecone
-    await index.upsert(embeddings);
+    await getIndex().upsert(embeddings);
 
     // Update document status in Supabase
     if (documentId && userId) {

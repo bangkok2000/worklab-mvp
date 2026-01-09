@@ -9,8 +9,24 @@ import { expandQuery } from '@/lib/utils/query-expansion';
 // Default OpenAI client (fallback if no user key provided)
 const getDefaultOpenAI = () => new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-const index = pinecone.index(process.env.PINECONE_INDEX!);
+// Lazy initialization for Pinecone to avoid build-time errors
+let _pinecone: Pinecone | null = null;
+const getPinecone = () => {
+  if (!_pinecone) {
+    if (!process.env.PINECONE_API_KEY) {
+      throw new Error('Missing PINECONE_API_KEY environment variable');
+    }
+    _pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+  }
+  return _pinecone;
+};
+
+const getIndex = () => {
+  if (!process.env.PINECONE_INDEX) {
+    throw new Error('Missing PINECONE_INDEX environment variable');
+  }
+  return getPinecone().index(process.env.PINECONE_INDEX);
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     // Search Pinecone - get enough results but not too many
     // We'll filter down to 3-10 chunks based on question complexity
-    const searchResults = await index.query({
+    const searchResults = await getIndex().query({
       vector: questionEmbedding,
       topK: 15, // Reduced from 25 - we'll filter to 3-10 chunks anyway
       includeMetadata: true,
