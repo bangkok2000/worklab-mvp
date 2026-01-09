@@ -9,6 +9,7 @@ export default function SignUpPage() {
   const router = useRouter();
   const { signUp, signInWithGoogle, signInWithGithub } = useAuth();
   
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,7 +32,7 @@ export default function SignUpPage() {
     }
 
     setLoading(true);
-    const { error } = await signUp(email, password);
+    const { error } = await signUp(email, password, fullName.trim() || undefined);
     setLoading(false);
 
     if (error) {
@@ -113,6 +114,19 @@ export default function SignUpPage() {
         <form onSubmit={handleSubmit} style={styles.form}>
           {error && <div style={styles.error}>{error}</div>}
           
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Full Name</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+              style={styles.input}
+              autoComplete="name"
+            />
+            <span style={styles.optionalHint}>Optional - helps personalize your experience</span>
+          </div>
+
           <div style={styles.inputGroup}>
             <label style={styles.label}>Email</label>
             <input
@@ -347,5 +361,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '0.875rem',
     color: '#8b5cf6',
     textDecoration: 'none',
+  },
+  optionalHint: {
+    fontSize: '0.75rem',
+    color: '#64748b',
+    marginTop: '0.25rem',
   },
 };
