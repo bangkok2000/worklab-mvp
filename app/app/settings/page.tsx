@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { getStoredApiKeys, saveApiKey, deleteApiKey, toggleApiKey, testApiKey, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
+import { useAuth } from '@/lib/auth';
 
 const providers = [
   { value: 'openai', label: 'OpenAI', placeholder: 'sk-...', description: 'GPT-4, GPT-3.5 models' },
@@ -11,6 +13,8 @@ const providers = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'api-keys' | 'privacy' | 'profile' | 'preferences' | 'billing' | 'data'>('api-keys');
   const [apiKeys, setApiKeys] = useState<ApiKeyConfig[]>([]);
   const [isMounted, setIsMounted] = useState(false);
@@ -557,42 +561,159 @@ export default function SettingsPage() {
           <div style={{ maxWidth: '600px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1.5rem' }}>Profile</h2>
             
-            <div style={{
-              padding: '2rem',
-              background: 'rgba(15, 15, 35, 0.6)',
-              border: '1px solid rgba(139, 92, 246, 0.15)',
-              borderRadius: '16px',
-              textAlign: 'center',
-            }}>
+            {user ? (
+              /* Signed In User */
               <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2rem',
-                fontWeight: 600,
-                margin: '0 auto 1rem',
+                padding: '2rem',
+                background: 'rgba(15, 15, 35, 0.6)',
+                border: '1px solid rgba(139, 92, 246, 0.15)',
+                borderRadius: '16px',
               }}>
-                U
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '2rem',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}>
+                    {user.user_metadata?.full_name?.charAt(0).toUpperCase() || 
+                     user.email?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.25rem' }}>
+                      {user.user_metadata?.full_name || 'User'}
+                    </h3>
+                    <p style={{ color: '#94a3b8', fontSize: '0.9375rem' }}>
+                      {user.email}
+                    </p>
+                    <span style={{
+                      display: 'inline-block',
+                      marginTop: '0.5rem',
+                      padding: '0.25rem 0.75rem',
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      borderRadius: '20px',
+                      color: '#34d399',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                    }}>
+                      ✓ Verified Account
+                    </span>
+                  </div>
+                </div>
+
+                {/* Account Info */}
+                <div style={{
+                  padding: '1rem',
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  borderRadius: '10px',
+                  marginBottom: '1.5rem',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Member since</span>
+                    <span style={{ color: '#f1f5f9', fontSize: '0.875rem' }}>
+                      {new Date(user.created_at || '').toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        year: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Account ID</span>
+                    <span style={{ color: '#64748b', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                      {user.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button 
+                    onClick={async () => {
+                      await signOut();
+                      router.push('/auth/signin');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '8px',
+                      color: '#f87171',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🚪 Sign Out
+                  </button>
+                </div>
               </div>
-              <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
-                Sign in to sync your data across devices
-              </p>
-              <button style={{
-                padding: '0.75rem 2rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                border: 'none',
-                borderRadius: '8px',
-                color: 'white',
-                fontWeight: 500,
-                cursor: 'pointer',
+            ) : (
+              /* Guest Mode */
+              <div style={{
+                padding: '2rem',
+                background: 'rgba(15, 15, 35, 0.6)',
+                border: '1px solid rgba(139, 92, 246, 0.15)',
+                borderRadius: '16px',
+                textAlign: 'center',
               }}>
-                Sign In / Sign Up
-              </button>
-            </div>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'rgba(139, 92, 246, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '2rem',
+                  margin: '0 auto 1rem',
+                }}>
+                  👤
+                </div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                  Guest Mode
+                </h3>
+                <p style={{ color: '#94a3b8', marginBottom: '1.5rem', fontSize: '0.9375rem' }}>
+                  Sign in to sync your data across devices
+                </p>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => router.push('/auth/signin')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: 'white',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔑 Sign In
+                  </button>
+                  <button 
+                    onClick={() => router.push('/auth/signup')}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      background: 'rgba(139, 92, 246, 0.1)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: '8px',
+                      color: '#c4b5fd',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✨ Create Account
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
