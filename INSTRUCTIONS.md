@@ -7,11 +7,11 @@
 ## 📋 Project Overview
 
 **MoonScribe** is an AI-powered document intelligence platform similar to NotebookLM and Recall. Users can:
-- Upload and organize content from multiple sources (PDFs, YouTube, web pages, podcasts, notes)
+- Upload and organize content from multiple sources (PDFs, YouTube, web pages, images, notes)
 - Ask AI questions about their documents using RAG (Retrieval-Augmented Generation)
 - Save AI responses as "Insights" that can be exported and shared
-- Collaborate with team members on shared workspaces
-- Use their own API keys (BYOK - Bring Your Own Key)
+- Collaborate with team members using shared API keys via Team Codes
+- Use their own API keys (BYOK - Bring Your Own Key) OR use MoonScribe's AI with credits
 
 ---
 
@@ -21,46 +21,33 @@
 
 ```
 PROJECT (Central Unit)
-├── Sources        → Documents, videos, web pages, notes
+├── Sources        → Documents, videos, web pages, images, notes
 ├── Chat           → AI conversations about those sources
 └── Insights       → Saved answers from conversations
 ```
 
 ### Navigation Hierarchy
 ```
-Dashboard → Projects → Insights → Library → Team
+Dashboard → Inbox → Projects → Insights → Library → Team
 ```
 
 ### User Flow
 1. **Create a Project** (e.g., "Q1 Research", "Client Analysis")
-2. **Add Sources** to the project (PDFs, URLs, videos, notes)
+2. **Add Sources** to the project (PDFs, URLs, videos, images, notes)
 3. **Chat with AI** about those sources
 4. **Save Insights** from valuable AI responses
 5. **Export/Share** insights with team or external
 
-### Key Distinctions
-- **Project Sources** = Content added to a specific project
-- **Inbox** = Uncategorized content (assign to project later)
-- **Library** = Global view of ALL content across all projects
-- **Insights** = Saved AI responses (can be project-specific or global)
-- **Team** = Collaboration on projects
-
 ### Content Capture Flow (Hybrid Approach)
 ```
-Add Content Modal
-├── Select Type (URL, Note, Upload)
+Add Content (FAB Button)
+├── Select Type (URL, Note, Upload, YouTube, Image)
 ├── Enter Content
 ├── Select Destination:
 │   ├── 📥 Inbox (default) - Organize later
 │   └── 📁 [Project Name] - Add directly
-└── Save
+└── Save & Process
 ```
-
-**Why Inbox?**
-- Fast capture without friction (especially for browser extension)
-- Can organize later when you have time
-- Content still searchable in Library
-- Perfect for quick saves while browsing
 
 ---
 
@@ -73,32 +60,82 @@ Add Content Modal
 | **Frontend** | React 18, Custom CSS (no Tailwind) |
 | **Database** | Supabase (PostgreSQL) |
 | **Vector DB** | Pinecone |
-| **AI/LLM** | OpenAI (GPT-4, GPT-3.5), Anthropic, Google, Ollama |
+| **AI/LLM** | OpenAI (GPT-4o, GPT-3.5), Anthropic Claude |
 | **Embeddings** | OpenAI text-embedding-3-large |
+| **Vision AI** | GPT-4o Vision (for images) |
 | **PDF Parsing** | pdf-parse |
-| **Auth** | Supabase Auth (planned) |
+| **Web Scraping** | cheerio |
+| **YouTube** | youtube-transcript |
+| **Auth** | Supabase Auth |
+| **Payments** | Stripe |
 
 ---
 
-## 🔗 GitHub & Repository
+## 💳 Monetization Model: Credits System
 
-```
-Repository: /Users/mohmadnoorariffin/Documents/worklab-test
-```
+### How It Works
+- **New users**: Get 100 free credits
+- **Credits mode**: Pay per use (no subscription)
+- **BYOK mode**: Unlimited usage with your own API key
+- **Team mode**: Share team leader's API key via Team Code
 
-### Key Environment Variables (`.env.local`)
+### Credit Costs
+| Action | Credits | Notes |
+|--------|---------|-------|
+| Ask (GPT-3.5) | 1 | Basic queries |
+| Ask (GPT-4o) | 5 | Advanced queries |
+| Ask (GPT-4) | 10 | Most powerful |
+| Ask (Claude) | 5 | Anthropic |
+| Upload PDF (per page) | 1 | Document processing |
+| Process YouTube | 2 | Video transcripts |
+| Process Web Page | 1 | URL scraping |
+| Process Image | 5 | Vision AI analysis |
+
+### API Key Priority
+When making AI requests, the system checks in order:
+1. **User BYOK** - Personal API key from request (highest priority)
+2. **Team API Key** - From team leader (if user is in a team)
+3. **Server Credits** - MoonScribe's key (deducts credits)
+
+---
+
+## 👥 Team System
+
+### How Teams Work
+1. **Team Leader** creates a team → Gets unique Team Code (e.g., `MOON-A1B2-C3D4`)
+2. **Team Leader** adds their OpenAI API key (encrypted, stored in Supabase)
+3. **Team Members** join using the Team Code
+4. **All members** use the team's API key (no credits deducted, no individual keys needed)
+
+### Team API Routes
+- `POST /api/teams` - Create team
+- `POST /api/teams/join` - Join team with code
+- `PUT /api/teams/api-key` - Update team API key
+- `GET/DELETE /api/teams/members` - Manage members
+
+---
+
+## 🔗 Environment Variables
+
 ```env
-# OpenAI
-OPENAI_API_KEY=sk-...
-
-# Pinecone
-PINECONE_API_KEY=...
-PINECONE_INDEX=moonscribe
-
-# Supabase
+# Required for all features
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_KEY=...
+PINECONE_API_KEY=...
+PINECONE_INDEX=moonscribe
+
+# For Credits Mode (MoonScribe's AI)
+OPENAI_API_KEY=sk-...
+
+# For Team API Key Encryption
+ENCRYPTION_SECRET=your-32-char-secret
+
+# For Stripe Payments
+STRIPE_SECRET_KEY=sk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
 ```
 
 ---
@@ -114,107 +151,91 @@ SUPABASE_SERVICE_KEY=...
 ├── /app                        → Main Application (with AppShell)
 │   ├── layout.tsx              → App layout with sidebar
 │   ├── page.tsx                → Dashboard
+│   ├── /inbox                  → Uncategorized content
 │   ├── /library                → Content library
-│   │   └── page.tsx            → All content types view
+│   │   ├── /documents          → PDFs, docs
+│   │   ├── /media              → YouTube, audio
+│   │   ├── /web                → URLs, articles
+│   │   └── /notes              → Notes
 │   ├── /projects               → Projects
-│   │   ├── page.tsx            → Projects list
 │   │   └── /[projectId]        → Project workspace
 │   ├── /insights               → Saved insights
-│   ├── /team                   → Collaboration
-│   ├── /integrations           → Connected services
-│   └── /settings               → Settings pages
+│   ├── /team                   → Team management
+│   └── /settings               → Settings (Profile, API Keys, Team, Integrations)
+│
+├── /auth                       → Authentication
+│   ├── /signin                 → Sign in page
+│   ├── /signup                 → Sign up page
+│   └── /callback               → OAuth callback
 │
 ├── /api                        → API Routes
-│   ├── /upload/route.ts        → PDF upload & processing
 │   ├── /ask/route.ts           → RAG query endpoint
-│   ├── /delete/route.ts        → Delete documents
-│   └── /test-supabase/route.ts → Supabase connection test
+│   ├── /upload/route.ts        → PDF upload & processing
+│   ├── /youtube/route.ts       → YouTube video processing
+│   ├── /web/route.ts           → Web page scraping
+│   ├── /image/route.ts         → Image processing (Vision AI)
+│   ├── /teams/                 → Team management APIs
+│   │   ├── route.ts            → Create/get team
+│   │   ├── /join/route.ts      → Join team
+│   │   ├── /api-key/route.ts   → Manage team API key
+│   │   └── /members/route.ts   → Manage members
+│   └── /stripe/                → Payment APIs
+│       ├── /checkout/route.ts  → Create checkout session
+│       └── /webhook/route.ts   → Handle Stripe events
 │
 ├── /components
 │   ├── /ui                     → Reusable UI components
-│   │   ├── Button.tsx
-│   │   ├── Input.tsx
-│   │   ├── Modal.tsx
-│   │   ├── Badge.tsx
-│   │   ├── Card.tsx
-│   │   ├── EmptyState.tsx
-│   │   └── index.ts
-│   ├── /layout                 → Layout components
-│   │   ├── AppShell.tsx        → Main app wrapper with sidebar
-│   │   └── index.ts
-│   └── /features               → Feature-specific components
+│   ├── /layout                 → Layout components (AppShell, Sidebar)
+│   └── /features               → Feature components (CreditBalance, TeamSettings)
 │
-└── /styles
-    ├── globals.css             → Global CSS
-    └── theme.ts                → Design tokens
-
 /lib
-├── /supabase
-│   ├── client.ts               → Supabase client setup
-│   ├── types.ts                → Database types
-│   ├── documents.ts            → Document CRUD
-│   ├── conversations.ts        → Chat CRUD
-│   └── usage.ts                → Usage tracking
-│
-└── /utils
-    ├── api-keys.ts             → BYOK key management
-    ├── encryption.ts           → Client-side encryption
-    ├── api-client.ts           → Multi-provider API client
-    └── query-expansion.ts      → Query enhancement
+├── /auth                       → Auth context, protected routes
+├── /supabase                   → Supabase utilities
+│   ├── client.ts               → Supabase clients
+│   ├── credits.ts              → Credits service
+│   ├── teams.ts                → Teams service
+│   └── types.ts                → Database types
+├── /stripe                     → Stripe utilities
+└── /utils                      → Utilities (encryption, API keys)
 ```
-
----
-
-## 🎨 Design System
-
-### Colors
-```
-Primary: #8b5cf6 (Purple)
-Secondary: #6366f1 (Indigo)
-Background: #0f0f23 → #1a1a2e (Dark gradient)
-Text Primary: #f1f5f9
-Text Secondary: #94a3b8
-Text Muted: #64748b
-Border: rgba(139, 92, 246, 0.15)
-```
-
-### Styling Approach
-- **Inline styles** for components (not Tailwind)
-- **Glassmorphism** effects with backdrop-filter
-- **Purple accent** gradients throughout
-- **Dark theme** only (for now)
 
 ---
 
 ## 🔄 Current State
 
-### ✅ Completed
+### ✅ Complete (Working)
 - [x] Full UI framework with all pages
-- [x] Dashboard with stats and quick actions
-- [x] Library view for all content types
-- [x] Projects management (create, delete, list)
-- [x] Insights page with export options
-- [x] Team collaboration UI
-- [x] Integrations hub
-- [x] Settings (API keys, profile, billing, data)
-- [x] BYOK (Bring Your Own Key) support
-- [x] PDF upload and RAG pipeline
-- [x] Basic chat functionality
-- [x] Query expansion for better search
+- [x] Dashboard with real stats from localStorage
+- [x] Library view with sub-pages (Documents, Media, Web, Notes)
+- [x] Projects management
+- [x] Insights page with edit/delete/archive/export
+- [x] Settings (Profile, API Keys, Team, Integrations tabs)
+- [x] **Authentication** - Email/password sign up/sign in
+- [x] **Guest Mode** - 5 free queries without account
+- [x] **BYOK** - Bring Your Own Key support
+- [x] **Credits System** - Full backend (DB schema, service, deduction)
+- [x] **Stripe Integration** - Checkout and webhook handlers
+- [x] **Team System** - Create team, join via code, shared API key
+- [x] **PDF Processing** - Upload, extract, chunk, embed, RAG
+- [x] **YouTube Processing** - Transcript extraction, timestamped chunks
+- [x] **Web Scraping** - URL content extraction, clean text
+- [x] **Image Processing** - GPT-4 Vision analysis, OCR
+- [x] **Enhanced PDF Detection** - Password-protected, DRM, scanned PDF warnings
 
-### 🔧 In Progress / Needs Work
-- [ ] Wire project workspace to RAG system
-- [ ] User authentication (Supabase Auth)
-- [ ] Content processors (YouTube, web, audio)
-- [ ] Note editor
-- [ ] Real export functionality (PDF generation)
-- [ ] Insights save flow from chat
+### 🔧 Needs Manual Setup
+- [ ] OpenAI Business Account (add `OPENAI_API_KEY` to Vercel)
+- [ ] Stripe Account (add keys to Vercel, create webhook)
+- [ ] Run `supabase-credits-schema.sql` in Supabase
+- [ ] Run `supabase-teams-schema.sql` in Supabase
+- [ ] OAuth providers (Google, GitHub) - optional
 
-### 📅 Future
-- [ ] Browser extension
-- [ ] Mobile app
+### 📅 Future Development
+- [ ] Audio/Podcast transcription (Whisper API)
+- [ ] Browser extension (Chrome/Firefox)
+- [ ] Hybrid RAG (better answer quality)
+- [ ] Rich note editor
+- [ ] Mobile PWA
 - [ ] Real-time collaboration
-- [ ] Advanced search filters
 
 ---
 
@@ -228,9 +249,14 @@ npm install
 npm run dev
 
 # Access at
-http://localhost:3000  → Redirects to /app
 http://localhost:3000/app  → Main dashboard
 ```
+
+### Production Deployment (Vercel)
+1. Push to GitHub
+2. Connect repo to Vercel
+3. Add environment variables
+4. Deploy
 
 ---
 
@@ -239,101 +265,52 @@ http://localhost:3000/app  → Main dashboard
 | File | Purpose |
 |------|---------|
 | `app/app/page.tsx` | Main dashboard |
-| `app/components/layout/AppShell.tsx` | App wrapper with sidebar navigation |
-| `app/api/upload/route.ts` | PDF processing & Pinecone indexing |
-| `app/api/ask/route.ts` | RAG query with multi-provider support |
-| `lib/utils/api-keys.ts` | BYOK key storage & management |
-| `lib/supabase/client.ts` | Database client setup |
-| `ARCHITECTURE.md` | Full architecture documentation |
+| `app/components/layout/AppShell.tsx` | App wrapper with sidebar, FAB, header |
+| `app/api/ask/route.ts` | RAG query with team/BYOK/credits support |
+| `app/api/upload/route.ts` | PDF processing with enhanced detection |
+| `app/api/youtube/route.ts` | YouTube transcript processing |
+| `app/api/web/route.ts` | Web page scraping |
+| `app/api/image/route.ts` | Image processing with Vision AI |
+| `app/api/teams/route.ts` | Team management |
+| `lib/supabase/credits.ts` | Credits tracking service |
+| `lib/supabase/teams.ts` | Team API key retrieval |
+| `lib/utils/server-encryption.ts` | Server-side API key encryption |
+| `supabase-credits-schema.sql` | Credits database schema |
+| `supabase-teams-schema.sql` | Teams database schema |
+| `TODO.md` | Detailed roadmap and task list |
 
 ---
 
 ## ⚠️ Important Notes
 
 ### RAG Pipeline
-1. **Upload**: PDF → Extract text → Chunk (semantic, 1500 tokens) → Embed → Store in Pinecone
+1. **Upload**: PDF → Extract text → Detect issues → Chunk → Embed → Store in Pinecone
 2. **Query**: Question → Expand query → Embed → Search Pinecone → Build context → LLM response
 
-### BYOK (Bring Your Own Key)
-- Keys are encrypted client-side using Web Crypto API
-- Stored in localStorage (per user/session)
-- Backend falls back to server key if no user key provided
+### API Key Priority (for AI calls)
+1. User's BYOK key (from request) - no credits used
+2. Team API key (from Supabase) - no credits used
+3. Server key + credits - credits deducted
 
-### Data Storage (Local-First, BYOK Consistent)
+### Data Storage
+- **Local Storage**: Projects, Insights, Inbox content
+- **Supabase**: User auth, credits, teams, team API keys (encrypted)
+- **Pinecone**: Vector embeddings (text chunks only)
 
-**Philosophy:** BYOK = Your keys, your data, your control. Therefore, local-first.
-
-```
-Default (No Account):
-├── API Keys      → localStorage (encrypted)
-├── Documents     → IndexedDB (local)
-├── Conversations → localStorage (local)
-├── Insights      → localStorage (local)
-├── Projects      → localStorage (local)
-└── Vectors       → Pinecone (text chunks only*)
-
-With Account (Optional):
-├── All above     → Synced to Supabase (encrypted)
-├── Enables       → Multi-device sync, collaboration
-└── User Choice   → Explicit opt-in for cloud
-```
-
-*Vectors in Pinecone are text fragments only - no filenames, no metadata that identifies source. Acceptable because chunks are meaningless without context.
-
-**Why Local-First?**
-- Consistent with BYOK philosophy
-- No account required for basic use
-- Maximum privacy by default
-- User explicitly opts into cloud if they want sync/collaboration
-
-### Content Types Supported (UI Ready)
-- Documents: PDF, Word, Google Docs/Slides, Markdown
-- Media: YouTube, Vimeo, TikTok, Podcasts, Audio
-- Web: URLs, Articles, Bookmarks, Pocket saves
-- Notes: Rich text, Markdown, Voice notes
-
----
-
-## 🔧 Common Tasks
-
-### Add a New Page
-1. Create folder in `app/app/[pagename]/`
-2. Add `page.tsx` with component
-3. Update navigation in `AppShell.tsx`
-
-### Add a New UI Component
-1. Create in `app/components/ui/`
-2. Export from `app/components/ui/index.ts`
-
-### Add a New API Route
-1. Create in `app/api/[routename]/route.ts`
-2. Export `POST` or `GET` function
-
-### Test Supabase Connection
-```bash
-curl http://localhost:3000/api/test-supabase
-```
+### PDF Detection
+The upload route detects:
+- Password-protected PDFs → Error with instructions
+- DRM-protected PDFs → Error with instructions
+- Scanned/OCR PDFs → Warning with low text density
 
 ---
 
 ## 📚 Related Documents
 
+- `TODO.md` - Detailed roadmap with completion status
 - `ARCHITECTURE.md` - Full system architecture
-- `SUPABASE_SCHEMA.md` - Database schema documentation
-- `supabase-schema.sql` - SQL for creating tables
-- `PRODUCT_STRATEGY.md` - Product vision and roadmap
-- `TODO.md` - Detailed task list
-
----
-
-## 🎯 Next Priority Tasks
-
-1. **Wire Project Workspace** - Connect `/app/projects/[projectId]` to existing RAG
-2. **Project-centric flow** - Ensure all sources/chats/insights are project-scoped
-3. **IndexedDB for Documents** - Implement local document storage (not just localStorage)
-4. **Authentication (Optional)** - Supabase Auth for users who want cloud sync
-5. **YouTube Processor** - Extract transcripts from YouTube URLs
-6. **Web Scraper** - Extract content from URLs
+- `supabase-credits-schema.sql` - Credits database schema
+- `supabase-teams-schema.sql` - Teams database schema
 
 ---
 

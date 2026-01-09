@@ -7,43 +7,41 @@ MoonScribe is a comprehensive AI-powered knowledge management platform that help
 
 ## 1. Content Types Supported
 
-### Documents
-| Type | Description | Processing |
-|------|-------------|------------|
-| PDF | Standard PDF files | Text extraction, OCR |
-| Word (.docx) | Microsoft Word documents | Text extraction |
-| Google Docs | Google Workspace documents | API integration |
-| Google Slides | Google Workspace presentations | Slide text extraction |
-| Markdown | .md files | Direct parsing |
-| Plain Text | .txt files | Direct parsing |
+### Documents ✅
+| Type | Description | Status |
+|------|-------------|--------|
+| PDF | Standard PDF files | ✅ Complete |
+| Protected PDF | Password/DRM protected | ✅ Detection + Warning |
+| Scanned PDF | Image-based PDFs | ✅ Detection + Warning |
 
-### Media
-| Type | Description | Processing |
-|------|-------------|------------|
-| YouTube Videos | With/without transcripts | Transcript extraction, Whisper API |
-| YouTube Shorts | Short-form videos | Same as YouTube |
-| TikTok | Short videos | Video download, transcription |
-| Vimeo | Video hosting | Transcript extraction |
-| Apple Podcasts | Audio podcasts | Whisper transcription |
-| Spotify Podcasts | Audio podcasts | Whisper transcription |
-| Audio Files | MP3, WAV, etc. | Whisper transcription |
+### Media ✅
+| Type | Description | Status |
+|------|-------------|--------|
+| YouTube Videos | With transcripts | ✅ Complete |
+| YouTube Shorts | Short-form videos | ✅ Complete |
+| Audio Files | MP3, WAV, etc. | 🔜 Planned (Whisper) |
+| Podcasts | Audio podcasts | 🔜 Planned |
 
-### Web Content
-| Type | Description | Processing |
-|------|-------------|------------|
-| URLs/Websites | Any web page | Web scraping, article extraction |
-| Articles/Blogs | Online articles | Readability extraction |
-| Bookmarks | Browser bookmarks | Import & process |
-| Pocket Saves | Pocket app saves | API integration |
-| Instapaper | Read-later service | API integration |
+### Images ✅ NEW
+| Type | Description | Status |
+|------|-------------|--------|
+| JPEG/PNG/GIF/WebP | Image files | ✅ Complete |
+| Screenshots | Screen captures | ✅ Complete |
+| Whiteboard Photos | Handwritten notes | ✅ Complete |
+| Infographics | Charts, diagrams | ✅ Complete |
+
+### Web Content ✅
+| Type | Description | Status |
+|------|-------------|--------|
+| URLs/Websites | Any web page | ✅ Complete |
+| Articles/Blogs | Online articles | ✅ Complete |
 
 ### Notes
-| Type | Description | Processing |
-|------|-------------|------------|
-| Rich Text Notes | WYSIWYG editor | Direct storage |
-| Markdown Notes | Markdown editor | Direct storage |
-| Voice Notes | Audio recordings | Whisper transcription |
-| Quick Captures | Quick text input | Direct storage |
+| Type | Description | Status |
+|------|-------------|--------|
+| Quick Captures | Quick text input | ✅ UI Ready |
+| Rich Text Notes | WYSIWYG editor | 🔜 Planned |
+| Voice Notes | Audio recordings | 🔜 Planned |
 
 ---
 
@@ -54,350 +52,180 @@ MoonScribe is a comprehensive AI-powered knowledge management platform that help
 ```
 /                                    → Landing / Marketing
 /app                                 → Main Application
-├── /dashboard                       → Home Dashboard
+├── /                                → Dashboard
+├── /inbox                           → Uncategorized content
 ├── /library                         → Content Library
-│   ├── /documents                   → All documents
-│   ├── /media                       → Videos, podcasts, audio
-│   ├── /web                         → Websites, articles, bookmarks
-│   ├── /notes                       → Personal notes
-│   └── /[contentId]                 → Single content view
+│   ├── /documents                   → PDFs, docs
+│   ├── /media                       → YouTube, audio
+│   ├── /web                         → URLs, articles
+│   └── /notes                       → Personal notes
 ├── /projects                        → Projects
-│   ├── /                            → All projects list
-│   └── /[projectId]                 → Project workspace
-│       ├── /                        → Overview
-│       ├── /sources                 → Project sources
-│       ├── /chat                    → AI Chat
-│       ├── /insights                → Saved insights
-│       ├── /studio                  → Canvas/whiteboard
-│       └── /settings                → Project settings
-├── /insights                        → Global insights library
-│   ├── /                            → All saved insights
-│   ├── /[insightId]                 → Single insight view
-│   └── /collections                 → Insight collections
-├── /team                            → Team & Collaboration
-│   ├── /                            → Team overview
-│   ├── /members                     → Team members
-│   ├── /workspaces                  → Team workspaces
-│   ├── /shared                      → Shared with me
-│   └── /activity                    → Activity feed
-├── /integrations                    → Connected services
-├── /settings                        → Global settings
-│   ├── /profile                     → User profile
-│   ├── /api-keys                    → API key management
-│   ├── /billing                     → Subscription/billing
-│   ├── /preferences                 → App preferences
-│   └── /data                        → Data management
-└── /export                          → Export center
+│   └── /[projectId]                 → Project workspace (chat + sources)
+├── /insights                        → Saved AI insights
+├── /team                            → Team management
+└── /settings                        → Settings
+    ├── Profile tab
+    ├── API Keys tab
+    ├── Team tab
+    └── Integrations tab
+/auth
+├── /signin                          → Sign in
+├── /signup                          → Sign up
+└── /callback                        → OAuth callback
 ```
 
 ---
 
 ## 3. Core Features
 
-### 3.1 Content Ingestion
-- **Upload**: Drag & drop, file picker
-- **Import**: URL input, browser extension
-- **Connect**: OAuth integrations (Google, Pocket, etc.)
-- **Capture**: Quick capture widget, mobile app
-- **Sync**: Automatic sync from connected services
+### 3.1 Content Ingestion ✅
+- **Upload**: Drag & drop, file picker (PDF, images)
+- **URL**: YouTube videos, web pages
+- **Quick Capture**: FAB button for fast adding
 
-### 3.2 Content Processing
-- **Text Extraction**: PDF, Word, web pages
-- **Transcription**: Audio/video via Whisper
-- **Summarization**: AI-generated summaries
-- **Chunking**: Semantic text splitting
-- **Embedding**: Vector embeddings for search
-- **Metadata**: Auto-extract titles, dates, authors
+### 3.2 Content Processing ✅
+- **PDF**: Text extraction, semantic chunking, embedding
+- **YouTube**: Transcript extraction with timestamps
+- **Web**: Clean text extraction with metadata
+- **Images**: GPT-4 Vision analysis, OCR text extraction
+- **Detection**: Password-protected, DRM, scanned PDF warnings
 
-### 3.3 Organization
+### 3.3 Organization ✅
 - **Projects**: Group related content
-- **Tags**: Flexible tagging system
-- **Collections**: Curated content groups
-- **Smart Folders**: Auto-organize by rules
-- **Search**: Full-text + semantic search
+- **Inbox**: Uncategorized content for later organization
+- **Library**: Browse all content by type
 
-### 3.4 AI Features
-- **Chat**: Conversational Q&A with sources
-- **Summarize**: Generate summaries
-- **Extract**: Pull key insights, facts, quotes
-- **Compare**: Compare multiple sources
-- **Generate**: Create new content from sources
-- **Translate**: Multi-language support
+### 3.4 AI Features ✅
+- **RAG Chat**: Conversational Q&A with sources
+- **Citations**: Source references with relevance scores
+- **Multi-model**: GPT-4o, GPT-4, GPT-3.5, Claude
+- **Vision**: Image understanding and OCR
 
-### 3.5 Insights Management
-- **Save**: Save specific AI responses
-- **Annotate**: Add notes to insights
-- **Tag**: Organize insights
-- **Link**: Connect insights to sources
-- **Cite**: Generate citations
+### 3.5 Insights Management ✅
+- **Save**: Save AI responses as insights
+- **Edit**: Edit title, content, tags
+- **Archive**: Archive old insights
+- **Export**: Copy, Markdown, PDF formats
+- **Filter**: By project, tag, date
 
-### 3.6 Export & Sharing
-- **Export Formats**: PDF, Markdown, Word, HTML
-- **Share Links**: Public/private share links
-- **Embed**: Embed in other apps
-- **API**: Programmatic access
-- **Integrations**: Send to Notion, Obsidian, etc.
+### 3.6 Authentication ✅
+- **Email/Password**: Standard auth
+- **Guest Mode**: 5 free queries
+- **OAuth**: Google, GitHub (config needed)
 
-### 3.7 Collaboration
-- **Workspaces**: Personal vs Team
-- **Roles**: Owner, Admin, Editor, Viewer
-- **Sharing**: Share projects, insights, content
-- **Comments**: Comment on insights
-- **Activity**: Activity feed & notifications
-- **Real-time**: Live collaboration
+### 3.7 Team Collaboration ✅ NEW
+- **Team Codes**: Unique codes like `MOON-A1B2-C3D4`
+- **Shared API Key**: Team leader's key used by all members
+- **Server-side Encryption**: AES-256-GCM for stored keys
+- **No Individual Keys Needed**: Members just join with code
 
 ---
 
-## 4. User Interface Components
+## 4. Data Storage Architecture
 
-### Global Components
-```
-├── AppShell              → Main layout wrapper
-├── Sidebar               → Main navigation
-├── Header                → Top bar with search
-├── CommandPalette        → Cmd+K quick actions
-├── NotificationCenter    → Alerts & updates
-└── QuickCapture          → Global capture modal
-```
-
-### Dashboard
-```
-├── WelcomeSection        → Greeting, quick stats
-├── RecentActivity        → Recent content & chats
-├── QuickActions          → Common actions
-├── ProjectsGrid          → Recent projects
-└── InsightsPreview       → Recent insights
-```
-
-### Library Views
-```
-├── ContentGrid           → Grid view of content
-├── ContentList           → List view of content
-├── ContentFilters        → Filter sidebar
-├── ContentSearch         → Search & sort
-├── ContentPreview        → Quick preview modal
-└── BulkActions           → Multi-select actions
-```
-
-### Project Workspace
-```
-├── ProjectHeader         → Project info, actions
-├── SourcesPanel          → Content sources
-├── ChatInterface         → AI conversation
-├── HistoryPanel          → Chat history
-├── InsightsPanel         → Saved insights
-├── StudioCanvas          → Visual workspace
-└── SourceViewer          → View source content
-```
-
-### Content Viewers
-```
-├── DocumentViewer        → PDF, docs viewer
-├── VideoPlayer           → Video with transcript
-├── AudioPlayer           → Podcast/audio player
-├── ArticleReader         → Clean article view
-├── NoteEditor            → Rich text editor
-└── TranscriptView        → Synced transcript
-```
-
-### Insights
-```
-├── InsightCard           → Single insight
-├── InsightEditor         → Edit/annotate
-├── InsightExport         → Export options
-├── InsightShare          → Share dialog
-└── CitationGenerator     → Generate citations
-```
-
-### Team/Collaboration
-```
-├── TeamOverview          → Team dashboard
-├── MemberList            → Team members
-├── InviteModal           → Invite new members
-├── PermissionsEditor     → Role management
-├── ActivityFeed          → Team activity
-└── SharedWithMe          → Shared content
-```
-
----
-
-## 5. Data Storage Philosophy
-
-### Local-First (BYOK Consistent)
-
-MoonScribe follows a **local-first** architecture that's philosophically consistent with BYOK:
-
+### Local-First Philosophy
 ```
 Your Keys → Your Data → Your Control
 ```
 
-#### Default Mode (No Account)
-| Data Type | Storage | Location |
-|-----------|---------|----------|
-| API Keys | Encrypted | localStorage |
-| Documents | Raw files | IndexedDB |
-| Projects | JSON | localStorage |
-| Conversations | JSON | localStorage |
-| Insights | JSON | localStorage |
-| Vectors | Text chunks | Pinecone* |
+### Storage Locations
 
-*Vectors are text fragments only - no filenames or identifying metadata.
+| Data Type | Location | Encryption |
+|-----------|----------|------------|
+| User Auth | Supabase Auth | Supabase managed |
+| Credits Balance | Supabase | None (just numbers) |
+| Team Info | Supabase | Team code plain, API key encrypted |
+| Team API Keys | Supabase | AES-256-GCM server-side |
+| Projects | localStorage | None |
+| Insights | localStorage | None |
+| Inbox Content | localStorage | None |
+| Personal API Keys | localStorage | AES-GCM client-side |
+| Vector Embeddings | Pinecone | None (text chunks only) |
 
-#### Sync Mode (With Account)
-| Data Type | Storage | Location |
-|-----------|---------|----------|
-| All above | Encrypted | Supabase |
-| Enables | Multi-device sync, collaboration |
-
-#### Why This Approach?
-1. **Consistent with BYOK** - If we respect privacy for API keys, we should for documents too
-2. **No account required** - Users can use the app immediately
-3. **Explicit opt-in** - Cloud sync is a conscious choice, not default
-4. **Enterprise-friendly** - Sensitive data never leaves the device unless user chooses
-
-#### Vector Storage Note
-Text chunks sent to Pinecone are:
-- Fragments (500-1500 tokens), not full documents
-- No filename or source metadata
-- Just text for semantic similarity search
-
-This is acceptable because:
-- Chunks are meaningless without full context
-- Similar to how BYOK works - your key, but OpenAI processes the text
-- Industry standard for RAG applications
+### Why This Approach?
+1. **BYOK Consistent**: If we respect privacy for keys, we should for data too
+2. **No account required**: Basic use works without sign-up
+3. **Team-friendly**: Shared API key simplifies team onboarding
+4. **Enterprise-safe**: Sensitive data controllable
 
 ---
 
-### User
-```typescript
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  role: 'free' | 'pro' | 'team' | 'enterprise';
-  createdAt: Date;
-  settings: UserSettings;
-}
+## 5. API Architecture
+
+### Content Processing APIs
+
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/api/upload` | POST | PDF processing | Optional |
+| `/api/youtube` | POST | YouTube transcript | Optional |
+| `/api/web` | POST | Web page scraping | Optional |
+| `/api/image` | POST | Image processing | Optional |
+| `/api/ask` | POST | RAG query | Optional |
+
+### Team APIs
+
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/api/teams` | POST | Create team | Yes |
+| `/api/teams` | GET | Get user's team | Yes |
+| `/api/teams/join` | POST | Join team with code | Yes |
+| `/api/teams/api-key` | PUT | Update team API key | Yes (owner) |
+| `/api/teams/api-key` | DELETE | Remove team API key | Yes (owner) |
+| `/api/teams/members` | GET | List members | Yes |
+| `/api/teams/members` | DELETE | Remove member | Yes (owner) |
+
+### Payment APIs
+
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/api/stripe/checkout` | POST | Create checkout session | Yes |
+| `/api/stripe/webhook` | POST | Handle Stripe events | Stripe signature |
+
+### API Key Priority Logic
 ```
-
-### Workspace
-```typescript
-interface Workspace {
-  id: string;
-  name: string;
-  type: 'personal' | 'team';
-  ownerId: string;
-  members: WorkspaceMember[];
-  createdAt: Date;
-}
-```
-
-### Project
-```typescript
-interface Project {
-  id: string;
-  workspaceId: string;
-  name: string;
-  description?: string;
-  color: string;
-  icon: string;
-  sources: string[]; // Content IDs
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-### Content
-```typescript
-interface Content {
-  id: string;
-  workspaceId: string;
-  type: ContentType;
-  title: string;
-  description?: string;
-  sourceUrl?: string;
-  metadata: ContentMetadata;
-  status: 'processing' | 'ready' | 'error';
-  chunks: ContentChunk[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-type ContentType = 
-  | 'pdf' | 'docx' | 'google_doc' | 'google_slide' | 'markdown' | 'text'
-  | 'youtube' | 'youtube_short' | 'tiktok' | 'vimeo' | 'podcast' | 'audio'
-  | 'url' | 'article' | 'bookmark'
-  | 'note' | 'voice_note';
-```
-
-### Conversation
-```typescript
-interface Conversation {
-  id: string;
-  projectId: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-### Insight
-```typescript
-interface Insight {
-  id: string;
-  workspaceId: string;
-  projectId?: string;
-  conversationId?: string;
-  messageId?: string;
-  title: string;
-  content: string;
-  sources: InsightSource[];
-  tags: string[];
-  annotations?: string;
-  isPublic: boolean;
-  shareId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+Request comes in
+    │
+    ├─ Has apiKey in request body? → Use it (BYOK)
+    │
+    ├─ User authenticated?
+    │   └─ Has team with API key? → Use team key
+    │
+    └─ Use server OPENAI_API_KEY + deduct credits
 ```
 
 ---
 
-## 6. Integration Points
+## 6. Monetization Model
 
-### Content Import
-- Google Drive
-- Dropbox
-- OneDrive
-- Pocket
-- Instapaper
-- Readwise
-- Browser Extension
+### Credits System (Current)
 
-### Content Export
-- Notion
-- Obsidian
-- Roam Research
-- Evernote
-- Google Docs
-- Microsoft Word
+| Package | Credits | Price | Per Credit |
+|---------|---------|-------|------------|
+| **Starter** | 100 | Free (once) | Free |
+| **Basic** | 500 | $5 | $0.01 |
+| **Standard** | 1,500 | $12 | $0.008 |
+| **Pro** | 5,000 | $35 | $0.007 |
+| **BYOK** | ∞ | $0 | Your cost |
+| **Team** | ∞ | Leader's key | Leader's cost |
 
-### AI Providers (BYOK)
-- OpenAI (GPT-4, GPT-3.5)
-- Anthropic (Claude)
-- Google (Gemini)
-- Ollama (Local)
-- Azure OpenAI
-- AWS Bedrock
+### Credit Costs
 
-### Authentication
-- Email/Password
-- Google OAuth
-- GitHub OAuth
-- Microsoft OAuth
-- SSO (Enterprise)
+| Action | Credits | Your Cost | Margin |
+|--------|---------|-----------|--------|
+| Ask (GPT-3.5) | 1 | ~$0.002 | ~75% |
+| Ask (GPT-4o) | 5 | ~$0.02 | ~60% |
+| Ask (GPT-4) | 10 | ~$0.04 | ~50% |
+| Ask (Claude) | 5 | ~$0.015 | ~70% |
+| Upload (per page) | 1 | ~$0.0001 | ~99% |
+| YouTube | 2 | ~$0.001 | ~94% |
+| Web page | 1 | ~$0.001 | ~88% |
+| Image | 5 | ~$0.02 | ~60% |
+
+### Revenue Projection (1000 users)
+- Monthly revenue: ~$1,500-2,000
+- OpenAI costs: ~$150-300
+- Infrastructure: ~$100-200
+- **Net profit: ~$1,200-1,500/month**
 
 ---
 
@@ -407,24 +235,24 @@ interface Insight {
 - Next.js 14 (App Router)
 - React 18
 - TypeScript
-- Tailwind CSS / CSS-in-JS
+- Custom CSS (inline styles, no Tailwind)
 
 ### Backend
 - Next.js API Routes
 - Supabase (Database + Auth)
 - Pinecone (Vector DB)
-- Redis (Caching)
 
 ### AI/ML
-- OpenAI API
-- Anthropic API
-- Whisper (Transcription)
-- LangChain (Orchestration)
+- OpenAI API (GPT-4o, GPT-4, GPT-3.5, Embeddings, Vision)
+- Anthropic API (Claude)
 
-### Storage
-- Supabase Storage
-- S3 (Documents)
-- CDN (Static assets)
+### Processing
+- pdf-parse (PDF text extraction)
+- cheerio (HTML parsing)
+- youtube-transcript (YouTube transcripts)
+
+### Payments
+- Stripe (Checkout, Webhooks)
 
 ### Infrastructure
 - Vercel (Hosting)
@@ -433,100 +261,71 @@ interface Insight {
 
 ---
 
-## 8. Feature Roadmap
+## 8. Security
 
-### Phase 1: Foundation ✓
-- [x] Project structure
-- [x] Basic UI framework
-- [x] PDF upload & processing
-- [x] Basic RAG chat
-- [x] BYOK support
+### API Key Security
+| Key Type | Storage | Encryption |
+|----------|---------|------------|
+| Personal BYOK | localStorage | AES-GCM (Web Crypto API) |
+| Team API Key | Supabase | AES-256-GCM (server-side) |
+| Server Key | Vercel env | Vercel encrypted |
 
-### Phase 2: Content Types
-- [ ] Web/URL ingestion
-- [ ] YouTube video support
-- [ ] Note-taking editor
-- [ ] Audio transcription
-- [ ] Google Docs integration
+### Authentication
+- Supabase Auth with RLS (Row Level Security)
+- JWT tokens for API routes
+- Guest mode with limited queries
 
-### Phase 3: Organization
-- [ ] Tags system
-- [ ] Collections
-- [ ] Smart search
-- [ ] Content preview
-
-### Phase 4: Insights
-- [ ] Save answers as insights
-- [ ] Insight annotations
-- [ ] Export to PDF/Markdown
-- [ ] Share links
-- [ ] Citation generator
-
-### Phase 5: Collaboration
-- [ ] Team workspaces
-- [ ] Member management
-- [ ] Role permissions
-- [ ] Activity feed
-- [ ] Comments
-
-### Phase 6: Integrations
-- [ ] Notion export
-- [ ] Pocket import
-- [ ] Readwise sync
-
-### Phase 7: Browser Extension
-- [ ] Chrome/Firefox extension skeleton
-- [ ] Quick capture popup (URL, selection, full page)
-- [ ] Save to specific project
-- [ ] Highlight & annotate on page
-- [ ] YouTube transcript capture
-- [ ] Right-click context menu
-- [ ] Keyboard shortcuts
-
-### Phase 8: Mobile App
-- [ ] React Native or PWA
-- [ ] Voice note capture
-- [ ] Share sheet integration
-- [ ] Offline mode
+### Data Protection
+- RLS policies on all Supabase tables
+- Team API keys only decrypted server-side
+- No raw API keys in client responses
 
 ---
 
-## 9. UI/UX Principles
+## 9. Feature Status
 
-1. **Clean & Focused**: Minimal UI, maximum content
-2. **Fast**: Instant search, quick actions
-3. **Flexible**: Multiple views, customizable
-4. **Connected**: Everything links to everything
-5. **Accessible**: Keyboard shortcuts, screen readers
-6. **Delightful**: Smooth animations, micro-interactions
+### ✅ Complete
+- Project-driven architecture
+- Multi-source RAG (PDF, YouTube, Web, Images)
+- Credits system with Stripe
+- Team system with shared API keys
+- Authentication with guest mode
+- Insights management
+- Enhanced PDF detection
+
+### 🔜 Planned
+- Audio/podcast transcription
+- Browser extension
+- Rich note editor
+- Mobile PWA
+- Real-time collaboration
+- OAuth providers
 
 ---
 
-## 10. Monetization Model
+## 10. Design System
 
-### Free Tier
-- 3 projects
-- 50 documents
-- 100 AI queries/month
-- Basic export
+### Colors
+```
+Primary: #8b5cf6 (Purple)
+Secondary: #6366f1 (Indigo)
+Background: #0f0f23 → #1a1a2e (Dark gradient)
+Text Primary: #f1f5f9
+Text Secondary: #94a3b8
+Text Muted: #64748b
+Border: rgba(139, 92, 246, 0.15)
+Success: #34d399
+Warning: #fbbf24
+Error: #f87171
+```
 
-### Pro ($12/month)
-- Unlimited projects
-- 500 documents
-- 1000 AI queries/month
-- All export formats
-- Priority support
+### UI Patterns
+- Glassmorphism with backdrop-filter
+- Purple accent gradients
+- Dark theme only
+- FAB for primary action
+- Inline styles (no Tailwind)
 
-### Team ($20/user/month)
-- Everything in Pro
-- Team workspaces
-- Collaboration features
-- Admin controls
-- SSO
+---
 
-### Enterprise (Custom)
-- Everything in Team
-- Unlimited usage
-- Custom integrations
-- Dedicated support
-- SLA
+*Last Updated: January 2026*

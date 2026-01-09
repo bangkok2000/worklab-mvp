@@ -1,204 +1,364 @@
 # MoonScribe - Implementation Summary
 
-## ✅ Completed Tasks
+## ✅ Completed Features
 
-### 1. **Branding Update**
-- Updated all references from "WorkLab" to "MoonScribe"
-- Updated `package.json` name
-- Updated UI heading in `app/page.tsx`
-- Updated all strategy and wireframe documents
+### 1. **Core RAG System**
+- PDF upload and text extraction
+- Semantic chunking (paragraph/sentence aware)
+- OpenAI embeddings (text-embedding-3-large)
+- Pinecone vector storage
+- Query expansion for better search
+- Multi-provider support (OpenAI, Anthropic)
 
-### 2. **Migration Guide Created**
-- **File:** `MIGRATION_GUIDE.md`
-- Pinecone index migration instructions
-- Supabase setup and SQL schema
-- Step-by-step migration checklist
+### 2. **Content Processors**
 
-### 3. **Supabase Schema Design**
-- **File:** `SUPABASE_SCHEMA.md`
-- Complete database schema documentation
-- Entity relationship diagrams
-- Query examples
-- Future extension plans
+#### YouTube Processing (`/api/youtube`)
+- Video ID extraction from all YouTube URL formats
+- Transcript fetching via youtube-transcript library
+- Timestamped chunking
+- Video metadata (title, author, thumbnail)
+- Pinecone indexing with timestamp links
 
-### 4. **Supabase Client Setup**
-Created utility files in `lib/supabase/`:
+#### Web Page Scraping (`/api/web`)
+- URL validation and normalization
+- HTML fetching with proper headers
+- Content extraction using cheerio
+- Metadata extraction (title, author, favicon, image)
+- Clean text chunking
+- Pinecone indexing
 
-- **`client.ts`** - Supabase client initialization
-  - Client-side client
-  - Server-side client
-  - Admin client (for service role)
+#### Image Processing (`/api/image`)
+- Support for JPEG, PNG, GIF, WebP
+- 20MB file size limit
+- GPT-4 Vision analysis
+- Text extraction (OCR) mode
+- Image description mode
+- Pinecone indexing for search
 
-- **`types.ts`** - TypeScript type definitions
-  - Profile, Collection, Document
-  - Conversation, Message
-  - ApiKey, UsageLog
+#### Enhanced PDF Processing (`/api/upload`)
+- Password-protected PDF detection
+- DRM-protected PDF detection
+- Scanned/OCR PDF detection (low text density)
+- Corrupted PDF detection
+- Warning messages with user guidance
 
-- **`documents.ts`** - Document management functions
-  - `getUserDocuments()`
-  - `createDocument()`
-  - `updateDocument()`
-  - `deleteDocument()`
-  - Collection management
+### 3. **Authentication System**
+- Supabase Auth integration
+- Email/password sign up and sign in
+- Session management
+- Protected routes
+- Guest mode (5 free queries without account)
+- AuthContext for React components
 
-- **`conversations.ts`** - Conversation management
-  - `getUserConversations()`
-  - `createConversation()`
-  - `addMessage()`
-  - `getConversationWithMessages()`
+### 4. **Credits System**
 
-- **`usage.ts`** - Usage tracking
-  - `logUsage()`
-  - `getMonthlyUsage()`
-  - `getUsageByProvider()`
-  - Cost estimation functions
+#### Database Schema (`supabase-credits-schema.sql`)
+- `credits` table (user balances)
+- `credit_transactions` table (audit log)
+- `credit_packages` table (purchasable packages)
+- `credit_costs` table (per-action costs)
+- Auto-create credits for new users trigger
+- RLS policies for security
 
-### 5. **API Routes Updated**
+#### Credits Service (`lib/supabase/credits.ts`)
+- `getCredits()` - Get user's credit record
+- `getBalance()` - Get current balance
+- `hasEnoughCredits()` - Check before action
+- `getCreditCost()` - Get cost for action
+- `deductCredits()` - Deduct with transaction log
+- `addCredits()` - Add credits (purchases)
+- `claimFreeStarterCredits()` - One-time 100 free
 
-#### **`app/api/upload/route.ts`**
-- ✅ Integrated Supabase for document metadata
-- ✅ Creates document records in database
-- ✅ Updates document status (processing → ready)
-- ✅ Tracks chunk count
-- ✅ Logs embedding usage and costs
-- ✅ Supports collections
-- ✅ Gracefully handles anonymous users
+#### UI Components
+- `CreditBalance` - Header display with "X left"
+- `BuyCreditsModal` - Package selection + Stripe checkout
+- Low balance warning indicator
 
-#### **`app/api/ask/route.ts`**
-- ✅ Integrated Supabase for conversation storage
-- ✅ Creates/updates conversations
-- ✅ Saves user messages and AI responses
-- ✅ Stores source citations
-- ✅ Tracks token usage and costs
-- ✅ Logs chat operations
-- ✅ Supports conversation continuity
+### 5. **Stripe Integration**
 
-## 📦 Required Dependencies
+#### Checkout (`/api/stripe/checkout`)
+- Create Stripe checkout sessions
+- Package-based pricing
+- Success/cancel redirects
+- User ID in metadata
 
-Install the Supabase client:
-```bash
-npm install @supabase/supabase-js
-```
+#### Webhook (`/api/stripe/webhook`)
+- Signature verification
+- `checkout.session.completed` handling
+- Credit addition on payment success
 
-## 🔧 Environment Variables
+### 6. **Team System**
 
-Ensure your `.env.local` includes:
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_key
+#### Database Schema (`supabase-teams-schema.sql`)
+- `teams` table (team info, encrypted API key)
+- `team_members` table (memberships)
+- Team code generation function
+- RLS policies for owners and members
 
-# Pinecone (update index name if desired)
-PINECONE_INDEX=worklab-test  # or moonscribe-test
+#### Team APIs
+- `POST /api/teams` - Create team with auto-generated code
+- `GET /api/teams` - Get user's team
+- `POST /api/teams/join` - Join with team code
+- `PUT /api/teams/api-key` - Update team API key (owner)
+- `DELETE /api/teams/api-key` - Remove API key (owner)
+- `GET /api/teams/members` - List team members
+- `DELETE /api/teams/members` - Remove member (owner)
 
-# OpenAI (existing)
-OPENAI_API_KEY=your_key
-```
+#### Server-side Encryption (`lib/utils/server-encryption.ts`)
+- AES-256-GCM encryption
+- `ENCRYPTION_SECRET` environment variable
+- `encryptApiKey()` / `decryptApiKey()` functions
 
-## 🗄️ Database Setup
+#### Team API Key Usage (`lib/supabase/teams.ts`)
+- `getTeamApiKey()` - Get decrypted team key for user
+- Checks if user owns team or is member
+- Returns provider info and team name
 
-1. **Run the SQL schema** from `MIGRATION_GUIDE.md` in your Supabase SQL Editor
-2. **Verify tables created:**
-   - profiles
-   - collections
-   - documents
-   - conversations
-   - messages
-   - api_keys
-   - usage_logs
+### 7. **API Key Priority System**
+All AI routes (`/api/ask`, `/api/upload`, `/api/youtube`, `/api/web`, `/api/image`) support:
+1. **User BYOK** - API key from request body (highest priority)
+2. **Team API Key** - From team leader (if user in team)
+3. **Server Credits** - MoonScribe's key + credit deduction
 
-3. **Verify RLS policies** are enabled and working
+### 8. **UI Framework**
 
-## 🚀 Next Steps
+#### Pages
+- Dashboard with real stats from localStorage
+- Inbox for uncategorized content
+- Library with sub-pages (Documents, Media, Web, Notes)
+- Projects list and workspace
+- Insights with edit/delete/archive/sort/export
+- Team management
+- Settings (Profile, API Keys, Team, Integrations tabs)
 
-### Immediate:
-1. **Install Supabase package:**
-   ```bash
-   npm install @supabase/supabase-js
-   ```
+#### Components
+- AppShell with sidebar navigation
+- FAB (Floating Action Button) for Add Content
+- Header with notifications, help, settings
+- QuickCaptureModal for content entry
+- Various UI components (Button, Card, Modal, etc.)
 
-2. **Run Supabase SQL schema** (from MIGRATION_GUIDE.md)
-
-3. **Test the integration:**
-   - Upload a document (should create DB record)
-   - Ask a question (should save conversation)
-   - Check Supabase dashboard for data
-
-### Short-term:
-1. **User Authentication** (Phase 5 TODO)
-   - Implement Supabase Auth UI
-   - Add login/signup pages
-   - Protect API routes
-
-2. **BYOK Implementation**
-   - API key management UI
-   - Client-side encryption
-   - Key validation
-
-3. **Frontend Updates**
-   - Display document list from Supabase
-   - Show conversation history
-   - Display usage statistics
-
-### Medium-term:
-1. **Collections UI**
-   - Create/manage collections
-   - Organize documents
-   - Filter by collection
-
-2. **Chat History**
-   - Resume conversations
-   - View past messages
-   - Export conversations
-
-3. **Usage Dashboard**
-   - Cost tracking
-   - Usage analytics
-   - Provider comparison
-
-## 📝 Notes
-
-### Current Behavior:
-- **Anonymous users:** Can still use the app, but data won't be saved to Supabase
-- **Authenticated users:** All data is saved and linked to their account
-- **Backward compatible:** Existing functionality still works without Supabase
-
-### Error Handling:
-- Database operations are wrapped in try-catch
-- Failures are logged but don't break the main flow
-- App continues to work even if Supabase is unavailable
-
-### Security:
-- RLS policies ensure users can only access their own data
-- API keys will be encrypted client-side (when BYOK is implemented)
-- Service key should only be used server-side
-
-## 🐛 Known Issues / TODOs
-
-1. **Authentication:** Currently supports optional auth via Bearer token
-   - Need to implement proper auth flow
-   - Add auth UI components
-
-2. **API Key Linking:** Usage logs don't link to API keys yet
-   - Will be implemented with BYOK feature
-
-3. **Cost Estimation:** Pricing may need updates
-   - Current pricing is approximate
-   - Should be configurable per provider
-
-4. **TypeScript Paths:** Using `@/lib/` alias
-   - Ensure `tsconfig.json` has proper path mapping
-
-## 📚 Documentation Files
-
-- `PRODUCT_STRATEGY.md` - Complete product strategy
-- `UI_WIREFRAMES.md` - UI/UX wireframes
-- `MIGRATION_GUIDE.md` - Migration instructions
-- `SUPABASE_SCHEMA.md` - Database schema docs
-- `IMPLEMENTATION_SUMMARY.md` - This file
+### 9. **Data Storage**
+- localStorage for projects, insights, inbox
+- Supabase for auth, credits, teams
+- Pinecone for vector embeddings
 
 ---
 
-*Last updated: After Supabase integration*
+## 📦 Dependencies
 
+```json
+{
+  "dependencies": {
+    "@pinecone-database/pinecone": "^2.0.0",
+    "@stripe/stripe-js": "^2.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "cheerio": "^1.0.0",
+    "next": "14.2.35",
+    "openai": "^4.0.0",
+    "pdf-parse": "^1.1.1",
+    "react": "^18.0.0",
+    "stripe": "^14.0.0",
+    "youtube-transcript": "^1.0.0"
+  }
+}
+```
+
+---
+
+## 🔧 Environment Variables
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_KEY=
+
+# Pinecone
+PINECONE_API_KEY=
+PINECONE_INDEX=moonscribe
+
+# OpenAI (for Credits mode)
+OPENAI_API_KEY=
+
+# Team API Key Encryption
+ENCRYPTION_SECRET=
+
+# Stripe
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_APP_URL=
+```
+
+---
+
+## 🗄️ Database Setup
+
+### 1. Run Credits Schema
+Execute `supabase-credits-schema.sql` in Supabase SQL Editor:
+- Creates credits, transactions, packages, costs tables
+- Sets up RLS policies
+- Creates auto-credit trigger for new users
+
+### 2. Run Teams Schema
+Execute `supabase-teams-schema.sql` in Supabase SQL Editor:
+- Creates teams, team_members tables
+- Sets up RLS policies
+- Creates team code generation function
+
+### 3. Insert Credit Packages
+```sql
+INSERT INTO credit_packages (name, credits, price_cents, stripe_price_id, description, badge, sort_order)
+VALUES 
+  ('Basic', 500, 500, 'price_xxx', '500 credits for light users', NULL, 1),
+  ('Standard', 1500, 1200, 'price_xxx', '1500 credits for regular use', 'Popular', 2),
+  ('Pro', 5000, 3500, 'price_xxx', '5000 credits for heavy users', 'Best Value', 3);
+```
+
+---
+
+## 🚀 Deployment Checklist
+
+### Before Launch
+- [ ] Create OpenAI business account
+- [ ] Add `OPENAI_API_KEY` to Vercel
+- [ ] Create Stripe account
+- [ ] Add Stripe keys to Vercel
+- [ ] Create Stripe webhook endpoint
+- [ ] Create Stripe products/prices
+- [ ] Run `supabase-credits-schema.sql`
+- [ ] Run `supabase-teams-schema.sql`
+- [ ] Insert credit packages with Stripe price IDs
+- [ ] Generate `ENCRYPTION_SECRET` (32+ chars)
+- [ ] Test full flow (sign up → free credits → query → buy more)
+
+### Optional
+- [ ] Set up Google OAuth in Supabase
+- [ ] Set up GitHub OAuth in Supabase
+- [ ] Configure custom domain
+- [ ] Set up error monitoring (Sentry)
+- [ ] Set up analytics
+
+---
+
+## 📝 API Reference
+
+### Content Processing
+
+#### POST /api/upload
+```typescript
+// FormData
+file: File           // PDF file
+collectionId?: string
+apiKey?: string      // BYOK
+
+// Response
+{
+  success: boolean,
+  chunks: number,
+  filename: string,
+  documentId: string,
+  pageCount: number,
+  warning?: string,  // OCR warning if applicable
+  credits?: { used: number, remaining: number },
+  mode: 'byok' | 'team' | 'credits',
+  teamName?: string
+}
+```
+
+#### POST /api/youtube
+```typescript
+// Body
+{
+  url: string,
+  projectId?: string,
+  apiKey?: string
+}
+
+// Response
+{
+  success: boolean,
+  videoId: string,
+  title: string,
+  author: string,
+  thumbnail: string,
+  chunksProcessed: number,
+  totalDuration: string,
+  credits?: { used: number, remaining: number },
+  mode: 'byok' | 'team' | 'credits'
+}
+```
+
+#### POST /api/web
+```typescript
+// Body
+{
+  url: string,
+  projectId?: string,
+  apiKey?: string
+}
+
+// Response
+{
+  success: boolean,
+  pageId: string,
+  url: string,
+  title: string,
+  description: string,
+  author: string,
+  favicon: string,
+  chunksProcessed: number,
+  credits?: { used: number, remaining: number },
+  mode: 'byok' | 'team' | 'credits'
+}
+```
+
+#### POST /api/image
+```typescript
+// FormData
+file: File           // Image file (JPEG, PNG, GIF, WebP)
+projectId?: string
+apiKey?: string
+extractText?: 'true' // OCR mode
+
+// Response
+{
+  success: boolean,
+  imageId: string,
+  filename: string,
+  analysis: string,
+  extractedText: boolean,
+  credits?: { used: number, remaining: number },
+  mode: 'byok' | 'team' | 'credits'
+}
+```
+
+#### POST /api/ask
+```typescript
+// Body
+{
+  question: string,
+  conversationId?: string,
+  collectionId?: string,
+  documentIds?: string[],
+  sourceFilenames?: string[],
+  apiKey?: string,
+  provider?: 'openai' | 'anthropic',
+  model?: string
+}
+
+// Response
+{
+  answer: string,
+  sources: Array<{ number, source, relevance }>,
+  conversationId: string,
+  credits?: { used: number, remaining: number },
+  mode: 'byok' | 'team' | 'credits',
+  teamName?: string
+}
+```
+
+---
+
+*Last Updated: January 2026*
