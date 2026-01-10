@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { EmptyState, Button, Badge } from '../ui';
+import { EmptyState, Button, Badge, Input } from '../ui';
 
 interface Conversation {
   id: string;
@@ -117,23 +117,21 @@ export default function HistoryPanel({
         <Button variant="primary" fullWidth onClick={onNewConversation} leftIcon={<span>+</span>}>
           New Conversation
         </Button>
-        <input
-          type="text"
-          placeholder="Search conversations..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: '100%',
-            marginTop: '0.75rem',
-            padding: '0.5rem 0.75rem',
-            background: 'rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '8px',
-            fontSize: '0.8125rem',
-            color: '#f1f5f9',
-            outline: 'none',
-          }}
-        />
+        <div style={{ marginTop: '0.75rem' }}>
+          <Input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            inputSize="sm"
+            leftIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            }
+          />
+        </div>
       </div>
 
       {/* Conversations List */}

@@ -104,21 +104,6 @@ export default function SourcesPanel({
         </h2>
       </div>
 
-      {/* Search */}
-      <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
-        <Input
-          placeholder="Search sources..."
-          value={searchQuery}
-          onChange={(e) => onSearchChange?.(e.target.value)}
-          leftIcon={
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-          }
-        />
-      </div>
-
       {/* Add Content Button */}
       {onAddContent && (
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
@@ -194,6 +179,22 @@ export default function SourcesPanel({
             Supports PDF, Images, Audio (MP3, WAV, M4A) up to 100MB
           </p>
         </div>
+      </div>
+
+      {/* Search */}
+      <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
+        <Input
+          placeholder="Search sources..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange?.(e.target.value)}
+          inputSize="sm"
+          leftIcon={
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          }
+        />
       </div>
 
       {/* Documents List */}

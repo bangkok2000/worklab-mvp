@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Input from '@/app/components/ui/Input';
 
 interface Project {
   id: string;
@@ -174,32 +175,20 @@ export default function ProjectsPage() {
         marginBottom: '1.5rem',
         gap: '1rem',
       }}>
-        <div style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
-          <input
+        <div style={{ flex: 1, maxWidth: '400px' }}>
+          <Input
             type="text"
             placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.625rem 1rem 0.625rem 2.5rem',
-              background: 'rgba(0, 0, 0, 0.2)',
-              border: '1px solid rgba(139, 92, 246, 0.2)',
-              borderRadius: '8px',
-              color: '#f1f5f9',
-              fontSize: '0.875rem',
-              outline: 'none',
-            }}
+            inputSize="sm"
+            leftIcon={
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            }
           />
-          <span style={{
-            position: 'absolute',
-            left: '0.875rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#64748b',
-          }}>
-            🔍
-          </span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
