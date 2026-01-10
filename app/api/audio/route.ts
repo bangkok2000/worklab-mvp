@@ -164,20 +164,41 @@ export async function POST(req: NextRequest) {
     const durationMinutes = Math.ceil((transcription.duration || 0) / 60);
     
     // Deduct credits if using credits mode
+    // Note: deductCredits deducts cost for ONE action, so we need to call it once per minute
     if (keySource === 'credits' && userId && durationMinutes > 0) {
       creditCost = await getCreditCost(creditAction);
       const totalCost = creditCost * durationMinutes;
       
-      const deductResult = await deductCredits(userId, totalCost, creditAction, {
-        filename: file.name,
-        duration_seconds: transcription.duration,
-        duration_minutes: durationMinutes,
-      });
+      // Deduct credits once per minute (each minute is one action)
+      let lastBalance = 0;
+      let allSuccess = true;
+      for (let i = 0; i < durationMinutes; i++) {
+        const deductResult = await deductCredits(userId, creditAction, {
+          description: i === 0 ? `Transcribed audio: ${file.name}` : undefined, // Only add description for first minute
+          metadata: i === 0 ? {
+            filename: file.name,
+            duration_seconds: transcription.duration,
+            duration_minutes: durationMinutes,
+            minute: i + 1,
+            total_minutes: durationMinutes,
+          } : {
+            minute: i + 1,
+            total_minutes: durationMinutes,
+          },
+        });
+        
+        if (!deductResult.success) {
+          allSuccess = false;
+          console.error(`[Audio] Failed to deduct credits for minute ${i + 1}:`, deductResult.error);
+          break;
+        }
+        lastBalance = deductResult.balance;
+      }
       
-      if (deductResult.success) {
-        console.log(`[Audio] Deducted ${totalCost} credits (${durationMinutes} min × ${creditCost}) from user ${userId}, remaining: ${deductResult.balance}`);
+      if (allSuccess) {
+        console.log(`[Audio] Deducted ${totalCost} credits (${durationMinutes} min × ${creditCost}) from user ${userId}, remaining: ${lastBalance}`);
       } else {
-        console.error('[Audio] Failed to deduct credits:', deductResult.error);
+        console.error('[Audio] Failed to deduct all credits');
       }
     }
 
