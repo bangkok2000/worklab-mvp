@@ -586,7 +586,9 @@ export default function ProjectWorkspace() {
             position: 'fixed',
             left: leftPanelOpen ? '300px' : '0', // Position at panel right edge (300px)
             top: '50%',
-            transform: 'translateY(-50%) translateX(-28px)', // Shift left by button width so it doesn't cover content
+            transform: leftPanelOpen 
+              ? 'translateY(-50%) translateX(-28px)' // Shift left by button width when panel open
+              : 'translateY(-50%)', // No horizontal shift when panel closed
             zIndex: 1000,
             width: '28px',
             height: '56px',
