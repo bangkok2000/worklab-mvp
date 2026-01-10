@@ -147,9 +147,19 @@ export default function ProjectWorkspace() {
         thumbnail: item.thumbnail,
       }));
 
-      // Merge direct documents with content items
-      const mergedDocs = [...directDocs, ...contentAsDocs];
-      console.log('[Project] Merged documents:', mergedDocs);
+      // Merge direct documents with content items, deduplicating by name
+      const allDocs = [...directDocs, ...contentAsDocs];
+      const seen = new Set<string>();
+      const mergedDocs = allDocs.filter(doc => {
+        const key = doc.name.toLowerCase().trim();
+        if (seen.has(key)) {
+          console.warn('[Project] Duplicate document found:', doc.name);
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+      console.log('[Project] Merged documents (deduplicated):', mergedDocs);
       setDocuments(mergedDocs);
 
       // Load project conversations
