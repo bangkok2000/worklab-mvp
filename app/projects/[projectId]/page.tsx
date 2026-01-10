@@ -27,6 +27,7 @@ interface Conversation {
   id: string;
   title: string;
   messages: Message[];
+  createdAt: Date;
   updatedAt: Date;
 }
 
@@ -132,6 +133,7 @@ export default function ProjectWorkspace() {
       if (savedConvs) {
         setConversations(JSON.parse(savedConvs).map((c: any) => ({
           ...c,
+          createdAt: c.createdAt ? new Date(c.createdAt) : new Date(c.updatedAt), // Fallback to updatedAt for old conversations
           updatedAt: new Date(c.updatedAt),
           messages: c.messages.map((m: any) => ({
             ...m,
@@ -304,11 +306,13 @@ export default function ProjectWorkspace() {
           )
         );
       } else {
+        const now = new Date();
         const newConv: Conversation = {
           id: `conv-${Date.now()}`,
           title: convTitle,
           messages: updatedMessages,
-          updatedAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         };
         setConversations(prev => [...prev, newConv]);
         setCurrentConversationId(newConv.id);
@@ -556,6 +560,7 @@ export default function ProjectWorkspace() {
                 id: c.id,
                 title: c.title,
                 messageCount: c.messages.length,
+                createdAt: c.createdAt,
                 updatedAt: c.updatedAt,
               }))}
               currentConversationId={currentConversationId || undefined}
