@@ -394,17 +394,25 @@ export default function Dashboard() {
                 }}>
                   {insight.preview}
                 </p>
-                {insight.projectName && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  {insight.projectName && (
+                    <span style={{
+                      fontSize: '0.6875rem',
+                      color: '#8b5cf6',
+                      background: 'rgba(139, 92, 246, 0.15)',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                    }}>
+                      📁 {insight.projectName}
+                    </span>
+                  )}
                   <span style={{
                     fontSize: '0.6875rem',
-                    color: '#8b5cf6',
-                    background: 'rgba(139, 92, 246, 0.15)',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: '4px',
+                    color: '#64748b',
                   }}>
-                    📁 {insight.projectName}
+                    {formatRelativeDate(insight.createdAt)}
                   </span>
-                )}
+                </div>
               </div>
             ))}
           </div>
@@ -542,14 +550,31 @@ export default function Dashboard() {
 function formatRelativeDate(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor(diff / (1000 * 60));
+
+  // Format time as HH:MM
+  const timeStr = date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+
+  // Format date
+  if (days === 0) {
+    if (minutes < 1) return 'Just now';
+    if (hours < 1) return `${minutes}m ago`;
+    return `Today ${timeStr}`;
+  }
+  if (days === 1) return `Yesterday ${timeStr}`;
+  if (days < 7) return `${days}d ago ${timeStr}`;
   
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  // For older dates, show full date and time
+  const dateStr = date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+  return `${dateStr} ${timeStr}`;
 }

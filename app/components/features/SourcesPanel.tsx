@@ -38,6 +38,39 @@ export default function SourcesPanel({
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Format date with detailed timestamp (consistent with conversations/insights)
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
+
+    // Format time as HH:MM
+    const timeStr = date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+
+    // Format date
+    if (days === 0) {
+      if (minutes < 1) return 'Just now';
+      if (hours < 1) return `${minutes}m ago`;
+      return `Today ${timeStr}`;
+    }
+    if (days === 1) return `Yesterday ${timeStr}`;
+    if (days < 7) return `${days}d ago ${timeStr}`;
+    
+    // For older dates, show full date and time
+    const dateStr = date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+    return `${dateStr} ${timeStr}`;
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -287,7 +320,7 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
               {document.name}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <Badge variant={badge} size="sm" dot>
               {label}
             </Badge>
@@ -299,6 +332,11 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
             {document.type && document.type !== 'document' && (
               <span style={{ fontSize: '0.6875rem', color: '#64748b', textTransform: 'capitalize' }}>
                 {document.type}
+              </span>
+            )}
+            {document.uploadedAt && (
+              <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
+                {formatDate(document.uploadedAt)}
               </span>
             )}
           </div>
