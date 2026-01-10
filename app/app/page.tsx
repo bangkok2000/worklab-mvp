@@ -175,7 +175,7 @@ export default function Dashboard() {
               View All
             </button>
             <button
-              onClick={() => router.push('/app/projects')}
+              onClick={() => router.push('/app/projects?new=true')}
               style={{
                 padding: '0.5rem 1rem',
                 background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
@@ -205,7 +205,7 @@ export default function Dashboard() {
               Projects help you organize sources, have focused AI conversations, and save insights on specific topics.
             </p>
             <button
-              onClick={() => router.push('/app/projects')}
+              onClick={() => router.push('/app/projects?new=true')}
               style={{
                 padding: '0.75rem 1.5rem',
                 background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
@@ -259,7 +259,7 @@ export default function Dashboard() {
             
             {/* Quick add project card */}
             <button
-              onClick={() => router.push('/app/projects')}
+              onClick={() => router.push('/app/projects?new=true')}
               style={{
                 padding: '1.25rem',
                 background: 'transparent',
