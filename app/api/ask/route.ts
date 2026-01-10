@@ -283,20 +283,57 @@ export async function POST(req: NextRequest) {
     const uniqueSources = Array.from(new Set(
       Array.from(bySource.keys()).map(normalized => sourceNameMap.get(normalized) || normalized)
     ));
-    const sourceList = uniqueSources.length > 1 
-      ? `You have context from ${uniqueSources.length} different documents: ${uniqueSources.join(', ')}. `
-      : '';
+    
+    // Detect if question is asking about a specific source type
+    const questionLower = question.toLowerCase();
+    const isAskingAboutWebLink = questionLower.includes('web link') || questionLower.includes('url') || 
+                                  questionLower.includes('webpage') || questionLower.includes('website') ||
+                                  questionLower.includes('article') || questionLower.includes('wikipedia');
+    const isAskingAboutDocument = questionLower.includes('document') || questionLower.includes('pdf') || 
+                                   questionLower.includes('file') || questionLower.includes('upload');
+    
+    // Identify source types from the retrieved context
+    const webSources: string[] = [];
+    const docSources: string[] = [];
+    
+    uniqueSources.forEach(source => {
+      const sourceLower = source.toLowerCase();
+      // Check if it's a web source (has URL indicators, Wikipedia, article, etc.)
+      if (sourceLower.includes('wikipedia') || sourceLower.includes('http') || 
+          sourceLower.includes('article') || sourceLower.includes('web') ||
+          contextText.toLowerCase().includes(`from ${source.toLowerCase()}`) && 
+          (contextText.toLowerCase().includes('http') || contextText.toLowerCase().includes('url'))) {
+        webSources.push(source);
+      } else {
+        docSources.push(source);
+      }
+    });
+    
+    // Build source list with type indicators
+    let sourceList = '';
+    if (uniqueSources.length > 1) {
+      sourceList = `You have context from ${uniqueSources.length} different sources: ${uniqueSources.join(', ')}. `;
+      
+      // Add explicit guidance if question is about a specific type
+      if (isAskingAboutWebLink && webSources.length > 0) {
+        sourceList += `IMPORTANT: The question is asking about a web link/URL/article. Focus your answer primarily on the web source(s): ${webSources.join(', ')}. Only mention other sources if directly relevant. `;
+      } else if (isAskingAboutDocument && docSources.length > 0) {
+        sourceList += `IMPORTANT: The question is asking about a document/PDF/file. Focus your answer primarily on the document source(s): ${docSources.join(', ')}. Only mention other sources if directly relevant. `;
+      }
+    } else if (uniqueSources.length === 1) {
+      sourceList = `You have context from: ${uniqueSources[0]}. `;
+    }
 
     // Construct comprehensive prompt for better answers
     const prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
 
 ${sourceList}
 INSTRUCTIONS:
-- Provide a detailed, comprehensive answer that synthesizes information from the context
+- Answer the question directly and accurately based on the context provided
+- If the question asks about a specific source type (web link, document, etc.), focus your answer on that source type
 - Use clear structure: introduction, main points, and conclusion
 - Always cite your sources using [1], [2], etc. when referencing specific information
-- If the question asks about specific aspects, address each one thoroughly
-- Include relevant details, examples, and explanations from the context
+- Do NOT mix up or confuse information from different sources
 - If information is missing or unclear, acknowledge it
 - Write in a clear, professional tone
 
@@ -305,7 +342,7 @@ ${contextText}
 
 QUESTION: ${question}
 
-Provide a comprehensive answer:`;
+Provide a comprehensive answer that directly addresses the question:`;
 
     // Get answer from selected provider/model
     // Note: selectedModel already defined above for credit cost calculation
