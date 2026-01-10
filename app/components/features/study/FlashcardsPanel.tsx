@@ -40,11 +40,13 @@ export default function FlashcardsPanel({
   useEffect(() => {
     if (!projectId) return;
     
+    let loadedFlashcards: Flashcard[] = [];
+    
     try {
       const saved = localStorage.getItem(`moonscribe-project-${projectId}-flashcards`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        const loadedFlashcards = parsed.map((f: any) => ({
+        loadedFlashcards = parsed.map((f: any) => ({
           ...f,
           createdAt: new Date(f.createdAt),
         }));
@@ -73,7 +75,7 @@ export default function FlashcardsPanel({
       const genNumber = localStorage.getItem(`moonscribe-project-${projectId}-flashcards-generation`);
       if (genNumber) {
         setGenerationNumber(parseInt(genNumber, 10));
-      } else if (loadedFlashcards && loadedFlashcards.length > 0) {
+      } else if (loadedFlashcards.length > 0) {
         // Estimate generation number from existing flashcards
         setGenerationNumber(Math.floor(loadedFlashcards.length / 10));
       }
@@ -149,7 +151,8 @@ export default function FlashcardsPanel({
         // Update used chunk hashes with new ones from this generation
         if (data.usedChunkHashes && Array.isArray(data.usedChunkHashes)) {
           setUsedChunkHashes(prevHashes => {
-            const combined = [...new Set([...prevHashes, ...data.usedChunkHashes])];
+            // Use Array.from() instead of spread operator to avoid downlevelIteration issue
+            const combined = Array.from(new Set([...prevHashes, ...data.usedChunkHashes]));
             // Save to localStorage
             try {
               localStorage.setItem(
