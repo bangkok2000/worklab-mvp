@@ -329,8 +329,9 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
     };
 
     // Process each source separately
-    // Iterate using Map.keys() to avoid TypeScript iteration issues
-    for (const normalizedSource of bySource.keys()) {
+    // Convert Map.keys() to array to avoid TypeScript iteration issues
+    const sourceKeys = Array.from(bySource.keys());
+    for (const normalizedSource of sourceKeys) {
       const matches = bySource.get(normalizedSource);
       if (!matches) continue;
       
