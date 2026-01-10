@@ -142,8 +142,19 @@ export async function POST(req: NextRequest) {
       filter: filter,
     });
 
+    // Define type for match items
+    type MatchItem = {
+      text: string;
+      source: string;
+      score: number;
+      sourceType: string;
+      url?: string;
+      startTime?: number;
+      audioId?: string;
+    };
+
     // Extract context from results
-    const allMatches = searchResults.matches
+    const allMatches: MatchItem[] = searchResults.matches
       .map((match: any) => ({
         text: match.metadata?.text || '',
         source: match.metadata?.source || 'Unknown',
@@ -153,7 +164,7 @@ export async function POST(req: NextRequest) {
         startTime: match.metadata?.start_time,
         audioId: match.metadata?.audio_id,
       }))
-      .filter((item: any) => item.text && item.text.trim().length > 50); // Filter out very short chunks
+      .filter((item: MatchItem) => item.text && item.text.trim().length > 50); // Filter out very short chunks
 
     if (allMatches.length === 0) {
       return NextResponse.json({ 
@@ -168,7 +179,7 @@ export async function POST(req: NextRequest) {
     };
     
     // Group matches by source and select diverse chunks
-    const bySource = new Map<string, typeof allMatches>();
+    const bySource = new Map<string, MatchItem[]>();
     const sourceNameMap = new Map<string, string>();
     
     allMatches.forEach(match => {
@@ -191,7 +202,7 @@ export async function POST(req: NextRequest) {
     let totalTokensUsed = 0;
 
     // Helper function to generate flashcards for a single source
-    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: typeof allMatches): Promise<Array<{ front: string; back: string; source: string }>> => {
+    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: MatchItem[]): Promise<Array<{ front: string; back: string; source: string }>> => {
       // Get top chunks for this source (up to 10 chunks per source)
       const sortedMatches = sourceMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
       const sourceContext = sortedMatches.slice(0, 10);
@@ -318,7 +329,11 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
     };
 
     // Process each source separately
-    for (const [normalizedSource, matches] of bySource.entries()) {
+    // Iterate using Map.keys() to avoid TypeScript iteration issues
+    for (const normalizedSource of bySource.keys()) {
+      const matches = bySource.get(normalizedSource);
+      if (!matches) continue;
+      
       const originalSourceName = sourceNameMap.get(normalizedSource) || normalizedSource;
       try {
         const sourceFlashcards = await generateFlashcardsForSource(originalSourceName, matches);
