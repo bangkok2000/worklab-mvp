@@ -828,6 +828,44 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
     setError('');
     setProcessingStatus('Uploading file...');
 
+    // Client-side file size validation
+    const isImage = file.type.startsWith('image/');
+    const isAudio = file.type.startsWith('audio/') || 
+                   file.name.toLowerCase().endsWith('.mp3') ||
+                   file.name.toLowerCase().endsWith('.wav') ||
+                   file.name.toLowerCase().endsWith('.m4a');
+    
+    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_AUDIO_SIZE = 100 * 1024 * 1024; // 100MB
+    const MAX_PDF_SIZE = 100 * 1024 * 1024; // 100MB (but Next.js/Vercel limit is ~4.5MB by default)
+    const MAX_GENERAL_SIZE = 4 * 1024 * 1024; // 4MB (Next.js default limit)
+    
+    let maxSize = MAX_GENERAL_SIZE;
+    let maxSizeLabel = '4MB';
+    
+    if (isImage) {
+      maxSize = MAX_IMAGE_SIZE;
+      maxSizeLabel = '20MB';
+    } else if (isAudio) {
+      maxSize = MAX_AUDIO_SIZE;
+      maxSizeLabel = '100MB';
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      maxSize = MAX_PDF_SIZE;
+      maxSizeLabel = '100MB (Note: Platform limit may be lower)';
+    }
+    
+    if (file.size > maxSize) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setError(`File too large: ${fileSizeMB}MB. Maximum size is ${maxSizeLabel}.`);
+      setIsProcessing(false);
+      return;
+    }
+    
+    // Warn about Next.js/Vercel platform limit for non-audio files
+    if (!isAudio && file.size > 4 * 1024 * 1024) {
+      console.warn(`File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) may exceed platform limit. Upload may fail.`);
+    }
+
     try {
       const apiKey = await getApiKey();
       const formData = new FormData();

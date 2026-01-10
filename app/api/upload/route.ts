@@ -28,6 +28,10 @@ const getIndex = () => {
   return getPinecone().index(process.env.PINECONE_INDEX);
 };
 
+// Configure route for large file uploads (up to 100MB)
+export const maxDuration = 300; // 5 minutes for large file processing
+export const runtime = 'nodejs'; // Use Node.js runtime for file processing
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
