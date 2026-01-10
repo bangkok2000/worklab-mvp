@@ -60,7 +60,7 @@ export default function SettingsPage() {
   // Dispatch event to notify other components (like CreditBalance) about key changes
   const notifyApiKeyChange = () => {
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('moonscribe-apikey-changed'));
+      window.dispatchEvent(new CustomEvent('moonscribe-api-keys-changed'));
     }
   };
 
