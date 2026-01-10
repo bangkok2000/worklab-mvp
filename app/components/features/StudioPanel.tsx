@@ -2,9 +2,7 @@
 
 import React, { useState } from 'react';
 import ChatPanel from './ChatPanel';
-
-// Import study tool components (will be created)
-// import FlashcardsPanel from './study/FlashcardsPanel';
+import FlashcardsPanel from './study/FlashcardsPanel';
 // import QuizPanel from './study/QuizPanel';
 // import SummaryPanel from './study/SummaryPanel';
 // import StudyGuidePanel from './study/StudyGuidePanel';
@@ -155,28 +153,13 @@ export default function StudioPanel({
           </div>
         )}
 
-        {activeTab === 'flashcards' && (
-          <div style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '2rem',
-            color: '#94a3b8',
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎴</div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.5rem' }}>
-                Flashcards
-              </h3>
-              <p style={{ fontSize: '0.875rem', marginBottom: '1rem' }}>
-                Auto-generate flashcards from your documents
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Coming soon...
-              </p>
-            </div>
-          </div>
+        {activeTab === 'flashcards' && projectId && (
+          <FlashcardsPanel
+            projectId={projectId}
+            sourceFilenames={sourceFilenames}
+            provider={provider}
+            model={model}
+          />
         )}
 
         {activeTab === 'quiz' && (
