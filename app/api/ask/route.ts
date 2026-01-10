@@ -435,16 +435,17 @@ Provide a direct answer about where you are getting information from:`;
       prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
 
 ${sourceList}
-CRITICAL INSTRUCTIONS:
-- You MUST ONLY use information that is explicitly stated in the provided context below
-- DO NOT use any information from your training data or general knowledge unless it's also in the provided context
-- DO NOT make up, infer, or assume any information that is not directly stated in the context
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+- You MUST ONLY use information that is EXPLICITLY and DIRECTLY stated in the provided context below
+- DO NOT use any information from your training data or general knowledge
+- DO NOT make up, infer, assume, deduce, or connect information that is not directly stated
+- DO NOT provide related information, examples, or context if the direct answer is not found
 - DO NOT mix up or confuse information from different sources - each source is clearly labeled
-- If the information needed to answer the question is NOT in the provided context, you MUST say "I couldn't find this information in the provided documents" or "This information is not available in the provided context"
+- If the information needed to answer the question is NOT EXPLICITLY stated in the provided context, you MUST respond with ONLY: "I couldn't find this information in the provided documents." DO NOT provide any additional information, related content, or inferences.
 - If the question asks about a specific source type (web link, document, etc.), focus your answer ONLY on that source type from the context
 - Always cite your sources using [1], [2], etc. when referencing specific information
 - For audio sources, the context includes timestamps (e.g., "at 2:34"). When citing audio sources, you may mention the timestamp naturally in your response (e.g., "as mentioned at 2:34" or "around the 5-minute mark")
-- If information is missing or unclear in the context, explicitly acknowledge it rather than guessing
+- If information is missing or unclear in the context, respond with ONLY "I couldn't find this information in the provided documents." DO NOT guess, infer, or provide related information.
 - Write in a clear, professional tone
 
 CONTEXT FROM DOCUMENTS (ONLY USE INFORMATION FROM THIS CONTEXT):
@@ -473,7 +474,7 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       // Use system message for stricter control over behavior
       const systemMessage = isMetaQuestion 
         ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
-        : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`;
+        : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
       
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
@@ -502,7 +503,7 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
               role: 'system', 
               content: isMetaQuestion 
                 ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
-                : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`
+                : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`
             },
             { role: 'user', content: prompt }
           ],
@@ -523,7 +524,7 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       // Fallback to OpenAI (using BYOK key already initialized)
       const systemMessage = isMetaQuestion 
         ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
-        : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`;
+        : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
       
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
