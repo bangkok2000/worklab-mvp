@@ -36,6 +36,9 @@ interface Document {
   status: 'ready' | 'processing' | 'error';
   chunks?: number;
   uploadedAt?: Date;
+  type?: string; // Content type: 'document', 'youtube', 'article', 'note', etc.
+  url?: string;
+  thumbnail?: string;
 }
 
 interface Project {
