@@ -216,6 +216,7 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
     if (type === 'article' || type === 'url' || type === 'web') return '🌐';
     if (type === 'note') return '📝';
     if (type === 'image' || type === 'photo') return '🖼️';
+    if (type === 'audio' || type === 'podcast' || type === 'mp3' || type === 'wav' || type === 'm4a') return '🎵';
     return '📄'; // Default to document icon
   };
 

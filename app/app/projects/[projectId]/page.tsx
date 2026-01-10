@@ -121,36 +121,58 @@ export default function ProjectWorkspace() {
         }
       }
 
-      // Load project documents (PDFs uploaded directly)
-      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
-      const directDocs = savedDocs ? JSON.parse(savedDocs).map((d: any) => ({
-        ...d,
-        uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined,
-      })) : [];
-
-      // Load all project content (YouTube, Web, Notes, Images, etc.)
+      // Load all project content from unified Sources location
       const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
-      const allContent = savedContent ? JSON.parse(savedContent) : [];
+      let allContent = savedContent ? JSON.parse(savedContent) : [];
       
-      console.log('[Project] Direct docs from localStorage:', directDocs);
-      console.log('[Project] Content items from localStorage:', allContent);
+      // Migrate old PDFs from separate documents storage to unified Sources
+      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
+      if (savedDocs) {
+        const oldDocs = JSON.parse(savedDocs);
+        const migratedContent = oldDocs.map((doc: any) => ({
+          id: doc.id || `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: doc.type || 'document',
+          title: doc.name,
+          filename: doc.name,
+          chunksProcessed: doc.chunks || 0,
+          processed: doc.status === 'ready',
+          addedAt: doc.uploadedAt || new Date().toISOString(),
+        }));
+        
+        // Merge migrated content with existing content
+        allContent = [...migratedContent, ...allContent];
+        
+        // Save back to unified location
+        localStorage.setItem(`moonscribe-project-content-${projectId}`, JSON.stringify(allContent));
+        
+        // Clear old documents storage (optional - keeping for backward compatibility)
+        // localStorage.removeItem(`moonscribe-project-${projectId}-documents`);
+      }
+      
+      console.log('[Project] All content from Sources:', allContent);
       
       // Convert all content to document format for display
       const contentAsDocs = allContent.map((item: any) => ({
         id: item.id,
         name: item.title || item.name || item.filename || 'Untitled',
         status: item.processed ? 'ready' as const : 'processing' as const,
-        chunks: item.chunksProcessed,
+        chunks: item.chunksProcessed || item.chunks || 0,
         uploadedAt: item.addedAt ? new Date(item.addedAt) : undefined,
-        type: item.type, // Store original type for display
+        type: item.type || 'document', // Store original type for display
         url: item.url,
         thumbnail: item.thumbnail,
+        // Preserve additional metadata
+        ...(item.fileType && { fileType: item.fileType }),
+        ...(item.fileSize && { fileSize: item.fileSize }),
+        ...(item.analysis && { analysis: item.analysis }),
+        ...(item.extractedText !== undefined && { extractedText: item.extractedText }),
+        ...(item.duration && { duration: item.duration }),
+        ...(item.durationMinutes && { durationMinutes: item.durationMinutes }),
       }));
 
-      // Merge direct documents with content items, deduplicating by name
-      const allDocs = [...directDocs, ...contentAsDocs];
+      // Deduplicate by name
       const seen = new Set<string>();
-      const mergedDocs = allDocs.filter(doc => {
+      const mergedDocs = contentAsDocs.filter(doc => {
         const key = doc.name.toLowerCase().trim();
         if (seen.has(key)) {
           console.warn('[Project] Duplicate document found:', doc.name);
@@ -196,13 +218,7 @@ export default function ProjectWorkspace() {
     if (!isMounted || !projectId) return;
     
     const handleContentAdded = () => {
-      // Reload all documents from localStorage
-      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
-      const directDocs = savedDocs ? JSON.parse(savedDocs).map((d: any) => ({
-        ...d,
-        uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined,
-      })) : [];
-
+      // Reload all content from unified Sources location
       const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
       const allContent = savedContent ? JSON.parse(savedContent) : [];
       
@@ -210,16 +226,22 @@ export default function ProjectWorkspace() {
         id: item.id,
         name: item.title || item.name || item.filename || 'Untitled',
         status: item.processed ? 'ready' as const : 'processing' as const,
-        chunks: item.chunksProcessed,
+        chunks: item.chunksProcessed || item.chunks || 0,
         uploadedAt: item.addedAt ? new Date(item.addedAt) : undefined,
-        type: item.type,
+        type: item.type || 'document',
         url: item.url,
         thumbnail: item.thumbnail,
+        // Preserve additional metadata
+        ...(item.fileType && { fileType: item.fileType }),
+        ...(item.fileSize && { fileSize: item.fileSize }),
+        ...(item.analysis && { analysis: item.analysis }),
+        ...(item.extractedText !== undefined && { extractedText: item.extractedText }),
+        ...(item.duration && { duration: item.duration }),
+        ...(item.durationMinutes && { durationMinutes: item.durationMinutes }),
       }));
 
-      const allDocs = [...directDocs, ...contentAsDocs];
       const seen = new Set<string>();
-      const mergedDocs = allDocs.filter(doc => {
+      const mergedDocs = contentAsDocs.filter(doc => {
         const key = doc.name.toLowerCase().trim();
         if (seen.has(key)) {
           return false;
@@ -252,20 +274,53 @@ export default function ProjectWorkspace() {
     }
   };
 
-  // Save documents (deduplicate before saving)
+  // Sync documents state to unified Sources location (for backward compatibility)
   useEffect(() => {
     if (!isMounted || !projectId) return;
-    // Deduplicate by name before saving
-    const seen = new Set<string>();
-    const uniqueDocs = documents.filter(doc => {
-      const key = doc.name.toLowerCase().trim();
-      if (seen.has(key)) {
-        return false;
+    
+    // Update unified Sources location with current documents state
+    // This ensures UI state stays in sync with storage
+    const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
+    const existingContent = savedContent ? JSON.parse(savedContent) : [];
+    
+    // Create a map of existing content by ID for quick lookup
+    const contentMap = new Map(existingContent.map((item: any) => [item.id, item]));
+    
+    // Update or add documents from state
+    documents.forEach(doc => {
+      const existingItem = contentMap.get(doc.id);
+      if (existingItem) {
+        // Update existing item
+        Object.assign(existingItem, {
+          title: doc.name,
+          filename: doc.name,
+          chunksProcessed: doc.chunks || 0,
+          processed: doc.status === 'ready',
+          type: doc.type || 'document',
+          ...(doc.url && { url: doc.url }),
+          ...(doc.thumbnail && { thumbnail: doc.thumbnail }),
+        });
+      } else {
+        // Add new item
+        existingContent.push({
+          id: doc.id,
+          type: doc.type || 'document',
+          title: doc.name,
+          filename: doc.name,
+          chunksProcessed: doc.chunks || 0,
+          processed: doc.status === 'ready',
+          addedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : new Date().toISOString(),
+          ...(doc.url && { url: doc.url }),
+          ...(doc.thumbnail && { thumbnail: doc.thumbnail }),
+        });
       }
-      seen.add(key);
-      return true;
     });
-    localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(uniqueDocs));
+    
+    // Remove items that are no longer in documents state
+    const documentIds = new Set(documents.map(d => d.id));
+    const filteredContent = existingContent.filter((item: any) => documentIds.has(item.id));
+    
+    localStorage.setItem(`moonscribe-project-content-${projectId}`, JSON.stringify(filteredContent));
     updateProjectStats();
   }, [documents, isMounted, projectId]);
 
@@ -351,15 +406,19 @@ export default function ProjectWorkspace() {
         const data = await res.json();
 
         if (data.success) {
-          const newDoc: Document = {
-            id: isImage ? (data.imageId || `image-${Date.now()}`) 
+          const contentId = isImage ? (data.imageId || `image-${Date.now()}`) 
                 : isAudio ? (data.audioId || `audio-${Date.now()}`)
-                : `doc-${Date.now()}`,
-            name: data.filename,
-            status: 'ready',
-            chunks: isImage ? 1 : (data.chunks || 0),
-            uploadedAt: new Date(),
+                : `doc-${Date.now()}`;
+          
+          // Create content item in unified format
+          const newContentItem = {
+            id: contentId,
             type: isImage ? 'image' : isAudio ? 'audio' : 'document',
+            title: data.filename,
+            filename: data.filename,
+            chunksProcessed: isImage ? 1 : (data.chunks || 0),
+            processed: true,
+            addedAt: new Date().toISOString(),
             ...(isImage && {
               fileType: data.fileType,
               fileSize: data.fileSize,
@@ -374,15 +433,51 @@ export default function ProjectWorkspace() {
               durationMinutes: data.durationMinutes,
             }),
           };
-          // Check for duplicates before adding
-          setDocuments(prev => {
-            const exists = prev.some(d => d.name.toLowerCase().trim() === data.filename.toLowerCase().trim());
-            if (exists) {
-              console.warn('[Project] Document already exists, skipping:', data.filename);
-              return prev;
-            }
-            return [...prev, newDoc];
-          });
+
+          // Save to unified Sources location
+          const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
+          const content = savedContent ? JSON.parse(savedContent) : [];
+          
+          // Check for duplicates
+          const exists = content.some((item: any) => 
+            (item.title || item.filename || '').toLowerCase().trim() === data.filename.toLowerCase().trim()
+          );
+          
+          if (!exists) {
+            content.unshift(newContentItem);
+            localStorage.setItem(`moonscribe-project-content-${projectId}`, JSON.stringify(content));
+            
+            // Also update documents state for UI
+            const newDoc: Document = {
+              id: contentId,
+              name: data.filename,
+              status: 'ready',
+              chunks: isImage ? 1 : (data.chunks || 0),
+              uploadedAt: new Date(),
+              type: isImage ? 'image' : isAudio ? 'audio' : 'document',
+              ...(isImage && {
+                fileType: data.fileType,
+                fileSize: data.fileSize,
+                analysis: data.analysis,
+                extractedText: data.extractedText,
+              }),
+              ...(isAudio && {
+                fileType: data.fileType,
+                fileSize: data.fileSize,
+                transcript: data.transcript,
+                duration: data.duration,
+                durationMinutes: data.durationMinutes,
+              }),
+            };
+            
+            setDocuments(prev => [...prev, newDoc]);
+            
+            // Dispatch event to notify other components
+            window.dispatchEvent(new CustomEvent('moonscribe-content-added', { detail: newContentItem }));
+          } else {
+            console.warn('[Project] Document already exists, skipping:', data.filename);
+          }
+          
           setStatus(`Uploaded ${data.filename}`);
         } else {
           setStatus(`Error: ${data.error}`);
@@ -418,20 +513,12 @@ export default function ProjectWorkspace() {
       // Remove from documents state
       setDocuments(prev => prev.filter(d => d.id !== id));
 
-      // Also remove from project content storage
+      // Remove from unified Sources location
       const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
       if (savedContent) {
         const content = JSON.parse(savedContent);
         const updated = content.filter((item: any) => item.id !== id);
         localStorage.setItem(`moonscribe-project-content-${projectId}`, JSON.stringify(updated));
-      }
-
-      // Also remove from direct documents storage
-      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
-      if (savedDocs) {
-        const docs = JSON.parse(savedDocs);
-        const updated = docs.filter((d: any) => d.id !== id);
-        localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(updated));
       }
 
       setStatus(`Deleted ${doc.name}`);
