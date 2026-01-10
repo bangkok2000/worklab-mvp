@@ -261,6 +261,29 @@ export default function InsightsPage() {
     setShowEditModal(false);
   };
 
+  const handleShare = (insight: Insight) => {
+    if (insight.isPublic && insight.shareLink) {
+      // Already shared - copy link to clipboard
+      navigator.clipboard.writeText(insight.shareLink);
+      alert('Share link copied to clipboard!');
+    } else {
+      // Generate share link and make public
+      const shareId = `share-${insight.id}-${Date.now()}`;
+      const shareLink = `${window.location.origin}/share/${shareId}`;
+      
+      const updated = {
+        ...insight,
+        isPublic: true,
+        shareLink,
+        updatedAt: new Date(),
+      };
+      
+      updateInsight(updated);
+      navigator.clipboard.writeText(shareLink);
+      alert('Insight shared! Link copied to clipboard.');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', height: '100%' }}>
       {/* Left Panel - List */}
@@ -680,19 +703,26 @@ export default function InsightsPage() {
                 >
                   📤 Export
                 </button>
-                <button style={{
-                  padding: '0.5rem 0.875rem',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: 'white',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.375rem',
-                }}>
-                  🔗 Share
+                <button 
+                  onClick={() => handleShare(selectedInsight)}
+                  style={{
+                    padding: '0.5rem 0.875rem',
+                    background: selectedInsight.isPublic 
+                      ? 'rgba(16, 185, 129, 0.15)' 
+                      : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                    border: selectedInsight.isPublic 
+                      ? '1px solid rgba(16, 185, 129, 0.3)' 
+                      : 'none',
+                    borderRadius: '8px',
+                    color: selectedInsight.isPublic ? '#34d399' : 'white',
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                  }}
+                >
+                  {selectedInsight.isPublic ? '🔗 Shared' : '🔗 Share'}
                 </button>
               </div>
               </div>
@@ -980,6 +1010,8 @@ function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => vo
   ];
 
   const handleExport = async (type: string) => {
+    const sanitizeFilename = (name: string) => name.replace(/[^a-z0-9]/gi, '_').substring(0, 100);
+    
     if (type === 'clipboard') {
       const text = `# ${insight.title}\n\n**Question:** ${insight.originalQuery}\n\n${insight.content}\n\n---\nSources:\n${insight.sources.map((s, i) => `${i + 1}. ${s.title}`).join('\n')}`;
       await navigator.clipboard.writeText(text);
@@ -991,9 +1023,115 @@ function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => vo
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${insight.title.replace(/[^a-z0-9]/gi, '_')}.md`;
+      a.download = `${sanitizeFilename(insight.title)}.md`;
       a.click();
       URL.revokeObjectURL(url);
+      onClose();
+    } else if (type === 'html') {
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${insight.title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #333; }
+    h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 0.5rem; }
+    h2 { color: #6366f1; margin-top: 2rem; }
+    .question { background: #f5f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+    .sources { background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 2rem; }
+    .source-item { margin: 0.5rem 0; padding: 0.5rem; background: white; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>${insight.title}</h1>
+  <div class="question">
+    <strong>Question:</strong> ${insight.originalQuery}
+  </div>
+  <div>${insight.content.replace(/\n/g, '<br>')}</div>
+  <div class="sources">
+    <h2>Sources</h2>
+    ${insight.sources.map((s, i) => `<div class="source-item">${i + 1}. ${s.title}${s.relevance ? ` (${s.relevance}% match)` : ''}</div>`).join('')}
+  </div>
+</body>
+</html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(insight.title)}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } else if (type === 'pdf') {
+      // Use browser's print to PDF functionality
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${insight.title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #333; }
+    h1 { color: #8b5cf6; border-bottom: 2px solid #8b5cf6; padding-bottom: 0.5rem; }
+    h2 { color: #6366f1; margin-top: 2rem; }
+    .question { background: #f5f3ff; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+    .sources { background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 2rem; }
+    .source-item { margin: 0.5rem 0; padding: 0.5rem; background: white; border-radius: 4px; }
+    @media print { body { padding: 1rem; } }
+  </style>
+</head>
+<body>
+  <h1>${insight.title}</h1>
+  <div class="question">
+    <strong>Question:</strong> ${insight.originalQuery}
+  </div>
+  <div>${insight.content.replace(/\n/g, '<br>')}</div>
+  <div class="sources">
+    <h2>Sources</h2>
+    ${insight.sources.map((s, i) => `<div class="source-item">${i + 1}. ${s.title}${s.relevance ? ` (${s.relevance}% match)` : ''}</div>`).join('')}
+  </div>
+</body>
+</html>`;
+        printWindow.document.write(html);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+        onClose();
+      } else {
+        alert('Please allow popups to export as PDF');
+      }
+    } else if (type === 'word') {
+      // Create a simple HTML file that Word can open
+      const html = `<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="UTF-8">
+  <title>${insight.title}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
+</head>
+<body>
+  <h1>${insight.title}</h1>
+  <p><strong>Question:</strong> ${insight.originalQuery}</p>
+  <div>${insight.content.replace(/\n/g, '<br>')}</div>
+  <h2>Sources</h2>
+  ${insight.sources.map((s, i) => `<p>${i + 1}. ${s.title}${s.relevance ? ` (${s.relevance}% match)` : ''}</p>`).join('')}
+</body>
+</html>`;
+      const blob = new Blob([html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${sanitizeFilename(insight.title)}.doc`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } else if (type === 'notion') {
+      // For Notion, we'll copy formatted markdown that can be pasted into Notion
+      const notionMarkdown = `# ${insight.title}\n\n**Question:** ${insight.originalQuery}\n\n${insight.content}\n\n---\n\n## Sources\n${insight.sources.map((s, i) => `${i + 1}. ${s.title}${s.relevance ? ` (${s.relevance}% match)` : ''}`).join('\n')}`;
+      await navigator.clipboard.writeText(notionMarkdown);
+      alert('Copied to clipboard! Paste into Notion to create a new page.');
       onClose();
     } else {
       alert(`Export to ${type} coming soon!`);
