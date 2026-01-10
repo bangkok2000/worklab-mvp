@@ -431,7 +431,13 @@ export async function POST(req: NextRequest) {
     
     if (extracted.content.length < 100) {
       return NextResponse.json({ 
-        error: 'Could not extract meaningful content from this page. The page might be JavaScript-heavy or require authentication.' 
+        error: `Could not extract meaningful content from this page (only ${extracted.content.length} characters found). This page might be:
+- JavaScript-heavy (requires browser to render content)
+- Require authentication/login
+- A single-page application (SPA)
+- Protected by bot detection
+
+Try using a direct article URL or a page with static HTML content.` 
       }, { status: 400 });
     }
 
