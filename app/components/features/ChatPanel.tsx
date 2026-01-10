@@ -7,7 +7,14 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  sources?: { number: number; source: string; relevance?: number }[];
+  sources?: { 
+    number: number; 
+    source: string; 
+    relevance?: number;
+    timestamp?: number; // Timestamp in seconds for audio sources
+    timestampFormatted?: string; // Formatted timestamp (e.g., "2:34")
+    audioId?: string; // Audio file ID for linking
+  }[];
   timestamp: Date;
 }
 
@@ -275,12 +282,56 @@ function MessageBubble({
                 Sources ({message.sources.length}):
               </p>
               {message.sources.map((source) => (
-                <p key={source.number} style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.25rem 0' }}>
-                  [{source.number}] {source.source}
-                  {source.relevance && (
-                    <span style={{ opacity: 0.7, marginLeft: '0.25rem' }}>
-                      ({source.relevance}%)
-                    </span>
+                <p key={source.number} style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span>
+                    [{source.number}] {source.source}
+                    {source.relevance && (
+                      <span style={{ opacity: 0.7, marginLeft: '0.25rem' }}>
+                        ({source.relevance}%)
+                      </span>
+                    )}
+                  </span>
+                  {source.timestampFormatted && (
+                    <button
+                      onClick={(e) => {
+                        // Copy timestamp to clipboard for now
+                        // In the future, this could open an audio player at that timestamp
+                        navigator.clipboard.writeText(source.timestampFormatted || '');
+                        // Show a brief feedback
+                        const button = e.currentTarget;
+                        const originalText = button.textContent;
+                        button.textContent = '✓ Copied!';
+                        button.style.color = '#10b981';
+                        setTimeout(() => {
+                          button.textContent = originalText;
+                          button.style.color = '';
+                        }, 1500);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                        e.currentTarget.style.cursor = 'pointer';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '';
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        background: 'rgba(139, 92, 246, 0.15)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        borderRadius: '6px',
+                        color: '#c4b5fd',
+                        fontSize: '0.6875rem',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                      }}
+                      title={`Click to copy timestamp: ${source.timestampFormatted}`}
+                    >
+                      🎵 {source.timestampFormatted}
+                    </button>
                   )}
                 </p>
               ))}

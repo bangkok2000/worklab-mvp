@@ -187,7 +187,11 @@ export async function POST(req: NextRequest) {
         source: match.metadata?.source as string,
         url: match.metadata?.url as string | undefined, // Extract URL for web sources
         sourceType: match.metadata?.source_type as string | undefined, // Extract source type
+        startTime: match.metadata?.start_time as number | undefined, // Extract start time for audio sources
+        endTime: match.metadata?.end_time as number | undefined, // Extract end time for audio sources
+        audioId: match.metadata?.audio_id as string | undefined, // Extract audio ID for linking
         score: match.score,
+        metadata: match.metadata, // Keep full metadata for reference
       }))
       .filter(item => item.text);
 
@@ -272,6 +276,18 @@ export async function POST(req: NextRequest) {
       diverseContext.splice(targetChunks);
     }
 
+    // Helper function to format timestamp (seconds to MM:SS or HH:MM:SS)
+    const formatTimestamp = (seconds: number): string => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      
+      if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      }
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    };
+
     // Build context text with clear source attribution (use original names)
     const contextText = diverseContext
       .map((item, idx) => {
@@ -281,7 +297,11 @@ export async function POST(req: NextRequest) {
         const urlInfo = item.url && item.sourceType === 'web' 
           ? ` (Source URL: ${item.url})` 
           : '';
-        return `[${idx + 1}] From ${displayName}${urlInfo}:\n${item.text}`;
+        // Include timestamp for audio sources so AI can reference it
+        const timestampInfo = item.sourceType === 'audio' && item.startTime !== undefined
+          ? ` (at ${formatTimestamp(item.startTime)})`
+          : '';
+        return `[${idx + 1}] From ${displayName}${urlInfo}${timestampInfo}:\n${item.text}`;
       })
       .join('\n\n');
 
@@ -362,6 +382,7 @@ INSTRUCTIONS:
 - If the question asks about a specific source type (web link, document, etc.), focus your answer on that source type
 - Use clear structure: introduction, main points, and conclusion
 - Always cite your sources using [1], [2], etc. when referencing specific information
+- For audio sources, the context includes timestamps (e.g., "at 2:34"). When citing audio sources, you may mention the timestamp naturally in your response (e.g., "as mentioned at 2:34" or "around the 5-minute mark")
 - Do NOT mix up or confuse information from different sources
 - If information is missing or unclear, acknowledge it
 - Write in a clear, professional tone
@@ -434,7 +455,7 @@ Provide a comprehensive answer that directly addresses the question:`;
     }
 
     const answer = completion.choices[0].message.content;
-    // Deduplicate sources by normalizing names
+    // Deduplicate sources by normalizing names, but keep timestamp info for audio
     const seenSources = new Set<string>();
     const sources = diverseContext
       .map((item, idx) => {
@@ -445,6 +466,12 @@ Provide a comprehensive answer that directly addresses the question:`;
           source: displayName,
           relevance: Math.round(item.score! * 100),
           normalized,
+          // Include timestamp info for audio sources
+          ...(item.sourceType === 'audio' && item.startTime !== undefined && {
+            timestamp: item.startTime,
+            timestampFormatted: formatTimestamp(item.startTime),
+            audioId: item.audioId,
+          }),
         };
       })
       .filter((item, idx, arr) => {
