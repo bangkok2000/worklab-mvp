@@ -124,10 +124,14 @@ export default function ProjectsPage() {
 
   const handleDeleteProject = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this project and all its data?')) {
+    const project = projects.find(p => p.id === id);
+    const projectName = project?.name || 'this project';
+    
+    if (confirm(`Are you sure you want to delete "${projectName}"?\n\nThis will permanently delete:\n• All documents and sources\n• All conversations\n• All insights\n\nThis action cannot be undone.`)) {
       saveProjects(projects.filter(p => p.id !== id));
       localStorage.removeItem(`moonscribe-project-${id}-documents`);
       localStorage.removeItem(`moonscribe-project-${id}-conversations`);
+      localStorage.removeItem(`moonscribe-project-content-${id}`);
     }
   };
 
@@ -475,19 +479,23 @@ function ProjectCard({ project, onClick, onDelete }: {
         <button
           onClick={onDelete}
           style={{
+            padding: '0.375rem 0.75rem',
             background: 'rgba(239, 68, 68, 0.1)',
-            border: 'none',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: '6px',
-            width: '28px',
-            height: '28px',
             cursor: 'pointer',
             color: '#f87171',
-            fontSize: '1rem',
+            fontSize: '0.75rem',
+            fontWeight: 500,
             opacity: isHovered ? 1 : 0,
             transition: 'opacity 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
           }}
+          title="Delete project"
         >
-          ×
+          🗑️ Delete
         </button>
       </div>
 
@@ -609,17 +617,21 @@ function ProjectListItem({ project, onClick, onDelete }: {
       <button
         onClick={onDelete}
         style={{
+          padding: '0.375rem 0.75rem',
           background: 'rgba(239, 68, 68, 0.1)',
-          border: 'none',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
           borderRadius: '6px',
-          width: '32px',
-          height: '32px',
           cursor: 'pointer',
           color: '#f87171',
-          fontSize: '1rem',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
         }}
+        title="Delete project"
       >
-        ×
+        🗑️ Delete
       </button>
     </div>
   );
