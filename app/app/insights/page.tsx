@@ -182,6 +182,10 @@ export default function InsightsPage() {
         insights: insights,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      // Dispatch event to notify other pages
+      window.dispatchEvent(new CustomEvent('moonscribe-insights-changed', { 
+        detail: { count: insights.filter(i => !i.isArchived).length } 
+      }));
     }
   }, [insights, isLoaded]);
 

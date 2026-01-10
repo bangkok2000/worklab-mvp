@@ -45,6 +45,29 @@ export default function Dashboard() {
   ]);
   const [isMounted, setIsMounted] = useState(false);
 
+  const loadInsights = () => {
+    if (typeof window !== 'undefined') {
+      const savedInsightsData = localStorage.getItem('moonscribe_insights_v2');
+      if (savedInsightsData) {
+        const parsed = JSON.parse(savedInsightsData);
+        if (parsed.insights && parsed.insights.length > 0) {
+          const activeInsights = parsed.insights.filter((i: any) => !i.isArchived);
+          setInsights(activeInsights.slice(0, 3).map((i: any) => ({
+            id: i.id,
+            title: i.title,
+            preview: i.content?.substring(0, 100) || '',
+            projectName: i.projectName || i.project,
+            createdAt: new Date(i.createdAt),
+          })));
+        } else {
+          setInsights([]);
+        }
+      } else {
+        setInsights([]);
+      }
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== 'undefined') {
@@ -57,21 +80,21 @@ export default function Dashboard() {
         })));
       }
 
-      // Load insights from versioned storage
-      const savedInsightsData = localStorage.getItem('moonscribe_insights_v2');
-      if (savedInsightsData) {
-        const parsed = JSON.parse(savedInsightsData);
-        if (parsed.insights && parsed.insights.length > 0) {
-          const activeInsights = parsed.insights.filter((i: any) => !i.isArchived);
-          setInsights(activeInsights.slice(0, 3).map((i: any) => ({
-            id: i.id,
-            title: i.title,
-            preview: i.content?.substring(0, 100) || '',
-            projectName: i.project,
-            createdAt: new Date(i.createdAt),
-          })));
-        }
-      }
+      // Load insights
+      loadInsights();
+
+      // Listen for insight changes
+      const handleInsightChange = () => {
+        loadInsights();
+      };
+      window.addEventListener('moonscribe-insights-changed', handleInsightChange);
+      window.addEventListener('storage', handleInsightChange); // Also listen for cross-tab changes
+
+      return () => {
+        window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
+        window.removeEventListener('storage', handleInsightChange);
+      };
+    }
 
       // Load all content from inbox and projects
       const allContent: RecentContent[] = [];

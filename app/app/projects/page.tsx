@@ -43,22 +43,54 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  useEffect(() => {
+  const loadProjects = () => {
     if (!isMounted) return;
     try {
       const saved = localStorage.getItem('moonscribe-projects');
       if (saved) {
-        setProjects(JSON.parse(saved).map((p: any) => ({
+        const projectsList = JSON.parse(saved);
+        
+        // Count insights per project
+        const insightsData = localStorage.getItem('moonscribe_insights_v2');
+        let insightsByProject: Record<string, number> = {};
+        if (insightsData) {
+          const parsed = JSON.parse(insightsData);
+          if (parsed.insights) {
+            parsed.insights.forEach((i: any) => {
+              if (!i.isArchived && i.projectId) {
+                insightsByProject[i.projectId] = (insightsByProject[i.projectId] || 0) + 1;
+              }
+            });
+          }
+        }
+        
+        setProjects(projectsList.map((p: any) => ({
           ...p,
           createdAt: new Date(p.createdAt),
           updatedAt: new Date(p.updatedAt),
           tags: p.tags || [],
-          insightCount: p.insightCount || 0,
+          insightCount: insightsByProject[p.id] || 0, // Use actual count from insights
         })));
       }
     } catch (e) {
       console.error('Failed to load projects:', e);
     }
+  };
+
+  useEffect(() => {
+    loadProjects();
+    
+    // Listen for insight changes to update project counts
+    const handleInsightChange = () => {
+      loadProjects();
+    };
+    window.addEventListener('moonscribe-insights-changed', handleInsightChange);
+    window.addEventListener('storage', handleInsightChange);
+
+    return () => {
+      window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
+      window.removeEventListener('storage', handleInsightChange);
+    };
   }, [isMounted]);
 
   const saveProjects = (newProjects: Project[]) => {
