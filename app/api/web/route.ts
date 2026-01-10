@@ -233,7 +233,10 @@ interface ContentChunk {
   isHeading: boolean;
 }
 
-function chunkContent(content: string, targetChunkSize: number = 1200): ContentChunk[] {
+function chunkContent(content: string, targetChunkSize: number = 8000): ContentChunk[] {
+  // text-embedding-3-large supports up to 8192 tokens
+  // Rough estimate: 1 token ≈ 4 characters, so max ~32,000 chars
+  // But we want smaller chunks for better retrieval, so target ~8000 chars (2000 tokens)
   const chunks: ContentChunk[] = [];
   const paragraphs = content.split(/\n\n+/);
   
@@ -264,11 +267,39 @@ function chunkContent(content: string, targetChunkSize: number = 1200): ContentC
   
   // Don't forget last chunk
   if (currentChunk.trim().length > 0) {
-    chunks.push({
-      text: currentChunk.trim(),
-      index: currentIndex,
-      isHeading: false,
-    });
+    // If last chunk is too large, split it further
+    const lastChunk = currentChunk.trim();
+    if (lastChunk.length > targetChunkSize) {
+      // Split by sentences
+      const sentences = lastChunk.split(/(?<=[.!?])\s+/);
+      let sentenceChunk = '';
+      for (const sentence of sentences) {
+        if (sentenceChunk.length + sentence.length > targetChunkSize && sentenceChunk.length > 0) {
+          chunks.push({
+            text: sentenceChunk.trim(),
+            index: currentIndex,
+            isHeading: false,
+          });
+          currentIndex++;
+          sentenceChunk = sentence + ' ';
+        } else {
+          sentenceChunk += sentence + ' ';
+        }
+      }
+      if (sentenceChunk.trim().length > 0) {
+        chunks.push({
+          text: sentenceChunk.trim(),
+          index: currentIndex,
+          isHeading: false,
+        });
+      }
+    } else {
+      chunks.push({
+        text: lastChunk,
+        index: currentIndex,
+        isHeading: false,
+      });
+    }
   }
   
   return chunks;
