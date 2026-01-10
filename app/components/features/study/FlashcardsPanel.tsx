@@ -73,9 +73,9 @@ export default function FlashcardsPanel({
       const genNumber = localStorage.getItem(`moonscribe-project-${projectId}-flashcards-generation`);
       if (genNumber) {
         setGenerationNumber(parseInt(genNumber, 10));
-      } else if (flashcards.length > 0) {
+      } else if (loadedFlashcards && loadedFlashcards.length > 0) {
         // Estimate generation number from existing flashcards
-        setGenerationNumber(Math.floor(flashcards.length / 10));
+        setGenerationNumber(Math.floor(loadedFlashcards.length / 10));
       }
     } catch (error) {
       console.error('Failed to load flashcards:', error);
