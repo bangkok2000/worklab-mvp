@@ -55,13 +55,27 @@ export default function FlashcardsPanel({
           .map((f: Flashcard) => f.chunkHash)
           .filter((hash: string | undefined): hash is string => !!hash);
         setUsedChunkHashes(hashes);
-        setGenerationNumber(Math.floor(hashes.length / 10)); // Estimate generation number
       }
       
-      // Load generation number separately
+      // Load used chunks and generation number separately
+      const usedChunks = localStorage.getItem(`moonscribe-project-${projectId}-used-chunks`);
+      if (usedChunks) {
+        try {
+          const parsed = JSON.parse(usedChunks);
+          if (Array.isArray(parsed)) {
+            setUsedChunkHashes(parsed);
+          }
+        } catch (error) {
+          console.error('Failed to load used chunks:', error);
+        }
+      }
+      
       const genNumber = localStorage.getItem(`moonscribe-project-${projectId}-flashcards-generation`);
       if (genNumber) {
         setGenerationNumber(parseInt(genNumber, 10));
+      } else if (flashcards.length > 0) {
+        // Estimate generation number from existing flashcards
+        setGenerationNumber(Math.floor(flashcards.length / 10));
       }
     } catch (error) {
       console.error('Failed to load flashcards:', error);
