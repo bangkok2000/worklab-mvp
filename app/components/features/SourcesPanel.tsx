@@ -241,7 +241,7 @@ export default function SourcesPanel({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {filteredDocuments.map((doc) => (
-              <DocumentCard key={doc.id} document={doc} onDelete={() => onDelete(doc.id)} />
+              <DocumentCard key={doc.id} document={doc} onDelete={() => onDelete(doc.id)} formatDate={formatDate} />
             ))}
           </div>
         )}
@@ -268,7 +268,7 @@ export default function SourcesPanel({
 }
 
 // Document Card sub-component
-function DocumentCard({ document, onDelete }: { document: Document; onDelete: () => void }) {
+function DocumentCard({ document, onDelete, formatDate }: { document: Document; onDelete: () => void; formatDate: (date: Date) => string }) {
   const [isHovered, setIsHovered] = useState(false);
 
   const statusConfig = {
