@@ -21,6 +21,8 @@ interface SourcesPanelProps {
   isUploading?: boolean;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  onAddContent?: () => void; // Callback to open Add Content modal
+  projectId?: string; // Current project ID for context
 }
 
 export default function SourcesPanel({
@@ -30,6 +32,8 @@ export default function SourcesPanel({
   isUploading = false,
   searchQuery = '',
   onSearchChange,
+  onAddContent,
+  projectId,
 }: SourcesPanelProps) {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +82,39 @@ export default function SourcesPanel({
           }
         />
       </div>
+
+      {/* Add Content Button */}
+      {onAddContent && (
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
+          <button
+            onClick={() => {
+              // Dispatch event to trigger FAB click (if FAB exists) or call callback
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('moonscribe-open-add-content', { detail: { projectId } }));
+              }
+              onAddContent();
+            }}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              border: 'none',
+              borderRadius: '10px',
+              color: 'white',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span>+</span>
+            <span>Add Content (YouTube, Web, Notes, Images)</span>
+          </button>
+        </div>
+      )}
 
       {/* Upload Area */}
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>

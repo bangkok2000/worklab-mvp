@@ -60,6 +60,15 @@ export default function AppShell({ children }: AppShellProps) {
   const [showHelp, setShowHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Listen for custom event to open Add Content modal from project pages
+  useEffect(() => {
+    const handleOpenAddContent = (e: CustomEvent) => {
+      setShowQuickCapture(true);
+    };
+    window.addEventListener('moonscribe-open-add-content', handleOpenAddContent as EventListener);
+    return () => window.removeEventListener('moonscribe-open-add-content', handleOpenAddContent as EventListener);
+  }, []);
+
   // Get user initials or email initial
   const getUserInitial = () => {
     if (!user) return 'G';
@@ -603,7 +612,10 @@ export default function AppShell({ children }: AppShellProps) {
 
       {/* Quick Capture Modal */}
       {showQuickCapture && (
-        <QuickCaptureModal onClose={() => setShowQuickCapture(false)} />
+        <QuickCaptureModal 
+          onClose={() => setShowQuickCapture(false)}
+          defaultProjectId={pathname.includes('/projects/') ? pathname.split('/projects/')[1]?.split('/')[0] : undefined}
+        />
       )}
 
       {/* Buy Credits Modal */}
@@ -765,11 +777,11 @@ function NavItemComponent({
 }
 
 // Quick Capture Modal
-function QuickCaptureModal({ onClose }: { onClose: () => void }) {
+function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void; defaultProjectId?: string }) {
   const { user } = useAuth();
   const [captureType, setCaptureType] = useState<'url' | 'note' | 'upload'>('url');
   const [inputValue, setInputValue] = useState('');
-  const [selectedProject, setSelectedProject] = useState<string>('inbox');
+  const [selectedProject, setSelectedProject] = useState<string>(defaultProjectId || 'inbox');
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');

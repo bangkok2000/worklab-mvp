@@ -199,11 +199,12 @@ export default function ProjectWorkspace() {
     }
   };
 
-  // Check if user has BYOK (any active key) or is using team key
-  const hasApiKey = apiKeys.some(k => k.provider === provider && k.isActive);
+  // Check if user has BYOK (any active key) - check for the selected provider first, then any provider
+  const hasApiKeyForProvider = apiKeys.some(k => k.provider === provider && k.isActive);
   const hasAnyApiKey = apiKeys.some(k => k.isActive);
   
   // For display purposes, show BYOK if any key is active (not just for selected provider)
+  // This is because OpenAI key can be used for other providers too
   const isUsingBYOK = hasAnyApiKey;
 
   // Handlers
@@ -568,6 +569,8 @@ export default function ProjectWorkspace() {
               isUploading={isUploading}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              onAddContent={() => setShowQuickCapture(true)}
+              projectId={projectId}
             />
           )}
         </div>
@@ -587,7 +590,7 @@ export default function ProjectWorkspace() {
             onModelChange={setModel}
             availableModels={modelsByProvider[provider] || []}
             documentCount={documents.length}
-            hasApiKey={isUsingBYOK || hasApiKey}
+            hasApiKey={isUsingBYOK}
           />
         </div>
 
