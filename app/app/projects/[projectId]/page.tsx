@@ -208,25 +208,36 @@ export default function ProjectWorkspace() {
     }
   };
 
-  // Check if user has BYOK (any active key) - check for the selected provider first, then any provider
-  // Also check localStorage directly in case state hasn't updated yet
-  const hasApiKeyForProvider = apiKeys.some(k => k.provider === provider && k.isActive);
-  const hasAnyApiKey = apiKeys.some(k => k.isActive);
+  // Check if user has BYOK (any active key) - reactive check
+  const [isUsingBYOK, setIsUsingBYOK] = useState(false);
   
-  // Double-check by reading from localStorage directly (more reliable)
-  const checkBYOKDirectly = () => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const keys = getStoredApiKeys(user?.id || null);
-      return keys.some(k => k.isActive);
-    } catch {
-      return false;
-    }
-  };
-  
-  // For display purposes, show BYOK if any key is active (not just for selected provider)
-  // This is because OpenAI key can be used for other providers too
-  const isUsingBYOK = hasAnyApiKey || checkBYOKDirectly();
+  useEffect(() => {
+    const checkBYOK = () => {
+      if (typeof window === 'undefined') {
+        setIsUsingBYOK(false);
+        return;
+      }
+      try {
+        const keys = getStoredApiKeys(user?.id || null);
+        const hasActive = keys.some(k => k.isActive);
+        setIsUsingBYOK(hasActive);
+      } catch {
+        setIsUsingBYOK(false);
+      }
+    };
+    
+    // Check immediately
+    checkBYOK();
+    
+    // Listen for API key changes
+    window.addEventListener('moonscribe-api-keys-changed', checkBYOK);
+    window.addEventListener('storage', checkBYOK); // Also listen for cross-tab changes
+    
+    return () => {
+      window.removeEventListener('moonscribe-api-keys-changed', checkBYOK);
+      window.removeEventListener('storage', checkBYOK);
+    };
+  }, [user]);
 
   // Handlers
   const handleUpload = async (files: File[]) => {
