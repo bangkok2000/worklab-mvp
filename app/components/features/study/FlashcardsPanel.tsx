@@ -220,44 +220,104 @@ export default function FlashcardsPanel({
             style={{
               flex: 1,
               minHeight: '300px',
-              padding: '2rem',
-              background: 'rgba(139, 92, 246, 0.1)',
-              border: '2px solid rgba(139, 92, 246, 0.3)',
-              borderRadius: '16px',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              transition: 'all 0.3s',
-              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+              position: 'relative',
               perspective: '1000px',
+              cursor: 'pointer',
             }}
           >
             <div style={{
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              color: '#f1f5f9',
-              lineHeight: '1.6',
-              maxWidth: '600px',
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              transformStyle: 'preserve-3d',
+              transition: 'transform 0.6s',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
             }}>
-              {isFlipped ? currentCard.back : currentCard.front}
+              {/* Front Face */}
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                padding: '2rem',
+                background: 'rgba(139, 92, 246, 0.1)',
+                border: '2px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+              }}>
+                <div style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: '#f1f5f9',
+                  lineHeight: '1.6',
+                  maxWidth: '600px',
+                }}>
+                  {currentCard.front}
+                </div>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#64748b',
+                  marginTop: '1rem',
+                }}>
+                  Click to reveal answer
+                </p>
+                <p style={{
+                  fontSize: '0.6875rem',
+                  color: '#64748b',
+                  marginTop: '0.5rem',
+                }}>
+                  Source: {currentCard.source}
+                </p>
+              </div>
+
+              {/* Back Face */}
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                padding: '2rem',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '2px solid rgba(139, 92, 246, 0.4)',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                transform: 'rotateY(180deg)',
+              }}>
+                <div style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: '#f1f5f9',
+                  lineHeight: '1.6',
+                  maxWidth: '600px',
+                }}>
+                  {currentCard.back}
+                </div>
+                <p style={{
+                  fontSize: '0.75rem',
+                  color: '#64748b',
+                  marginTop: '1rem',
+                }}>
+                  Click to flip back
+                </p>
+                <p style={{
+                  fontSize: '0.6875rem',
+                  color: '#64748b',
+                  marginTop: '0.5rem',
+                }}>
+                  Source: {currentCard.source}
+                </p>
+              </div>
             </div>
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#64748b',
-              marginTop: '1rem',
-            }}>
-              {isFlipped ? 'Click to flip back' : 'Click to reveal answer'}
-            </p>
-            <p style={{
-              fontSize: '0.6875rem',
-              color: '#64748b',
-              marginTop: '0.5rem',
-            }}>
-              Source: {currentCard.source}
-            </p>
           </div>
 
           {/* Navigation Controls */}
