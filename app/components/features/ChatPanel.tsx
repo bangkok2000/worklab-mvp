@@ -22,6 +22,9 @@ interface ChatPanelProps {
   availableModels?: { value: string; label: string }[];
   documentCount?: number;
   hasApiKey?: boolean;
+  projectId?: string;
+  projectName?: string;
+  projectColor?: string;
 }
 
 const providers = [
@@ -42,6 +45,9 @@ export default function ChatPanel({
   availableModels = [{ value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' }],
   documentCount = 0,
   hasApiKey = false,
+  projectId,
+  projectName,
+  projectColor,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,7 +93,14 @@ export default function ChatPanel({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble 
+                key={msg.id} 
+                message={msg}
+                projectId={projectId}
+                projectName={projectName}
+                projectColor={projectColor}
+                allMessages={messages}
+              />
             ))}
             {isLoading && <TypingIndicator />}
             <div ref={messagesEndRef} />
@@ -191,63 +204,448 @@ export default function ChatPanel({
 }
 
 // Message Bubble component
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ 
+  message, 
+  projectId, 
+  projectName, 
+  projectColor 
+}: { 
+  message: Message;
+  projectId?: string;
+  projectName?: string;
+  projectColor?: string;
+}) {
   const isUser = message.role === 'user';
+  const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // Find the user's question that prompted this AI response
+  const userQuestion = message.sources ? '' : ''; // We'll get this from context
+
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: isUser ? 'flex-end' : 'flex-start',
+          animation: 'fadeIn 0.3s ease-out',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '75%',
+            padding: '1rem 1.25rem',
+            borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+            background: isUser
+              ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)'
+              : 'rgba(139, 92, 246, 0.1)',
+            color: isUser ? '#ffffff' : '#f1f5f9',
+            border: isUser ? 'none' : '1px solid rgba(139, 92, 246, 0.2)',
+            boxShadow: isUser ? '0 4px 15px rgba(139, 92, 246, 0.3)' : 'none',
+            position: 'relative',
+          }}
+        >
+          <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontSize: '0.9375rem' }}>
+            {message.content}
+          </p>
+
+          {/* Sources */}
+          {message.sources && message.sources.length > 0 && (
+            <div
+              style={{
+                marginTop: '0.75rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid rgba(139, 92, 246, 0.2)',
+              }}
+            >
+              <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', marginBottom: '0.5rem' }}>
+                Sources ({message.sources.length}):
+              </p>
+              {message.sources.map((source) => (
+                <p key={source.number} style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.25rem 0' }}>
+                  [{source.number}] {source.source}
+                  {source.relevance && (
+                    <span style={{ opacity: 0.7, marginLeft: '0.25rem' }}>
+                      ({source.relevance}%)
+                    </span>
+                  )}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Save as Insight button (only for AI responses) */}
+          {!isUser && (
+            <button
+              onClick={() => setShowSaveModal(true)}
+              style={{
+                marginTop: '0.75rem',
+                padding: '0.5rem 0.875rem',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '8px',
+                color: '#c4b5fd',
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.25)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+              }}
+            >
+              💡 Save as Insight
+            </button>
+          )}
+        </div>
+        <span style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '0.25rem', padding: '0 0.25rem' }}>
+          {message.timestamp.toLocaleTimeString()}
+        </span>
+      </div>
+
+      {/* Save Insight Modal */}
+      {showSaveModal && (
+        <SaveInsightModal
+          message={message}
+          userQuestion={userQuestion}
+          projectId={projectId}
+          projectName={projectName}
+          projectColor={projectColor}
+          onClose={() => setShowSaveModal(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// Save Insight Modal Component
+function SaveInsightModal({
+  message,
+  projectId,
+  projectName,
+  projectColor,
+  onClose,
+}: {
+  message: Message;
+  projectId?: string;
+  projectName?: string;
+  projectColor?: string;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Auto-generate title from first line of content
+  useEffect(() => {
+    if (!title && message.content) {
+      const firstLine = message.content.split('\n')[0].trim();
+      setTitle(firstLine.length > 60 ? firstLine.substring(0, 60) + '...' : firstLine);
+    }
+  }, [message.content, title]);
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      alert('Please enter a title');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Get existing insights
+      const STORAGE_KEY = 'moonscribe_insights_v2';
+      const saved = localStorage.getItem(STORAGE_KEY);
+      let insights: any[] = [];
+
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.insights) {
+          insights = data.insights;
+        }
+      }
+
+      // Get all projects for project selection
+      const projectsData = localStorage.getItem('moonscribe-projects');
+      const projects = projectsData ? JSON.parse(projectsData) : [];
+      const selectedProject = projects.find((p: any) => p.id === projectId);
+
+      // Create new insight
+      const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+      const newInsight = {
+        id: `insight-${Date.now()}`,
+        title: title.trim(),
+        originalQuery: userQuestion || 'Question about documents',
+        content: message.content,
+        sources: (message.sources || []).map((s, idx) => ({
+          id: `source-${idx}`,
+          title: s.source,
+          type: 'document', // Default type
+          relevance: s.relevance,
+        })),
+        tags,
+        projectId: projectId || undefined,
+        projectName: selectedProject?.name || projectName || undefined,
+        projectColor: selectedProject?.color || projectColor || undefined,
+        isStarred: false,
+        isPublic: false,
+        isArchived: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Add to insights array
+      insights.unshift(newInsight);
+
+      // Save back to localStorage
+      const dataToSave = {
+        version: 2,
+        initialized: true,
+        insights,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+
+      // Dispatch event to notify other pages
+      window.dispatchEvent(new CustomEvent('moonscribe-insights-changed', {
+        detail: { count: insights.filter((i: any) => !i.isArchived).length }
+      }));
+
+      alert('Insight saved!');
+      onClose();
+    } catch (error) {
+      console.error('Failed to save insight:', error);
+      alert('Failed to save insight. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div
       style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: isUser ? 'flex-end' : 'flex-start',
-        animation: 'fadeIn 0.3s ease-out',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
       }}
+      onClick={onClose}
     >
       <div
         style={{
-          maxWidth: '75%',
-          padding: '1rem 1.25rem',
-          borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-          background: isUser
-            ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)'
-            : 'rgba(139, 92, 246, 0.1)',
-          color: isUser ? '#ffffff' : '#f1f5f9',
-          border: isUser ? 'none' : '1px solid rgba(139, 92, 246, 0.2)',
-          boxShadow: isUser ? '0 4px 15px rgba(139, 92, 246, 0.3)' : 'none',
+          width: '100%',
+          maxWidth: '600px',
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)',
+          border: '1px solid rgba(139, 92, 246, 0.3)',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <p style={{ margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', fontSize: '0.9375rem' }}>
-          {message.content}
-        </p>
-
-        {/* Sources */}
-        {message.sources && message.sources.length > 0 && (
-          <div
+        {/* Header */}
+        <div
+          style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>💡 Save as Insight</h2>
+          <button
+            onClick={onClose}
             style={{
-              marginTop: '0.75rem',
-              paddingTop: '0.75rem',
-              borderTop: '1px solid rgba(139, 92, 246, 0.2)',
+              background: 'none',
+              border: 'none',
+              color: '#64748b',
+              fontSize: '1.25rem',
+              cursor: 'pointer',
             }}
           >
-            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', marginBottom: '0.5rem' }}>
-              Sources ({message.sources.length}):
-            </p>
-            {message.sources.map((source) => (
-              <p key={source.number} style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0.25rem 0' }}>
-                [{source.number}] {source.source}
-                {source.relevance && (
-                  <span style={{ opacity: 0.7, marginLeft: '0.25rem' }}>
-                    ({source.relevance}%)
-                  </span>
-                )}
-              </p>
-            ))}
+            ×
+          </button>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+          {/* Title */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '0.8125rem',
+                color: '#94a3b8',
+                marginBottom: '0.5rem',
+                fontWeight: 500,
+              }}
+            >
+              Title *
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a title for this insight..."
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+              }}
+            />
           </div>
-        )}
+
+          {/* Tags */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '0.8125rem',
+                color: '#94a3b8',
+                marginBottom: '0.5rem',
+                fontWeight: 500,
+              }}
+            >
+              Tags (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              placeholder="AI, Research, Notes"
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#f1f5f9',
+                fontSize: '0.9375rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {/* Project Info (read-only) */}
+          {projectName && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '0.8125rem',
+                  color: '#94a3b8',
+                  marginBottom: '0.5rem',
+                  fontWeight: 500,
+                }}
+              >
+                Project
+              </label>
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(139, 92, 246, 0.08)',
+                  border: '1px solid rgba(139, 92, 246, 0.15)',
+                  borderRadius: '8px',
+                  color: '#c4b5fd',
+                  fontSize: '0.875rem',
+                }}
+              >
+                {projectName}
+              </div>
+            </div>
+          )}
+
+          {/* Preview */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: '0.8125rem',
+                color: '#94a3b8',
+                marginBottom: '0.5rem',
+                fontWeight: 500,
+              }}
+            >
+              Content Preview
+            </label>
+            <div
+              style={{
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(139, 92, 246, 0.2)',
+                borderRadius: '8px',
+                color: '#94a3b8',
+                fontSize: '0.875rem',
+                maxHeight: '150px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {message.content.substring(0, 200)}
+              {message.content.length > 200 ? '...' : ''}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: '1rem 1.5rem',
+            borderTop: '1px solid rgba(139, 92, 246, 0.15)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '0.75rem',
+          }}
+        >
+          <button
+            onClick={onClose}
+            style={{
+              padding: '0.625rem 1.25rem',
+              background: 'rgba(100, 116, 139, 0.1)',
+              border: '1px solid rgba(100, 116, 139, 0.3)',
+              borderRadius: '8px',
+              color: '#94a3b8',
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!title.trim() || isSaving}
+            style={{
+              padding: '0.625rem 1.25rem',
+              background: isSaving || !title.trim()
+                ? 'rgba(139, 92, 246, 0.5)'
+                : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+              border: 'none',
+              borderRadius: '8px',
+              color: 'white',
+              fontSize: '0.875rem',
+              cursor: isSaving || !title.trim() ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            {isSaving ? 'Saving...' : 'Save Insight'}
+          </button>
+        </div>
       </div>
-      <span style={{ fontSize: '0.6875rem', color: '#64748b', marginTop: '0.25rem', padding: '0 0.25rem' }}>
-        {message.timestamp.toLocaleTimeString()}
-      </span>
     </div>
   );
 }

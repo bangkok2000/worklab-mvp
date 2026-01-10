@@ -729,6 +729,9 @@ export default function ProjectWorkspace() {
             availableModels={modelsByProvider[provider] || []}
             documentCount={documents.length}
             hasApiKey={isUsingBYOK}
+            projectId={projectId}
+            projectName={project?.name}
+            projectColor={project?.color}
           />
         </div>
 
