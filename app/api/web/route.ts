@@ -479,15 +479,40 @@ Try using a direct article URL or a page with static HTML content.`
     console.log(`[Web] Created ${chunks.length} chunks`);
 
     // Generate embeddings using OpenAI
+    // text-embedding-3-large supports max 8192 tokens (~32,000 chars)
+    // We chunk to 8000 chars, but add safety limit
     const openai = new OpenAI({ apiKey: openaiKey });
     
     const embeddings = await Promise.all(
       chunks.map(async (chunk) => {
-        const response = await openai.embeddings.create({
-          model: 'text-embedding-3-large',
-          input: chunk.text,
-        });
-        return response.data[0].embedding;
+        // Safety limit: max 30,000 chars to stay well under token limit
+        const text = chunk.text.length > 30000 
+          ? chunk.text.substring(0, 30000) 
+          : chunk.text;
+        
+        try {
+          const response = await openai.embeddings.create({
+            model: 'text-embedding-3-large',
+            input: text,
+          });
+          return response.data[0].embedding;
+        } catch (error: any) {
+          console.error(`[Web] Embedding error for chunk ${chunk.index}:`, error.message);
+          // If chunk is still too large, split it further
+          if (error.message?.includes('maximum context length')) {
+            // Split into smaller pieces
+            const halfLength = Math.floor(text.length / 2);
+            const firstHalf = text.substring(0, halfLength);
+            const secondHalf = text.substring(halfLength);
+            // Return embedding for first half only (better than failing)
+            const response = await openai.embeddings.create({
+              model: 'text-embedding-3-large',
+              input: firstHalf,
+            });
+            return response.data[0].embedding;
+          }
+          throw error;
+        }
       })
     );
 
