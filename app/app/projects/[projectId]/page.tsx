@@ -584,7 +584,7 @@ export default function ProjectWorkspace() {
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           style={{
             position: 'fixed',
-            left: leftPanelOpen ? '272px' : '0', // Position just inside panel edge (300px - 28px button width)
+            left: leftPanelOpen ? '300px' : '0', // Position at right edge of panel when open (300px = panel width)
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 1000,
