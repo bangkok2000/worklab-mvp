@@ -185,6 +185,8 @@ export async function POST(req: NextRequest) {
       .map(match => ({
         text: match.metadata?.text as string,
         source: match.metadata?.source as string,
+        url: match.metadata?.url as string | undefined, // Extract URL for web sources
+        sourceType: match.metadata?.source_type as string | undefined, // Extract source type
         score: match.score,
       }))
       .filter(item => item.text);
@@ -275,7 +277,11 @@ export async function POST(req: NextRequest) {
       .map((item, idx) => {
         const normalized = normalizeSourceName(item.source);
         const displayName = sourceNameMap.get(normalized) || item.source;
-        return `[${idx + 1}] From ${displayName}:\n${item.text}`;
+        // Include URL for web sources so AI can reference it
+        const urlInfo = item.url && item.sourceType === 'web' 
+          ? ` (Source URL: ${item.url})` 
+          : '';
+        return `[${idx + 1}] From ${displayName}${urlInfo}:\n${item.text}`;
       })
       .join('\n\n');
 
