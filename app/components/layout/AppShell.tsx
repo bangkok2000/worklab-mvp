@@ -1226,7 +1226,13 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
               <span style={{ fontSize: '1.25rem' }}>⚠️</span>
               <div>
                 <p style={{ color: '#fca5a5', fontWeight: 500, marginBottom: '0.25rem' }}>
-                  Error processing video
+                  {captureType === 'url' && isYouTubeUrl(inputValue) 
+                    ? 'Error processing video'
+                    : captureType === 'url' && isWebUrl(inputValue)
+                    ? 'Error processing web page'
+                    : captureType === 'upload'
+                    ? 'Error processing file'
+                    : 'Error processing content'}
                 </p>
                 <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
                   {error}
