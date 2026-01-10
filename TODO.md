@@ -2,10 +2,12 @@
 
 ## 🐛 Known Bugs (High Priority)
 
-### Bug 1: QuickCaptureModal not using BYOK key
+### Bug 1: QuickCaptureModal not using BYOK key ✅ FIXED
+- **Status:** ✅ **VERIFIED FIXED** (See BUG_STATUS_REPORT.md)
 - **Issue:** "Add Content" modal shows "Please sign in to use credits, add your own API key, or join a team" even when BYOK key is configured and active
 - **Root Cause:** QuickCaptureModal's `getApiKey()` function reads from wrong localStorage key
-- **Fix:** Update to read from `moonscribe-keys-anonymous` instead of `moonscribe-api-keys`
+- **Fix Applied:** QuickCaptureModal now uses `getDecryptedApiKey()` which correctly reads from `moonscribe-keys-anonymous` or `moonscribe-keys-${userId}`
+- **Verification:** Code review confirms correct localStorage key usage in `lib/utils/api-keys.ts`
 
 ### Bug 2: Project page returns 404
 - **Issue:** After creating a new project, clicking on it navigates to `/app/projects/project-{id}` which returns 404
@@ -20,15 +22,26 @@
 - **Root Cause:** Possible Vercel cache or build issue
 - **Fix:** Clear Vercel cache, force redeploy without cache
 
-### Bug 4: BYOK key not passed to API routes
+### Bug 4: BYOK key not passed to API routes ✅ FIXED
+- **Status:** ✅ **VERIFIED FIXED** (See BUG_STATUS_REPORT.md)
 - **Issue:** Even with BYOK badge showing, API routes (youtube, web, upload) still say "no API key"
 - **Root Cause:** QuickCaptureModal and API routes not properly reading/passing the decrypted key
-- **Fix:** Ensure proper key retrieval and transmission flow
+- **Fix Applied:** All API routes (YouTube, Web, Upload, Image, Audio) now:
+  - Accept `apiKey` parameter from request body/FormData
+  - Check for BYOK key first (highest priority)
+  - Properly pass key through processing pipeline
+- **Verification:** Code review confirms all routes accept and prioritize BYOK keys correctly
 
-### Bug 5: Inconsistent state between auth modes
+### Bug 5: Inconsistent state between auth modes ⚠️ MOSTLY FIXED
+- **Status:** ⚠️ **MOSTLY FIXED** - Logic correct, may have edge cases (See BUG_STATUS_REPORT.md)
 - **Issue:** App shows both "Guest" mode indicators AND user avatar simultaneously
 - **Root Cause:** Auth state and BYOK state are checked separately, causing race conditions
-- **Fix:** Unified auth/mode state management
+- **Current State:** Conditional rendering logic is correct (`user ? CreditBalance : GuestUsageIndicator`)
+- **Potential Issues:** 
+  - Race conditions during sign-in
+  - Cache issues (related to Bug 3)
+  - Timing issues with BYOK state updates
+- **Recommendation:** Test edge cases and verify no cache-related issues
 
 ---
 
