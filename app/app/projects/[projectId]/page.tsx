@@ -333,16 +333,27 @@ export default function ProjectWorkspace() {
       }
 
       try {
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        // Detect if file is an image and route to appropriate endpoint
+        const isImage = file.type.startsWith('image/');
+        const endpoint = isImage ? '/api/image' : '/api/upload';
+        
+        const res = await fetch(endpoint, { method: 'POST', body: formData });
         const data = await res.json();
 
         if (data.success) {
           const newDoc: Document = {
-            id: `doc-${Date.now()}`,
+            id: isImage ? (data.imageId || `image-${Date.now()}`) : `doc-${Date.now()}`,
             name: data.filename,
             status: 'ready',
-            chunks: data.chunks,
+            chunks: isImage ? 1 : (data.chunks || 0),
             uploadedAt: new Date(),
+            type: isImage ? 'image' : 'document',
+            ...(isImage && {
+              fileType: data.fileType,
+              fileSize: data.fileSize,
+              analysis: data.analysis,
+              extractedText: data.extractedText,
+            }),
           };
           // Check for duplicates before adding
           setDocuments(prev => {

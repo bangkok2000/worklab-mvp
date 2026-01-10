@@ -838,8 +838,12 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         formData.append('apiKey', apiKey);
       }
 
-      setProcessingStatus('Processing file...');
-      const response = await fetch('/api/upload', {
+      // Detect if file is an image and route to appropriate endpoint
+      const isImage = file.type.startsWith('image/');
+      const endpoint = isImage ? '/api/image' : '/api/upload';
+      
+      setProcessingStatus(isImage ? 'Analyzing image...' : 'Processing file...');
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       });
@@ -847,13 +851,25 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload file');
+        throw new Error(data.error || `Failed to ${isImage ? 'process image' : 'upload file'}`);
       }
 
       setProcessingStatus('Saving to library...');
 
-      // Create the content item
-      const newItem = {
+      // Create the content item (different structure for images vs documents)
+      const newItem = isImage ? {
+        id: data.imageId || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'image',
+        title: data.filename || file.name,
+        filename: data.filename,
+        fileType: data.fileType,
+        fileSize: data.fileSize,
+        analysis: data.analysis,
+        extractedText: data.extractedText,
+        chunksProcessed: 1, // Images are stored as single chunk
+        processed: true,
+        addedAt: new Date().toISOString(),
+      } : {
         id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: 'document',
         title: data.filename || file.name,
@@ -1294,7 +1310,8 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.pdf,.doc,.docx,.txt,.mp3,.mp4,.wav';
+                // Use MIME types for better browser compatibility - image/* accepts all image types
+                input.accept = 'application/pdf,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.doc,.docx,text/plain,.txt,audio/*,.mp3,.wav,video/*,.mp4,image/*,.jpg,.jpeg,.png,.gif,.webp';
                 input.multiple = false;
                 input.onchange = async (e) => {
                   const file = (e.target as HTMLInputElement).files?.[0];
@@ -1316,7 +1333,7 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
               <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>Drop files here or click to upload</p>
               <p style={{ color: '#64748b', fontSize: '0.8125rem' }}>
-                PDF, Word, Audio, Video supported
+                PDF, Images, Word, Audio, Video supported
               </p>
             </div>
           ) : !isProcessing && (
