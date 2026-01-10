@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { SourcesPanel, ChatPanel, HistoryPanel, SettingsPanel, SignUpRequiredModal } from '../../../components/features';
+import { SourcesPanel, StudioPanel, HistoryPanel, SettingsPanel, SignUpRequiredModal } from '../../../components/features';
 import { Button, Badge } from '../../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
@@ -838,9 +838,9 @@ export default function ProjectWorkspace() {
           )}
         </div>
 
-        {/* Center - Chat */}
+        {/* Center - Studio (Chat + Study Tools) */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <ChatPanel
+          <StudioPanel
             messages={messages}
             onSendMessage={handleSendMessage}
             isLoading={isAsking}
@@ -857,6 +857,7 @@ export default function ProjectWorkspace() {
             projectId={projectId}
             projectName={project?.name}
             projectColor={project?.color}
+            sourceFilenames={documents.filter(d => d.status === 'ready').map(d => d.name)}
           />
         </div>
 
