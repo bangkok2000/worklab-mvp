@@ -463,7 +463,34 @@ Step 4: Server AI (Days 10-12)
 
 **Effort:** 5-7 days (+ 3-4 days for intriq)
 
-### 3.4 Onboarding & Polish
+### 3.4 UI Refinement & Design Polish ⚠️ HIGH PRIORITY
+- [ ] **Spacing & Layout Optimization**
+  - [ ] Reduce font sizes (currently too large)
+  - [ ] Reduce icon sizes (currently too large)
+  - [ ] Optimize padding/margins (elements taking too much prime space)
+  - [ ] Fix empty space at bottom of pages
+  - [ ] Reduce sidebar menu column width (currently too wide)
+  - [ ] Optimize panel widths for better content-to-chrome ratio
+  - [ ] Improve vertical rhythm and spacing consistency
+- [ ] **Color Palette & Visual Design**
+  - [ ] Redesign color scheme for more elegant, professional feel
+  - [ ] Current purple/teal accents may not be appealing enough
+  - [ ] Consider more sophisticated color palette (e.g., muted tones, better contrast)
+  - [ ] Improve color harmony and visual hierarchy
+  - [ ] Ensure accessibility (WCAG contrast ratios)
+  - [ ] Create cohesive design system with consistent color usage
+- [ ] **Typography Refinement**
+  - [ ] Review and optimize font sizes across all components
+  - [ ] Improve line heights for better readability
+  - [ ] Ensure consistent font weights and styles
+- [ ] **Component Density**
+  - [ ] Make components more compact where appropriate
+  - [ ] Reduce unnecessary whitespace
+  - [ ] Optimize information density
+
+**Effort:** 5-7 days
+
+### 3.5 Onboarding & Polish
 - [ ] First-run tutorial
 - [ ] Sample project with demo content
 - [ ] Tooltips and hints
@@ -690,19 +717,27 @@ Week 10-14: [████████████████████] Mobil
    - Fixed TypeScript downlevelIteration errors (using Array.from())
 
 ### 🔄 Next Steps (Tomorrow)
-1. **Study Tools: Continue Implementation**
+1. **UI Refinement & Design** ⚠️ HIGH PRIORITY
+   - Review overall UI spacing and density
+   - Reduce font/icon sizes (currently too large)
+   - Fix empty space at bottom of pages
+   - Reduce sidebar width (currently too wide)
+   - Redesign color palette for more elegant, professional feel
+   - Improve visual hierarchy and spacing consistency
+
+2. **Study Tools: Continue Implementation**
    - Quiz feature (multiple choice, true/false questions)
    - Summary feature (document summaries)
    - Study Guide feature (structured outlines)
    - Mind Map feature (concept visualization)
    - Audio Overview (text-to-speech) - Future
 
-2. **Test & Verify**
+3. **Test & Verify**
    - Test flashcards generation with multiple sources
    - Verify AI no longer hallucinates or infers when answer not found
    - Test that "not found" responses are clean (no related information)
 
-3. **Remaining High Priority Items**
+4. **Remaining High Priority Items**
    - Browser Extension (P1) - 5-7 days
    - Hybrid RAG (P1) - 5-6 days  
    - Rich Note Editor (P1) - 4-5 days
