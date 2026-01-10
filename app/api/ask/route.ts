@@ -4,7 +4,7 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { createServerClient } from '@/lib/supabase/client';
 import { createConversation, addMessage } from '@/lib/supabase/conversations';
 import { estimateOpenAICost, estimateAnthropicCost, logUsage } from '@/lib/supabase/usage';
-import { expandQuery } from '@/lib/utils/query-expansion';
+import { expandQuery, expandQueryWithLLM } from '@/lib/utils/query-expansion';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
 import { getTeamApiKey } from '@/lib/supabase/teams';
 import type { CreditAction } from '@/lib/supabase/types';
@@ -136,7 +136,27 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey: openaiKey });
     
     // Expand query for better semantic search recall
-    const expandedQuery = expandQuery(question);
+    // Use LLM-based expansion for complex queries, simple expansion for short queries
+    let expandedQuery: string;
+    const isComplexQuery = question.length > 50 || 
+                           question.toLowerCase().includes('compare') ||
+                           question.toLowerCase().includes('analyze') ||
+                           question.toLowerCase().includes('explain') ||
+                           question.split(' ').length > 10;
+    
+    if (isComplexQuery && openaiKey) {
+      // Use LLM-based expansion for complex queries
+      try {
+        expandedQuery = await expandQueryWithLLM(question, openai, selectedModel);
+        console.log('[API] Using LLM-based query expansion for complex query');
+      } catch (error) {
+        console.warn('[API] LLM query expansion failed, using simple expansion:', error);
+        expandedQuery = expandQuery(question);
+      }
+    } else {
+      // Use simple keyword expansion for short/simple queries
+      expandedQuery = expandQuery(question);
+    }
     
     // Embed the expanded question (always use OpenAI for embeddings)
     const embeddingResponse = await openai.embeddings.create({
@@ -375,6 +395,19 @@ export async function POST(req: NextRequest) {
                             questionLower.includes('what does it say') ||
                             questionLower.includes('what is it about');
     
+    // Detect complex questions that would benefit from chain-of-thought reasoning
+    const isComplexQuestion = questionLower.includes('compare') ||
+                              questionLower.includes('contrast') ||
+                              questionLower.includes('explain why') ||
+                              questionLower.includes('how does') ||
+                              questionLower.includes('why does') ||
+                              questionLower.includes('what are the differences') ||
+                              questionLower.includes('what are the similarities') ||
+                              questionLower.includes('analyze the relationship') ||
+                              questionLower.includes('evaluate') ||
+                              questionLower.includes('discuss') ||
+                              (question.length > 100); // Long questions are often complex
+    
     // Detect if question is asking about a specific source type
     const isAskingAboutWebLink = questionLower.includes('web link') || questionLower.includes('url') || 
                                   questionLower.includes('webpage') || questionLower.includes('website') ||
@@ -385,9 +418,11 @@ export async function POST(req: NextRequest) {
     // Identify source types from the retrieved context and metadata
     const webSources: string[] = [];
     const docSources: string[] = [];
+    const audioSources: string[] = []; // YouTube, audio files
+    const pdfSources: string[] = [];
     
-    // Check context chunks for source_type metadata to accurately identify web vs document sources
-    const sourceTypeMap = new Map<string, 'web' | 'document'>();
+    // Check context chunks for source_type metadata to accurately identify source types
+    const sourceTypeMap = new Map<string, 'web' | 'document' | 'audio' | 'pdf'>();
     allMatches.forEach(match => {
       const normalized = normalizeSourceName(match.source);
       const originalName = sourceNameMap.get(normalized) || match.source;
@@ -396,7 +431,14 @@ export async function POST(req: NextRequest) {
         normalizeSourceName(m.metadata?.source as string || '') === normalized
       );
       if (matchMetadata?.metadata?.source_type) {
-        sourceTypeMap.set(originalName, matchMetadata.metadata.source_type as 'web' | 'document');
+        const sourceType = matchMetadata.metadata.source_type as string;
+        if (sourceType === 'audio' || sourceType === 'youtube') {
+          sourceTypeMap.set(originalName, 'audio');
+        } else if (sourceType === 'web') {
+          sourceTypeMap.set(originalName, 'web');
+        } else if (sourceType === 'pdf' || sourceType === 'document') {
+          sourceTypeMap.set(originalName, sourceType === 'pdf' ? 'pdf' : 'document');
+        }
       }
     });
     
@@ -404,17 +446,30 @@ export async function POST(req: NextRequest) {
       const sourceLower = source.toLowerCase();
       // Check metadata first, then fallback to heuristics
       if (sourceTypeMap.has(source)) {
-        if (sourceTypeMap.get(source) === 'web') {
+        const type = sourceTypeMap.get(source)!;
+        if (type === 'web') {
           webSources.push(source);
+        } else if (type === 'audio') {
+          audioSources.push(source);
+        } else if (type === 'pdf') {
+          pdfSources.push(source);
+          docSources.push(source); // PDFs are also documents
         } else {
           docSources.push(source);
         }
+      } else if (sourceLower.includes('youtube') || sourceLower.includes('audio') || 
+                 sourceLower.includes('.mp3') || sourceLower.includes('.wav') || 
+                 sourceLower.includes('.m4a')) {
+        audioSources.push(source);
       } else if (sourceLower.includes('wikipedia') || sourceLower.includes('http') || 
                  sourceLower.includes('article') || sourceLower.includes('web') ||
                  sourceLower.endsWith('.html') || sourceLower.includes('url')) {
         webSources.push(source);
-      } else if (sourceLower.endsWith('.pdf') || sourceLower.includes('document') || 
-                 sourceLower.includes('file') || sourceLower.includes('upload')) {
+      } else if (sourceLower.endsWith('.pdf')) {
+        pdfSources.push(source);
+        docSources.push(source);
+      } else if (sourceLower.includes('document') || sourceLower.includes('file') || 
+                 sourceLower.includes('upload')) {
         docSources.push(source);
       } else {
         // Default to document if unclear
@@ -422,8 +477,16 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    // Build source list with type indicators
+    // Determine primary source type for context-aware prompting
+    const hasPDFs = pdfSources.length > 0;
+    const hasAudio = audioSources.length > 0;
+    const hasWeb = webSources.length > 0;
+    const primarySourceType = hasPDFs ? 'pdf' : hasAudio ? 'audio' : hasWeb ? 'web' : 'document';
+    
+    // Build source list with type indicators and context-aware guidance
     let sourceList = '';
+    let contextAwareGuidance = '';
+    
     if (uniqueSources.length > 1) {
       sourceList = `You have context from ${uniqueSources.length} different sources: ${uniqueSources.join(', ')}. `;
       
@@ -435,6 +498,17 @@ export async function POST(req: NextRequest) {
       }
     } else if (uniqueSources.length === 1) {
       sourceList = `You have context from: ${uniqueSources[0]}. `;
+    }
+    
+    // Add context-aware guidance based on source types
+    if (hasPDFs) {
+      contextAwareGuidance += `Note: You are analyzing PDF documents. When citing information, reference the source document. If page numbers or sections are mentioned in the context, include them in your citations. `;
+    }
+    if (hasAudio) {
+      contextAwareGuidance += `Note: You are analyzing audio/video content (YouTube, audio files). The context includes timestamps (e.g., "at 2:34"). When citing information, mention the timestamp naturally (e.g., "as mentioned at 2:34" or "around the 5-minute mark"). `;
+    }
+    if (hasWeb) {
+      contextAwareGuidance += `Note: You are analyzing web content. When citing information, you may reference the source URL if provided in the context. `;
     }
 
     // Construct comprehensive prompt for better answers
@@ -459,16 +533,23 @@ Answer:`;
     } else if (isSynthesisTask) {
       // Special handling for synthesis tasks (summarize, analyze, tell me about, etc.)
       // These tasks REQUIRE the AI to synthesize information from multiple chunks
+      const chainOfThought = isComplexQuestion ? `\n\nThink step by step:
+1. Identify the main topics and themes in the context
+2. Extract key information from different parts
+3. Organize the information logically
+4. Synthesize into a coherent answer
+5. Cite your sources\n` : '';
+      
       prompt = `You are a research assistant. Synthesize information from the provided documents to answer the question.
 
-${sourceList}
+${sourceList}${contextAwareGuidance}
 Rules:
 - Synthesize and connect information from different parts of the context
 - Base your answer ONLY on information explicitly stated in the context
 - Do not use training data, general knowledge, or make up facts
 - Cite sources using [1], [2], etc.
 - If insufficient information, say "I couldn't find enough information in the provided documents."
-
+${chainOfThought}
 Examples:
 Example 1:
 Context: [1] Document.pdf: "The study found that exercise improves mood by 30%."
@@ -488,16 +569,22 @@ Question: ${question}
 Answer:`;
     } else {
       // Standard fact-finding questions (specific questions with direct answers)
+      const chainOfThought = isComplexQuestion ? `\n\nThink step by step:
+1. Identify which parts of the context are relevant to the question
+2. Extract the specific information needed
+3. Verify the information is explicitly stated (not inferred)
+4. Formulate a clear, direct answer
+5. Cite your sources\n` : '';
+      
       prompt = `You are a research assistant. Answer questions using ONLY the provided context.
 
-${sourceList}
+${sourceList}${contextAwareGuidance}
 Rules:
 - Use only information explicitly stated in the context
 - Do not use training data, general knowledge, or make inferences
 - Cite sources with [1], [2], etc.
 - If information isn't in the context, say "I couldn't find this information in the provided documents."
-- For audio sources, timestamps are included (e.g., "at 2:34") - mention them naturally when citing
-
+${chainOfThought}
 Examples:
 Example 1:
 Context: [1] Document.pdf: "The study found that exercise improves mood."
