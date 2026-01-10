@@ -54,8 +54,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!isMounted) return;
-    setApiKeys(getStoredApiKeys(null));
-  }, [isMounted]);
+    setApiKeys(getStoredApiKeys(user?.id || null));
+  }, [isMounted, user]);
 
   // Dispatch event to notify other components (like CreditBalance) about key changes
   const notifyApiKeyChange = () => {
@@ -68,12 +68,16 @@ export default function SettingsPage() {
     if (!newKeyName.trim() || !newKeyValue.trim()) return;
     setAddingKey(true);
     try {
-      await saveApiKey(newProvider, newKeyValue.trim(), newKeyName.trim(), null);
-      setApiKeys(getStoredApiKeys(null));
+      await saveApiKey(newProvider, newKeyValue.trim(), newKeyName.trim(), user?.id || null);
+      setApiKeys(getStoredApiKeys(user?.id || null));
       setNewKeyName('');
       setNewKeyValue('');
       setShowAddKey(false);
       notifyApiKeyChange();
+      // Dispatch the correct event name
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('moonscribe-api-keys-changed'));
+      }
     } catch (e) {
       console.error('Failed to save key:', e);
     }
@@ -82,15 +86,15 @@ export default function SettingsPage() {
 
   const handleDeleteKey = (id: string) => {
     if (confirm('Delete this API key?')) {
-      deleteApiKey(id, null);
-      setApiKeys(getStoredApiKeys(null));
+      deleteApiKey(id, user?.id || null);
+      setApiKeys(getStoredApiKeys(user?.id || null));
       notifyApiKeyChange();
     }
   };
 
   const handleToggleKey = (id: string) => {
-    toggleApiKey(id, null);
-    setApiKeys(getStoredApiKeys(null));
+    toggleApiKey(id, user?.id || null);
+    setApiKeys(getStoredApiKeys(user?.id || null));
     notifyApiKeyChange();
   };
 

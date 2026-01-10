@@ -176,20 +176,6 @@ export default function ProjectWorkspace() {
     return () => window.removeEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
   }, [user]);
 
-  // Save documents
-  useEffect(() => {
-    if (!isMounted || !projectId) return;
-    localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(documents));
-    updateProjectStats();
-  }, [documents, isMounted, projectId]);
-
-  // Save conversations
-  useEffect(() => {
-    if (!isMounted || !projectId) return;
-    localStorage.setItem(`moonscribe-project-${projectId}-conversations`, JSON.stringify(conversations));
-    updateProjectStats();
-  }, [conversations, isMounted, projectId]);
-
   const updateProjectStats = () => {
     if (!projectId) return;
     try {
@@ -207,6 +193,20 @@ export default function ProjectWorkspace() {
       console.error('Failed to update project stats:', e);
     }
   };
+
+  // Save documents
+  useEffect(() => {
+    if (!isMounted || !projectId) return;
+    localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(documents));
+    updateProjectStats();
+  }, [documents, isMounted, projectId]);
+
+  // Save conversations
+  useEffect(() => {
+    if (!isMounted || !projectId) return;
+    localStorage.setItem(`moonscribe-project-${projectId}-conversations`, JSON.stringify(conversations));
+    updateProjectStats();
+  }, [conversations, isMounted, projectId]);
 
   // Check if user has BYOK (any active key) - reactive check
   const [isUsingBYOK, setIsUsingBYOK] = useState(false);
