@@ -333,26 +333,45 @@ export default function ProjectWorkspace() {
       }
 
       try {
-        // Detect if file is an image and route to appropriate endpoint
+        // Detect file type and route to appropriate endpoint
         const isImage = file.type.startsWith('image/');
-        const endpoint = isImage ? '/api/image' : '/api/upload';
+        const isAudio = file.type.startsWith('audio/') || 
+                       file.name.toLowerCase().endsWith('.mp3') ||
+                       file.name.toLowerCase().endsWith('.wav') ||
+                       file.name.toLowerCase().endsWith('.m4a');
+        
+        let endpoint = '/api/upload';
+        if (isImage) {
+          endpoint = '/api/image';
+        } else if (isAudio) {
+          endpoint = '/api/audio';
+        }
         
         const res = await fetch(endpoint, { method: 'POST', body: formData });
         const data = await res.json();
 
         if (data.success) {
           const newDoc: Document = {
-            id: isImage ? (data.imageId || `image-${Date.now()}`) : `doc-${Date.now()}`,
+            id: isImage ? (data.imageId || `image-${Date.now()}`) 
+                : isAudio ? (data.audioId || `audio-${Date.now()}`)
+                : `doc-${Date.now()}`,
             name: data.filename,
             status: 'ready',
             chunks: isImage ? 1 : (data.chunks || 0),
             uploadedAt: new Date(),
-            type: isImage ? 'image' : 'document',
+            type: isImage ? 'image' : isAudio ? 'audio' : 'document',
             ...(isImage && {
               fileType: data.fileType,
               fileSize: data.fileSize,
               analysis: data.analysis,
               extractedText: data.extractedText,
+            }),
+            ...(isAudio && {
+              fileType: data.fileType,
+              fileSize: data.fileSize,
+              transcript: data.transcript,
+              duration: data.duration,
+              durationMinutes: data.durationMinutes,
             }),
           };
           // Check for duplicates before adding

@@ -176,6 +176,9 @@ export default function Dashboard() {
     bookmark: '🔖',
     image: '🖼️',
     video: '🎬',
+    mp3: '🎵',
+    wav: '🎵',
+    m4a: '🎵',
   };
 
   return (

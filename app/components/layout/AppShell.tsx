@@ -838,11 +838,25 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         formData.append('apiKey', apiKey);
       }
 
-      // Detect if file is an image and route to appropriate endpoint
+      // Detect file type and route to appropriate endpoint
       const isImage = file.type.startsWith('image/');
-      const endpoint = isImage ? '/api/image' : '/api/upload';
+      const isAudio = file.type.startsWith('audio/') || 
+                     file.name.toLowerCase().endsWith('.mp3') ||
+                     file.name.toLowerCase().endsWith('.wav') ||
+                     file.name.toLowerCase().endsWith('.m4a');
       
-      setProcessingStatus(isImage ? 'Analyzing image...' : 'Processing file...');
+      let endpoint = '/api/upload';
+      let processingStatus = 'Processing file...';
+      
+      if (isImage) {
+        endpoint = '/api/image';
+        processingStatus = 'Analyzing image...';
+      } else if (isAudio) {
+        endpoint = '/api/audio';
+        processingStatus = 'Transcribing audio...';
+      }
+      
+      setProcessingStatus(processingStatus);
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
@@ -851,33 +865,56 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Failed to ${isImage ? 'process image' : 'upload file'}`);
+        const errorMsg = isImage ? 'process image' : isAudio ? 'transcribe audio' : 'upload file';
+        throw new Error(data.error || `Failed to ${errorMsg}`);
       }
 
       setProcessingStatus('Saving to library...');
 
-      // Create the content item (different structure for images vs documents)
-      const newItem = isImage ? {
-        id: data.imageId || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'image',
-        title: data.filename || file.name,
-        filename: data.filename,
-        fileType: data.fileType,
-        fileSize: data.fileSize,
-        analysis: data.analysis,
-        extractedText: data.extractedText,
-        chunksProcessed: 1, // Images are stored as single chunk
-        processed: true,
-        addedAt: new Date().toISOString(),
-      } : {
-        id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        type: 'document',
-        title: data.filename || file.name,
-        filename: data.filename,
-        chunksProcessed: data.chunks || 0,
-        processed: true,
-        addedAt: new Date().toISOString(),
-      };
+      // Create the content item (different structure for images, audio, and documents)
+      let newItem: any;
+      
+      if (isImage) {
+        newItem = {
+          id: data.imageId || `image-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'image',
+          title: data.filename || file.name,
+          filename: data.filename,
+          fileType: data.fileType,
+          fileSize: data.fileSize,
+          analysis: data.analysis,
+          extractedText: data.extractedText,
+          chunksProcessed: 1, // Images are stored as single chunk
+          processed: true,
+          addedAt: new Date().toISOString(),
+        };
+      } else if (isAudio) {
+        newItem = {
+          id: data.audioId || `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'audio',
+          title: data.filename || file.name,
+          filename: data.filename,
+          fileType: data.fileType,
+          fileSize: data.fileSize,
+          transcript: data.transcript,
+          duration: data.duration,
+          durationMinutes: data.durationMinutes,
+          segments: data.segments,
+          chunksProcessed: data.chunks || 0,
+          processed: true,
+          addedAt: new Date().toISOString(),
+        };
+      } else {
+        newItem = {
+          id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: 'document',
+          title: data.filename || file.name,
+          filename: data.filename,
+          chunksProcessed: data.chunks || 0,
+          processed: true,
+          addedAt: new Date().toISOString(),
+        };
+      }
 
       // Save to local storage
       if (typeof window !== 'undefined') {
@@ -1333,7 +1370,7 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
               <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>Drop files here or click to upload</p>
               <p style={{ color: '#64748b', fontSize: '0.8125rem' }}>
-                PDF, Images, Word, Audio, Video supported
+                PDF, Images, Audio (MP3, WAV, M4A), Video supported
               </p>
             </div>
           ) : !isProcessing && (

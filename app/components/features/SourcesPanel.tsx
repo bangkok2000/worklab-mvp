@@ -122,7 +122,7 @@ export default function SourcesPanel({
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.gif,.webp"
+          accept="application/pdf,.pdf,image/*,.jpg,.jpeg,.png,.gif,.webp,audio/*,.mp3,.wav,.m4a"
           multiple
           onChange={(e) => {
             if (e.target.files) {
@@ -155,7 +155,7 @@ export default function SourcesPanel({
             {isUploading ? 'Processing...' : 'Drop files here or click to upload'}
           </p>
           <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-            Supports PDF and Images (JPEG, PNG, GIF, WebP) up to 20MB
+            Supports PDF, Images, Audio (MP3, WAV, M4A) up to 100MB
           </p>
         </div>
       </div>
