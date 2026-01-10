@@ -152,9 +152,12 @@ export async function POST(req: NextRequest) {
     
     if (sourceFilenames && Array.isArray(sourceFilenames) && sourceFilenames.length > 0) {
       // Filter by source filename (works for both authenticated and anonymous users)
+      // Normalize filenames for matching (case-insensitive)
+      const normalizedFilenames = sourceFilenames.map(f => f.trim().toLowerCase());
       filter = {
         source: { $in: sourceFilenames }
       };
+      console.log('[API] Filtering by sourceFilenames:', sourceFilenames);
     } else if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
       // Filter by document_id if provided (for authenticated users with UUIDs)
       filter = {
