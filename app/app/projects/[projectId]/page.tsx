@@ -569,7 +569,12 @@ export default function ProjectWorkspace() {
               isUploading={isUploading}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              onAddContent={() => setShowQuickCapture(true)}
+              onAddContent={() => {
+                // Trigger the global FAB click which will open modal with correct project
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('moonscribe-open-add-content'));
+                }
+              }}
               projectId={projectId}
             />
           )}

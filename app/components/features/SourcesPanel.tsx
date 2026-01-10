@@ -88,10 +88,11 @@ export default function SourcesPanel({
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
           <button
             onClick={() => {
-              // Dispatch event to trigger FAB click (if FAB exists) or call callback
+              // Trigger FAB click to open Add Content modal (which will auto-detect project from URL)
               if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('moonscribe-open-add-content', { detail: { projectId } }));
+                window.dispatchEvent(new CustomEvent('moonscribe-open-add-content'));
               }
+              // Also call callback in case project page has its own handler
               onAddContent();
             }}
             style={{
