@@ -83,19 +83,6 @@ export default function Dashboard() {
       // Load insights
       loadInsights();
 
-      // Listen for insight changes
-      const handleInsightChange = () => {
-        loadInsights();
-      };
-      window.addEventListener('moonscribe-insights-changed', handleInsightChange);
-      window.addEventListener('storage', handleInsightChange); // Also listen for cross-tab changes
-
-      return () => {
-        window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
-        window.removeEventListener('storage', handleInsightChange);
-      };
-    }
-
       // Load all content from inbox and projects
       const allContent: RecentContent[] = [];
       let docCount = 0;
@@ -141,6 +128,18 @@ export default function Dashboard() {
         { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#6366f1' },
         { label: 'Web Pages', value: webCount, icon: '🌐', color: '#3b82f6' },
       ]);
+
+      // Listen for insight changes
+      const handleInsightChange = () => {
+        loadInsights();
+      };
+      window.addEventListener('moonscribe-insights-changed', handleInsightChange);
+      window.addEventListener('storage', handleInsightChange); // Also listen for cross-tab changes
+
+      return () => {
+        window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
+        window.removeEventListener('storage', handleInsightChange);
+      };
     }
   }, []);
 
