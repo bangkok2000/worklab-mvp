@@ -209,10 +209,20 @@ export default function ProjectWorkspace() {
     }
   };
 
-  // Save documents
+  // Save documents (deduplicate before saving)
   useEffect(() => {
     if (!isMounted || !projectId) return;
-    localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(documents));
+    // Deduplicate by name before saving
+    const seen = new Set<string>();
+    const uniqueDocs = documents.filter(doc => {
+      const key = doc.name.toLowerCase().trim();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+    localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(uniqueDocs));
     updateProjectStats();
   }, [documents, isMounted, projectId]);
 
@@ -291,7 +301,15 @@ export default function ProjectWorkspace() {
             chunks: data.chunks,
             uploadedAt: new Date(),
           };
-          setDocuments(prev => [...prev, newDoc]);
+          // Check for duplicates before adding
+          setDocuments(prev => {
+            const exists = prev.some(d => d.name.toLowerCase().trim() === data.filename.toLowerCase().trim());
+            if (exists) {
+              console.warn('[Project] Document already exists, skipping:', data.filename);
+              return prev;
+            }
+            return [...prev, newDoc];
+          });
           setStatus(`Uploaded ${data.filename}`);
         } else {
           setStatus(`Error: ${data.error}`);
