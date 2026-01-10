@@ -360,12 +360,15 @@ export default function ProjectWorkspace() {
     try {
       const userApiKey = await getDecryptedApiKey(provider as Provider, user?.id || null);
 
+      // Only include ready/processed documents in the search
+      const readyDocuments = documents.filter(d => d.status === 'ready');
+      
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: content,
-          sourceFilenames: documents.map(d => d.name),
+          sourceFilenames: readyDocuments.map(d => d.name),
           apiKey: userApiKey || undefined,
           provider,
           model,
