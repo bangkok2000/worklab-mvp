@@ -532,8 +532,10 @@ Try using a direct article URL or a page with static HTML content.`
         ? chunk.text.substring(0, maxTextLength) 
         : chunk.text;
       
-      // Truncate title and description
-      const title = extracted.title.length > 200 ? extracted.title.substring(0, 200) : extracted.title;
+      // Truncate title and description for metadata (Pinecone has 40KB limit)
+      // BUT: Use full title for source field to match what we store in localStorage
+      const fullTitle = extracted.title; // Keep full title for source matching
+      const truncatedTitle = fullTitle.length > 200 ? fullTitle.substring(0, 200) : fullTitle;
       const description = extracted.description && extracted.description.length > 500 
         ? extracted.description.substring(0, 500) 
         : extracted.description || '';
@@ -543,7 +545,7 @@ Try using a direct article URL or a page with static HTML content.`
         values: embeddings[idx],
         metadata: {
           text: chunkText, // Main content - keep as much as possible
-          source: title, // Truncated title
+          source: fullTitle, // Use FULL title (not truncated) to match localStorage
           source_type: 'web',
           url: normalizedUrl.length > 500 ? normalizedUrl.substring(0, 500) : normalizedUrl, // Truncate if needed
           domain: domain.length > 100 ? domain.substring(0, 100) : domain,
