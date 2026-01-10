@@ -338,8 +338,16 @@ export async function POST(req: NextRequest) {
       Array.from(bySource.keys()).map(normalized => sourceNameMap.get(normalized) || normalized)
     ));
     
-    // Detect if question is asking about a specific source type
+    // Detect meta-questions about sources (do this before other question analysis)
     const questionLower = question.toLowerCase();
+    const isMetaQuestion = questionLower.includes('where are you getting') || 
+                           questionLower.includes('where did you get') ||
+                           questionLower.includes('what is your source') ||
+                           questionLower.includes('where is this from') ||
+                           questionLower.includes('where does this come from') ||
+                           (questionLower.includes('what document') && questionLower.includes('from'));
+    
+    // Detect if question is asking about a specific source type
     const isAskingAboutWebLink = questionLower.includes('web link') || questionLower.includes('url') || 
                                   questionLower.includes('webpage') || questionLower.includes('website') ||
                                   questionLower.includes('article') || questionLower.includes('wikipedia');
@@ -402,7 +410,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Construct comprehensive prompt for better answers
-    const prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
+    let prompt = '';
+    
+    if (isMetaQuestion) {
+      // Special handling for meta-questions about sources
+      prompt = `You are an expert research assistant. The user is asking about WHERE you are getting your information from.
+
+${sourceList}
+CRITICAL INSTRUCTIONS:
+- You MUST explain that you are getting information ONLY from the documents/sources listed above
+- List the specific source(s) you have access to: ${uniqueSources.join(', ')}
+- DO NOT make up or infer any information
+- Simply state: "I am getting information from the following source(s): [list sources]. All information I provide comes directly from these documents."
+- If no sources are available, say "I don't have access to any documents to answer questions."
+
+AVAILABLE SOURCES:
+${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
+
+QUESTION: ${question}
+
+Provide a direct answer about where you are getting information from:`;
+    } else {
+      // Standard question handling
+      prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
 
 ${sourceList}
 CRITICAL INSTRUCTIONS:
@@ -423,6 +453,7 @@ ${contextText}
 QUESTION: ${question}
 
 Provide a comprehensive answer that directly addresses the question. Remember: ONLY use information from the context above. If the answer is not in the context, say so explicitly.`;
+    }
 
     // Get answer from selected provider/model
     // Note: selectedModel already defined above for credit cost calculation
@@ -439,10 +470,18 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
         console.log('[API] Chat completion using server OpenAI key from env');
       }
       const openaiClient = new OpenAI({ apiKey: chatApiKey });
+      // Use system message for stricter control over behavior
+      const systemMessage = isMetaQuestion 
+        ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`;
+      
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1, // Lower temperature for more deterministic, factual responses
         max_tokens: 2000,
       });
       completion = { choices: [{ message: { content: result.choices[0].message.content } }] };
@@ -458,9 +497,17 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
         },
         body: JSON.stringify({
           model: selectedModel,
-          messages: [{ role: 'user', content: prompt }],
+          messages: [
+            { 
+              role: 'system', 
+              content: isMetaQuestion 
+                ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+                : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`
+            },
+            { role: 'user', content: prompt }
+          ],
           max_tokens: 2000,
-          temperature: 0.3,
+          temperature: 0.1, // Lower temperature for more deterministic, factual responses
         }),
       });
       
@@ -474,10 +521,17 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       tokensUsed = anthropicData.usage?.input_tokens + anthropicData.usage?.output_tokens || 0;
     } else {
       // Fallback to OpenAI (using BYOK key already initialized)
+      const systemMessage = isMetaQuestion 
+        ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        : `You are a research assistant. You MUST ONLY use information from the provided context. DO NOT use training data or general knowledge. If information is not in the context, say so explicitly.`;
+      
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1, // Lower temperature for more deterministic, factual responses
         max_tokens: 2000,
       });
       completion = result;
