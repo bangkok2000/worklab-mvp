@@ -67,11 +67,11 @@ export default function CreditBalance({
     
     // Also listen for custom events (for same-tab updates)
     const handleApiKeyChange = () => checkByok();
-    window.addEventListener('moonscribe-apikey-changed', handleApiKeyChange);
+    window.addEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
     
     return () => {
       window.removeEventListener('storage', checkByok);
-      window.removeEventListener('moonscribe-apikey-changed', handleApiKeyChange);
+      window.removeEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
     };
   }, []);
 
