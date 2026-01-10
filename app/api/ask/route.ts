@@ -154,10 +154,13 @@ export async function POST(req: NextRequest) {
       // Filter by source filename (works for both authenticated and anonymous users)
       // Normalize filenames for matching (case-insensitive, handle truncation)
       // Pinecone stores full titles, but we might send truncated ones, so use case-insensitive matching
+      // IMPORTANT: Use case-insensitive matching by normalizing both sides
+      const normalizedSourceFilenames = sourceFilenames.map(f => f.trim().toLowerCase());
       filter = {
-        source: { $in: sourceFilenames }
+        source: { $in: sourceFilenames } // Pinecone filter uses exact match, but we'll also verify after retrieval
       };
       console.log('[API] Filtering by sourceFilenames:', sourceFilenames);
+      console.log('[API] Normalized sourceFilenames for verification:', normalizedSourceFilenames);
       console.log('[API] Filter object:', JSON.stringify(filter));
     } else if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
       // Filter by document_id if provided (for authenticated users with UUIDs)
@@ -181,6 +184,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Extract context from results
+    // Normalize source filenames for verification (case-insensitive)
+    const normalizeForMatch = (str: string) => str.trim().toLowerCase();
+    const normalizedSourceFilenames = sourceFilenames && Array.isArray(sourceFilenames) && sourceFilenames.length > 0
+      ? sourceFilenames.map(f => normalizeForMatch(f))
+      : [];
+    
     const allMatches = searchResults.matches
       .map(match => ({
         text: match.metadata?.text as string,
@@ -193,7 +202,26 @@ export async function POST(req: NextRequest) {
         score: match.score,
         metadata: match.metadata, // Keep full metadata for reference
       }))
-      .filter(item => item.text);
+      .filter(item => {
+        // Filter out empty text
+        if (!item.text || item.text.trim().length < 50) return false;
+        
+        // If sourceFilenames filter was applied, verify the source matches (case-insensitive)
+        if (normalizedSourceFilenames.length > 0) {
+          const normalizedSource = normalizeForMatch(item.source);
+          const matches = normalizedSourceFilenames.some(filterName => 
+            normalizedSource === filterName || 
+            normalizedSource.includes(filterName) || 
+            filterName.includes(normalizedSource)
+          );
+          if (!matches) {
+            console.log(`[API] Filtered out chunk from source "${item.source}" (not in filtered list: ${sourceFilenames.join(', ')})`);
+            return false;
+          }
+        }
+        
+        return true;
+      });
 
     if (allMatches.length === 0) {
       return NextResponse.json({ 
@@ -377,22 +405,24 @@ export async function POST(req: NextRequest) {
     const prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
 
 ${sourceList}
-INSTRUCTIONS:
-- Answer the question directly and accurately based on the context provided
-- If the question asks about a specific source type (web link, document, etc.), focus your answer on that source type
-- Use clear structure: introduction, main points, and conclusion
+CRITICAL INSTRUCTIONS:
+- You MUST ONLY use information that is explicitly stated in the provided context below
+- DO NOT use any information from your training data or general knowledge unless it's also in the provided context
+- DO NOT make up, infer, or assume any information that is not directly stated in the context
+- DO NOT mix up or confuse information from different sources - each source is clearly labeled
+- If the information needed to answer the question is NOT in the provided context, you MUST say "I couldn't find this information in the provided documents" or "This information is not available in the provided context"
+- If the question asks about a specific source type (web link, document, etc.), focus your answer ONLY on that source type from the context
 - Always cite your sources using [1], [2], etc. when referencing specific information
 - For audio sources, the context includes timestamps (e.g., "at 2:34"). When citing audio sources, you may mention the timestamp naturally in your response (e.g., "as mentioned at 2:34" or "around the 5-minute mark")
-- Do NOT mix up or confuse information from different sources
-- If information is missing or unclear, acknowledge it
+- If information is missing or unclear in the context, explicitly acknowledge it rather than guessing
 - Write in a clear, professional tone
 
-CONTEXT FROM DOCUMENTS:
+CONTEXT FROM DOCUMENTS (ONLY USE INFORMATION FROM THIS CONTEXT):
 ${contextText}
 
 QUESTION: ${question}
 
-Provide a comprehensive answer that directly addresses the question:`;
+Provide a comprehensive answer that directly addresses the question. Remember: ONLY use information from the context above. If the answer is not in the context, say so explicitly.`;
 
     // Get answer from selected provider/model
     // Note: selectedModel already defined above for credit cost calculation
