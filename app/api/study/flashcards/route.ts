@@ -185,35 +185,35 @@ export async function POST(req: NextRequest) {
       bySource.get(normalized)!.push(match);
     });
 
-    // Select diverse chunks from each source (2-3 per source)
-    const diverseContext: typeof allMatches = [];
-    bySource.forEach((matches) => {
-      const sortedMatches = matches.sort((a, b) => (b.score || 0) - (a.score || 0));
-      diverseContext.push(...sortedMatches.slice(0, 3)); // Top 3 from each source
-    });
+    // Generate flashcards per source (Option A: separate sets for each source)
+    const allFlashcards: Array<{ front: string; back: string; source: string }> = [];
+    const cardsPerSource = Math.max(3, Math.floor(count / bySource.size)); // Distribute cards across sources
+    let totalTokensUsed = 0;
 
-    // Limit total context to avoid token limits
-    diverseContext.sort((a, b) => (b.score || 0) - (a.score || 0));
-    const finalContext = diverseContext.slice(0, 20); // Use top 20 chunks
+    // Helper function to generate flashcards for a single source
+    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: typeof allMatches): Promise<Array<{ front: string; back: string; source: string }>> => {
+      // Get top chunks for this source (up to 10 chunks per source)
+      const sortedMatches = sourceMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
+      const sourceContext = sortedMatches.slice(0, 10);
 
-    // Build context text
-    const contextText = finalContext
-      .map((item, idx) => {
-        const normalized = normalizeSourceName(item.source);
-        const displayName = sourceNameMap.get(normalized) || item.source;
-        return `[${idx + 1}] From ${displayName}:\n${item.text}`;
-      })
-      .join('\n\n');
+      if (sourceContext.length === 0) return [];
 
-    // Build prompt for flashcard generation
-    const prompt = `You are an expert educational content creator. Based on the provided context from documents, generate ${count} high-quality flashcards.
+      // Build context text for this source only
+      const contextText = sourceContext
+        .map((item, idx) => {
+          return `[${idx + 1}] ${item.text}`;
+        })
+        .join('\n\n');
+
+      // Build prompt for flashcard generation for this specific source
+      const prompt = `You are an expert educational content creator. Based on the provided context from a single document, generate ${cardsPerSource} high-quality flashcards.
 
 Each flashcard should:
 - Have a clear, concise question or term on the front
 - Have a comprehensive, accurate answer on the back
-- Cover important concepts, definitions, facts, or key information
+- Cover important concepts, definitions, facts, or key information from this document
 - Be suitable for active recall learning
-- Be based ONLY on the provided context
+- Be based ONLY on the provided context from this document
 
 Return your response as a JSON object with this exact structure:
 {
@@ -221,115 +221,122 @@ Return your response as a JSON object with this exact structure:
     {
       "front": "Question or term",
       "back": "Answer or definition",
-      "source": "Source document name"
+      "source": "${sourceName}"
     },
     ...
   ]
 }
 
-CONTEXT FROM DOCUMENTS:
+CONTEXT FROM DOCUMENT "${sourceName}":
 ${contextText}
 
-Generate exactly ${count} flashcards. Return ONLY the JSON object, no other text.`;
+Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY the JSON object, no other text.`;
 
-    // Get flashcards from selected provider/model
-    let completion: any;
-    let tokensUsed = 0;
-    
-    if (provider === 'openai') {
-      const result = await openai.chat.completions.create({
-        model: selectedModel,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7, // Slightly higher for creativity
-        max_tokens: 2000,
-        response_format: { type: 'json_object' }, // Request JSON format
-      });
-      completion = result;
-      tokensUsed = result.usage?.total_tokens || 0;
-    } else if (provider === 'anthropic' && apiKey) {
-      const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Get flashcards from selected provider/model
+      let completion: any;
+      let tokensUsed = 0;
+      
+      if (provider === 'openai') {
+        const result = await openai.chat.completions.create({
           model: selectedModel,
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
           temperature: 0.7,
-        }),
-      });
-      
-      if (!anthropicRes.ok) {
-        const error = await anthropicRes.json();
-        throw new Error(error.error?.message || 'Anthropic API error');
-      }
-      
-      const anthropicData = await anthropicRes.json();
-      completion = { choices: [{ message: { content: anthropicData.content[0].text } }] };
-      tokensUsed = anthropicData.usage?.input_tokens + anthropicData.usage?.output_tokens || 0;
-    } else {
-      // Fallback to OpenAI
-      const result = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' },
-      });
-      completion = result;
-      tokensUsed = result.usage?.total_tokens || 0;
-    }
-
-    const responseText = completion.choices[0].message.content;
-    
-    // Parse JSON response
-    let flashcards: Array<{ front: string; back: string; source: string }> = [];
-    try {
-      // Parse as JSON object
-      const parsed = JSON.parse(responseText);
-      
-      // Handle different response formats
-      if (Array.isArray(parsed)) {
-        flashcards = parsed;
-      } else if (parsed.flashcards && Array.isArray(parsed.flashcards)) {
-        flashcards = parsed.flashcards;
-      } else if (parsed.cards && Array.isArray(parsed.cards)) {
-        flashcards = parsed.cards;
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (error) {
-      console.error('[Flashcards API] Failed to parse JSON response:', error);
-      console.error('[Flashcards API] Response text:', responseText);
-      
-      // Fallback: try to extract JSON array from response
-      try {
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          flashcards = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('No valid JSON found in response');
+          max_tokens: 2000,
+          response_format: { type: 'json_object' },
+        });
+        completion = result;
+        tokensUsed = result.usage?.total_tokens || 0;
+      } else if (provider === 'anthropic' && apiKey) {
+        const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 2000,
+            temperature: 0.7,
+          }),
+        });
+        
+        if (!anthropicRes.ok) {
+          const error = await anthropicRes.json();
+          throw new Error(error.error?.message || 'Anthropic API error');
         }
-      } catch (fallbackError) {
-        return NextResponse.json({ 
-          error: 'Failed to parse flashcards from AI response. Please try again.',
-          rawResponse: responseText.substring(0, 500),
-        }, { status: 500 });
+        
+        const anthropicData = await anthropicRes.json();
+        completion = { choices: [{ message: { content: anthropicData.content[0].text } }] };
+        tokensUsed = anthropicData.usage?.input_tokens + anthropicData.usage?.output_tokens || 0;
+      } else {
+        // Fallback to OpenAI
+        const result = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2000,
+          response_format: { type: 'json_object' },
+        });
+        completion = result;
+        tokensUsed = result.usage?.total_tokens || 0;
+      }
+
+      totalTokensUsed += tokensUsed;
+
+      const responseText = completion.choices[0].message.content;
+      
+      // Parse JSON response
+      let flashcards: Array<{ front: string; back: string; source: string }> = [];
+      try {
+        const parsed = JSON.parse(responseText);
+        
+        if (Array.isArray(parsed)) {
+          flashcards = parsed;
+        } else if (parsed.flashcards && Array.isArray(parsed.flashcards)) {
+          flashcards = parsed.flashcards;
+        } else if (parsed.cards && Array.isArray(parsed.cards)) {
+          flashcards = parsed.cards;
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error(`[Flashcards API] Failed to parse JSON for source ${sourceName}:`, error);
+        // Continue with other sources even if one fails
+        return [];
+      }
+
+      // Ensure source is set correctly
+      return flashcards
+        .filter((card: any) => card.front && card.back)
+        .map((card: any) => ({
+          front: card.front.trim(),
+          back: card.back.trim(),
+          source: sourceName, // Always use the source name we're processing
+        }));
+    };
+
+    // Process each source separately
+    for (const [normalizedSource, matches] of bySource.entries()) {
+      const originalSourceName = sourceNameMap.get(normalizedSource) || normalizedSource;
+      try {
+        const sourceFlashcards = await generateFlashcardsForSource(originalSourceName, matches);
+        allFlashcards.push(...sourceFlashcards);
+      } catch (error) {
+        console.error(`[Flashcards API] Failed to generate flashcards for ${originalSourceName}:`, error);
+        // Continue with other sources
       }
     }
 
-    // Validate and format flashcards
-    const formattedFlashcards = flashcards
-      .filter((card: any) => card.front && card.back)
-      .slice(0, count) // Ensure we don't exceed requested count
+    // Validate and format all flashcards
+    const formattedFlashcards = allFlashcards
+      .slice(0, count) // Limit to requested count
       .map((card: any, idx: number) => ({
         id: `flashcard-${Date.now()}-${idx}`,
-        front: card.front.trim(),
-        back: card.back.trim(),
-        source: card.source || sourceFilenames[0] || 'Unknown',
+        front: card.front,
+        back: card.back,
+        source: card.source,
         createdAt: new Date(),
       }));
 
@@ -338,9 +345,9 @@ Generate exactly ${count} flashcards. Return ONLY the JSON object, no other text
     if (!isUsingBYOK && userId && creditCost > 0) {
       try {
         const deductResult = await deductCredits(userId, creditAction, {
-          description: `Generated ${formattedFlashcards.length} flashcards`,
+          description: `Generated ${formattedFlashcards.length} flashcards from ${bySource.size} source(s)`,
           referenceType: 'study-tools',
-          metadata: { model: selectedModel, tokens: tokensUsed, count: formattedFlashcards.length },
+          metadata: { model: selectedModel, tokens: totalTokensUsed, count: formattedFlashcards.length, sources: bySource.size },
         });
         
         if (deductResult.success) {
@@ -356,10 +363,16 @@ Generate exactly ${count} flashcards. Return ONLY the JSON object, no other text
     return NextResponse.json({
       flashcards: formattedFlashcards,
       sources: Array.from(new Set(formattedFlashcards.map((f: any) => f.source))),
+      flashcardsBySource: Object.fromEntries(
+        Array.from(bySource.keys()).map(normalized => {
+          const originalName = sourceNameMap.get(normalized) || normalized;
+          return [originalName, formattedFlashcards.filter(f => f.source === originalName)];
+        })
+      ),
       keySource,
       teamName,
       remainingBalance,
-      tokensUsed,
+      tokensUsed: totalTokensUsed,
     });
 
   } catch (error: any) {

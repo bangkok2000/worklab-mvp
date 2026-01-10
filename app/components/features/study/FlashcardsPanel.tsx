@@ -98,8 +98,21 @@ export default function FlashcardsPanel({
         throw new Error(data.error || 'Failed to generate flashcards');
       }
 
-      // Add new flashcards to existing ones
-      setFlashcards(prev => [...prev, ...data.flashcards]);
+      // Add new flashcards to existing ones (they are automatically saved via useEffect)
+      setFlashcards(prev => {
+        const updated = [...prev, ...data.flashcards];
+        // Ensure flashcards are saved immediately after generation (like insights)
+        // Save explicitly here to ensure persistence
+        try {
+          localStorage.setItem(
+            `moonscribe-project-${projectId}-flashcards`,
+            JSON.stringify(updated)
+          );
+        } catch (error) {
+          console.error('Failed to save flashcards:', error);
+        }
+        return updated;
+      });
       setCurrentIndex(0);
       setIsFlipped(false);
     } catch (err: any) {
