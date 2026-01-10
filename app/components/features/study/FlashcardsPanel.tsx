@@ -163,6 +163,20 @@ export default function FlashcardsPanel({
     }
   };
 
+  const handleDeleteAll = () => {
+    if (window.confirm(`Delete all ${flashcards.length} flashcards? This action cannot be undone.`)) {
+      setFlashcards([]);
+      setCurrentIndex(0);
+      setIsFlipped(false);
+      // Clear from localStorage
+      try {
+        localStorage.removeItem(`moonscribe-project-${projectId}-flashcards`);
+      } catch (error) {
+        console.error('Failed to clear flashcards from localStorage:', error);
+      }
+    }
+  };
+
   const handleExport = () => {
     if (flashcards.length === 0) return;
 
@@ -200,13 +214,27 @@ export default function FlashcardsPanel({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {flashcards.length > 0 && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleExport}
-            >
-              📥 Export
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExport}
+              >
+                📥 Export
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDeleteAll}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  color: '#f87171',
+                }}
+              >
+                🗑️ Delete All
+              </Button>
+            </>
           )}
           <Button
             variant="primary"
