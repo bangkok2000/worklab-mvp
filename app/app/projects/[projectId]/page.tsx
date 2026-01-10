@@ -191,6 +191,49 @@ export default function ProjectWorkspace() {
     return () => window.removeEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
   }, [user]);
 
+  // Listen for content added events and reload documents
+  useEffect(() => {
+    if (!isMounted || !projectId) return;
+    
+    const handleContentAdded = () => {
+      // Reload all documents from localStorage
+      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
+      const directDocs = savedDocs ? JSON.parse(savedDocs).map((d: any) => ({
+        ...d,
+        uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined,
+      })) : [];
+
+      const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
+      const allContent = savedContent ? JSON.parse(savedContent) : [];
+      
+      const contentAsDocs = allContent.map((item: any) => ({
+        id: item.id,
+        name: item.title || item.name || item.filename || 'Untitled',
+        status: item.processed ? 'ready' as const : 'processing' as const,
+        chunks: item.chunksProcessed,
+        uploadedAt: item.addedAt ? new Date(item.addedAt) : undefined,
+        type: item.type,
+        url: item.url,
+        thumbnail: item.thumbnail,
+      }));
+
+      const allDocs = [...directDocs, ...contentAsDocs];
+      const seen = new Set<string>();
+      const mergedDocs = allDocs.filter(doc => {
+        const key = doc.name.toLowerCase().trim();
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+      setDocuments(mergedDocs);
+    };
+    
+    window.addEventListener('moonscribe-content-added', handleContentAdded);
+    return () => window.removeEventListener('moonscribe-content-added', handleContentAdded);
+  }, [isMounted, projectId]);
+
   const updateProjectStats = () => {
     if (!projectId) return;
     try {
@@ -395,7 +438,14 @@ export default function ProjectWorkspace() {
 
       // Only include ready/processed documents in the search
       const readyDocuments = documents.filter(d => d.status === 'ready');
-      const sourceFilenames = readyDocuments.map(d => d.name);
+      
+      // For web content, use the title as stored (which matches Pinecone source field)
+      // For PDFs, use the filename
+      const sourceFilenames = readyDocuments.map(d => {
+        // Web content: use title (matches Pinecone 'source' field)
+        // PDFs: use name (filename)
+        return d.name;
+      });
       
       // Debug logging
       console.log('[Project] Documents in state:', documents);
@@ -584,11 +634,9 @@ export default function ProjectWorkspace() {
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           style={{
             position: 'fixed',
-            left: leftPanelOpen ? '300px' : '0', // Position at panel right edge (300px)
+            left: leftPanelOpen ? '272px' : '0', // 300px panel width - 28px button width = 272px (button sits at edge)
             top: '50%',
-            transform: leftPanelOpen 
-              ? 'translateY(-50%) translateX(-28px)' // Shift left by button width when panel open
-              : 'translateY(-50%)', // No horizontal shift when panel closed
+            transform: 'translateY(-50%)',
             zIndex: 1000,
             width: '28px',
             height: '56px',

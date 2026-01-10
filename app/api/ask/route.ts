@@ -152,12 +152,13 @@ export async function POST(req: NextRequest) {
     
     if (sourceFilenames && Array.isArray(sourceFilenames) && sourceFilenames.length > 0) {
       // Filter by source filename (works for both authenticated and anonymous users)
-      // Normalize filenames for matching (case-insensitive)
-      const normalizedFilenames = sourceFilenames.map(f => f.trim().toLowerCase());
+      // Normalize filenames for matching (case-insensitive, handle truncation)
+      // Pinecone stores full titles, but we might send truncated ones, so use case-insensitive matching
       filter = {
         source: { $in: sourceFilenames }
       };
       console.log('[API] Filtering by sourceFilenames:', sourceFilenames);
+      console.log('[API] Filter object:', JSON.stringify(filter));
     } else if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
       // Filter by document_id if provided (for authenticated users with UUIDs)
       filter = {
