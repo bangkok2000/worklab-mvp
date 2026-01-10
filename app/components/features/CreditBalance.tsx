@@ -8,6 +8,7 @@ interface CreditBalanceProps {
   onBuyCredits?: () => void;
   showBuyButton?: boolean;
   compact?: boolean;
+  authLoading?: boolean; // NEW: Prevent showing "Guest Mode" during auth check
 }
 
 // Check if user has an active BYOK key
@@ -49,7 +50,8 @@ function hasActiveBYOKKey(): boolean {
 export default function CreditBalance({ 
   onBuyCredits, 
   showBuyButton = true,
-  compact = false 
+  compact = false,
+  authLoading = false 
 }: CreditBalanceProps) {
   const { user } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
@@ -58,8 +60,20 @@ export default function CreditBalance({
   const [hasByok, setHasByok] = useState(false);
 
   useEffect(() => {
-    // Check for BYOK on mount and when storage changes
-    const checkByok = () => setHasByok(hasActiveBYOKKey());
+    // Debounced BYOK check to prevent rapid state changes
+    let timeoutId: NodeJS.Timeout;
+    
+    const checkByok = () => {
+      // Clear any pending check
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Debounce the check by 100ms to prevent flicker
+      timeoutId = setTimeout(() => {
+        setHasByok(hasActiveBYOKKey());
+      }, 100);
+    };
+    
+    // Initial check
     checkByok();
     
     // Listen for storage changes (when user adds/removes API key)
@@ -70,6 +84,7 @@ export default function CreditBalance({
     window.addEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
     
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('storage', checkByok);
       window.removeEventListener('moonscribe-api-keys-changed', handleApiKeyChange);
     };
@@ -112,7 +127,17 @@ export default function CreditBalance({
   };
 
   // Not logged in - show sign in prompt
+  // BUT: Don't show "Guest Mode" if auth is still loading (prevents race condition)
   if (!user) {
+    // If auth is loading, show skeleton instead of "Guest Mode"
+    if (authLoading) {
+      if (compact) return null;
+      return (
+        <div style={styles.container}>
+          <div style={styles.skeleton} />
+        </div>
+      );
+    }
     if (compact) return null;
     return (
       <div style={styles.container}>

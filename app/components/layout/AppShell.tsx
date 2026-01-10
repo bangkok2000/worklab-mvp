@@ -9,6 +9,7 @@ import BuyCreditsModal from '@/app/components/features/BuyCreditsModal';
 import { GuestUsageIndicator } from '@/app/components/features/GuestUsageIndicator';
 import { SignUpRequiredModal } from '@/app/components/features/SignUpRequiredModal';
 import { getGuestUsage, getGuestLimit } from '@/lib/utils/guest-limits';
+import Skeleton from '@/app/components/ui/Skeleton';
 
 interface NavItem {
   id: string;
@@ -290,12 +291,24 @@ export default function AppShell({ children }: AppShellProps) {
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Credit Balance for signed-in users, Guest indicator for guests */}
-            {!loading && (
+            {loading ? (
+              // Show skeleton during auth loading to prevent flicker
+              <div style={{
+                width: '80px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Skeleton width="80px" height="32px" variant="rounded" animation="pulse" />
+              </div>
+            ) : (
               <>
                 {user ? (
                   <CreditBalance 
                     compact 
-                    onBuyCredits={() => setShowBuyCredits(true)} 
+                    onBuyCredits={() => setShowBuyCredits(true)}
+                    authLoading={loading}
                   />
                 ) : (
                   <GuestUsageIndicator 

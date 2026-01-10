@@ -1,5 +1,6 @@
 import './styles/globals.css';
 import { AuthProvider } from '@/lib/auth';
+import VersionCheck from './components/VersionCheck';
 
 export const metadata = {
   title: 'MoonScribe - Document Intelligence Platform',
@@ -22,6 +23,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <VersionCheck />
         <AuthProvider>
           {children}
         </AuthProvider>
