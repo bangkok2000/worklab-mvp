@@ -250,7 +250,12 @@ export default function InboxPage() {
             You can organize it later.
           </p>
           <button
-            onClick={() => {/* TODO: Open add content modal */}}
+            onClick={() => {
+              // Trigger the global FAB click which will open the Add Content modal
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('moonscribe-open-add-content'));
+              }
+            }}
             style={{
               padding: '0.75rem 1.5rem',
               background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
