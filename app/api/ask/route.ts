@@ -292,19 +292,42 @@ export async function POST(req: NextRequest) {
     const isAskingAboutDocument = questionLower.includes('document') || questionLower.includes('pdf') || 
                                    questionLower.includes('file') || questionLower.includes('upload');
     
-    // Identify source types from the retrieved context
+    // Identify source types from the retrieved context and metadata
     const webSources: string[] = [];
     const docSources: string[] = [];
     
+    // Check context chunks for source_type metadata to accurately identify web vs document sources
+    const sourceTypeMap = new Map<string, 'web' | 'document'>();
+    allMatches.forEach(match => {
+      const normalized = normalizeSourceName(match.source);
+      const originalName = sourceNameMap.get(normalized) || match.source;
+      // Check if we've seen this source in metadata
+      const matchMetadata = searchResults.matches.find(m => 
+        normalizeSourceName(m.metadata?.source as string || '') === normalized
+      );
+      if (matchMetadata?.metadata?.source_type) {
+        sourceTypeMap.set(originalName, matchMetadata.metadata.source_type as 'web' | 'document');
+      }
+    });
+    
     uniqueSources.forEach(source => {
       const sourceLower = source.toLowerCase();
-      // Check if it's a web source (has URL indicators, Wikipedia, article, etc.)
-      if (sourceLower.includes('wikipedia') || sourceLower.includes('http') || 
-          sourceLower.includes('article') || sourceLower.includes('web') ||
-          contextText.toLowerCase().includes(`from ${source.toLowerCase()}`) && 
-          (contextText.toLowerCase().includes('http') || contextText.toLowerCase().includes('url'))) {
+      // Check metadata first, then fallback to heuristics
+      if (sourceTypeMap.has(source)) {
+        if (sourceTypeMap.get(source) === 'web') {
+          webSources.push(source);
+        } else {
+          docSources.push(source);
+        }
+      } else if (sourceLower.includes('wikipedia') || sourceLower.includes('http') || 
+                 sourceLower.includes('article') || sourceLower.includes('web') ||
+                 sourceLower.endsWith('.html') || sourceLower.includes('url')) {
         webSources.push(source);
+      } else if (sourceLower.endsWith('.pdf') || sourceLower.includes('document') || 
+                 sourceLower.includes('file') || sourceLower.includes('upload')) {
+        docSources.push(source);
       } else {
+        // Default to document if unclear
         docSources.push(source);
       }
     });
