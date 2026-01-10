@@ -584,9 +584,9 @@ export default function ProjectWorkspace() {
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           style={{
             position: 'fixed',
-            left: leftPanelOpen ? '272px' : '0', // 300px panel - 28px button = 272px (button sits at edge, not covering content)
+            left: leftPanelOpen ? '300px' : '0', // Position at panel right edge (300px)
             top: '50%',
-            transform: 'translateY(-50%)',
+            transform: 'translateY(-50%) translateX(-28px)', // Shift left by button width so it doesn't cover content
             zIndex: 1000,
             width: '28px',
             height: '56px',
