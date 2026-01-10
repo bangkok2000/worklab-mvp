@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Input } from '@/app/components/ui';
 
 interface Insight {
   id: string;
@@ -316,33 +317,20 @@ export default function InsightsPage() {
           </div>
 
           {/* Search */}
-          <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
-            <input
+          <div style={{ marginBottom: '0.75rem' }}>
+            <Input
               type="text"
               placeholder="Search insights..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem 0.625rem 2.25rem',
-                background: 'rgba(0, 0, 0, 0.2)',
-                border: '1px solid rgba(139, 92, 246, 0.2)',
-                borderRadius: '8px',
-                color: '#f1f5f9',
-                fontSize: '0.875rem',
-                outline: 'none',
-              }}
+              inputSize="sm"
+              leftIcon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              }
             />
-            <span style={{
-              position: 'absolute',
-              left: '0.75rem',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#64748b',
-              fontSize: '0.875rem',
-            }}>
-              🔍
-            </span>
           </div>
 
           {/* Filters Row */}

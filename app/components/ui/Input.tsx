@@ -20,9 +20,9 @@ const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: { padding: '0.5rem 0.75rem', fontSize: '0.8125rem' },
-    md: { padding: '0.75rem 1rem', fontSize: '0.9375rem' },
-    lg: { padding: '1rem 1.25rem', fontSize: '1rem' },
+    sm: { padding: '0.75rem 1rem', fontSize: '0.8125rem' }, // Increased from 0.5rem 0.75rem
+    md: { padding: '0.875rem 1.125rem', fontSize: '0.9375rem' }, // Increased from 0.75rem 1rem
+    lg: { padding: '1.125rem 1.5rem', fontSize: '1rem' }, // Increased from 1rem 1.25rem
   };
 
   const sizeStyle = sizeStyles[inputSize];
