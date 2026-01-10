@@ -442,70 +442,79 @@ export async function POST(req: NextRequest) {
     
     if (isMetaQuestion) {
       // Special handling for meta-questions about sources
-      prompt = `You are an expert research assistant. The user is asking about WHERE you are getting your information from.
+      prompt = `You are a research assistant. Answer questions about your information sources.
 
 ${sourceList}
-CRITICAL INSTRUCTIONS:
-- You MUST explain that you are getting information ONLY from the documents/sources listed above
-- List the specific source(s) you have access to: ${uniqueSources.join(', ')}
-- DO NOT make up or infer any information
-- Simply state: "I am getting information from the following source(s): [list sources]. All information I provide comes directly from these documents."
-- If no sources are available, say "I don't have access to any documents to answer questions."
+Rules:
+- State that you get information ONLY from the sources listed above
+- List the specific sources: ${uniqueSources.join(', ')}
+- Do not make up or infer anything
 
-AVAILABLE SOURCES:
+Available sources:
 ${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
 
-QUESTION: ${question}
+Question: ${question}
 
-Provide a direct answer about where you are getting information from:`;
+Answer:`;
     } else if (isSynthesisTask) {
       // Special handling for synthesis tasks (summarize, analyze, tell me about, etc.)
       // These tasks REQUIRE the AI to synthesize information from multiple chunks
-      prompt = `You are an expert research assistant. The user is asking you to ${isSynthesisTask ? 'synthesize and summarize' : 'analyze'} information from the provided documents.
+      prompt = `You are a research assistant. Synthesize information from the provided documents to answer the question.
 
 ${sourceList}
-CRITICAL INSTRUCTIONS FOR SYNTHESIS TASKS:
-- You MUST synthesize information from the provided context below to create a comprehensive answer
-- You CAN and SHOULD connect information from different parts of the context to provide a complete answer
-- You CAN summarize, analyze, and organize information from the context
-- You MUST base your synthesis ONLY on information that is EXPLICITLY stated in the provided context
-- DO NOT use any information from your training data or general knowledge
-- DO NOT make up facts, numbers, names, or details that are not in the context
-- DO NOT infer information that is not directly stated (e.g., if the context doesn't mention an author, don't guess who wrote it)
-- If the context is empty or doesn't contain enough information to answer, say "I couldn't find enough information in the provided documents to answer this question."
-- Always cite your sources using [1], [2], etc. when referencing specific information
-- Write in a clear, professional tone
+Rules:
+- Synthesize and connect information from different parts of the context
+- Base your answer ONLY on information explicitly stated in the context
+- Do not use training data, general knowledge, or make up facts
+- Cite sources using [1], [2], etc.
+- If insufficient information, say "I couldn't find enough information in the provided documents."
 
-CONTEXT FROM DOCUMENTS (SYNTHESIZE INFORMATION FROM THIS CONTEXT):
+Examples:
+Example 1:
+Context: [1] Document.pdf: "The study found that exercise improves mood by 30%."
+Question: "What did the study find about exercise?"
+Answer: "The study found that exercise improves mood by 30% [1]."
+
+Example 2:
+Context: [1] Document.pdf: "The study examined exercise."
+Question: "What was the sample size?"
+Answer: "I couldn't find enough information in the provided documents."
+
+Context:
 ${contextText}
 
-QUESTION: ${question}
+Question: ${question}
 
-Provide a comprehensive, synthesized answer that addresses the question using information from the context above.`;
+Answer:`;
     } else {
       // Standard fact-finding questions (specific questions with direct answers)
-      prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
+      prompt = `You are a research assistant. Answer questions using ONLY the provided context.
 
 ${sourceList}
-CRITICAL INSTRUCTIONS - READ CAREFULLY:
-- You MUST ONLY use information that is EXPLICITLY and DIRECTLY stated in the provided context below
-- DO NOT use any information from your training data or general knowledge
-- DO NOT make up, infer, assume, deduce, or connect information that is not directly stated
-- DO NOT provide related information, examples, or context if the direct answer is not found
-- DO NOT mix up or confuse information from different sources - each source is clearly labeled
-- If the information needed to answer the question is NOT EXPLICITLY stated in the provided context, you MUST respond with ONLY: "I couldn't find this information in the provided documents." DO NOT provide any additional information, related content, or inferences.
-- If the question asks about a specific source type (web link, document, etc.), focus your answer ONLY on that source type from the context
-- Always cite your sources using [1], [2], etc. when referencing specific information
-- For audio sources, the context includes timestamps (e.g., "at 2:34"). When citing audio sources, you may mention the timestamp naturally in your response (e.g., "as mentioned at 2:34" or "around the 5-minute mark")
-- If information is missing or unclear in the context, respond with ONLY "I couldn't find this information in the provided documents." DO NOT guess, infer, or provide related information.
-- Write in a clear, professional tone
+Rules:
+- Use only information explicitly stated in the context
+- Do not use training data, general knowledge, or make inferences
+- Cite sources with [1], [2], etc.
+- If information isn't in the context, say "I couldn't find this information in the provided documents."
+- For audio sources, timestamps are included (e.g., "at 2:34") - mention them naturally when citing
 
-CONTEXT FROM DOCUMENTS (ONLY USE INFORMATION FROM THIS CONTEXT):
+Examples:
+Example 1:
+Context: [1] Document.pdf: "The study found that exercise improves mood."
+Question: "What did the study find?"
+Answer: "The study found that exercise improves mood [1]."
+
+Example 2:
+Context: [1] Document.pdf: "The study examined exercise."
+Question: "What was the sample size?"
+Answer: "I couldn't find this information in the provided documents."
+
+Context:
 ${contextText}
 
-QUESTION: ${question}
+Question: ${question}
 
-Provide a comprehensive answer that directly addresses the question. Remember: ONLY use information from the context above. If the answer is not in the context, say so explicitly.`;
+Answer:`;
     }
 
     // Get answer from selected provider/model
@@ -525,10 +534,14 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       const openaiClient = new OpenAI({ apiKey: chatApiKey });
       // Use system message for stricter control over behavior
       const systemMessage = isMetaQuestion 
-        ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        ? `You are a research assistant. When asked about sources, state only the documents provided.`
         : isSynthesisTask
-        ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
-        : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
+        ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
+        : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`;
+      
+      // Adjust temperature based on task type
+      // Lower (0.1) for fact-finding, higher (0.3-0.4) for synthesis tasks
+      const temperature = isSynthesisTask ? 0.3 : 0.1;
       
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
@@ -536,7 +549,7 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
           { role: 'system', content: systemMessage },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1, // Lower temperature for more deterministic, factual responses
+        temperature: temperature,
         max_tokens: 2000,
       });
       completion = { choices: [{ message: { content: result.choices[0].message.content } }] };
@@ -556,15 +569,15 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
             { 
               role: 'system', 
               content: isMetaQuestion 
-                ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+                ? `You are a research assistant. When asked about sources, state only the documents provided.`
                 : isSynthesisTask
-                ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
-                : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`
+                ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
+                : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`
             },
             { role: 'user', content: prompt }
           ],
           max_tokens: 2000,
-          temperature: 0.1, // Lower temperature for more deterministic, factual responses
+          temperature: isSynthesisTask ? 0.3 : 0.1,
         }),
       });
       
@@ -579,10 +592,12 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
     } else {
       // Fallback to OpenAI (using BYOK key already initialized)
       const systemMessage = isMetaQuestion 
-        ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        ? `You are a research assistant. When asked about sources, state only the documents provided.`
         : isSynthesisTask
-        ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
-        : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
+        ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
+        : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`;
+      
+      const temperature = isSynthesisTask ? 0.3 : 0.1;
       
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -590,7 +605,7 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
           { role: 'system', content: systemMessage },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1, // Lower temperature for more deterministic, factual responses
+        temperature: temperature,
         max_tokens: 2000,
       });
       completion = result;
