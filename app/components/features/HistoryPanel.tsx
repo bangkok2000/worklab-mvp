@@ -7,6 +7,7 @@ interface Conversation {
   id: string;
   title: string;
   messageCount: number;
+  createdAt: Date;
   updatedAt: Date;
   preview?: string;
 }
@@ -32,19 +33,45 @@ export default function HistoryPanel({
     conv.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Sort by createdAt (latest first), fallback to updatedAt if createdAt is not available
   const sortedConversations = [...filteredConversations].sort(
-    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+    (a, b) => {
+      const aTime = a.createdAt?.getTime() || a.updatedAt.getTime();
+      const bTime = b.createdAt?.getTime() || b.updatedAt.getTime();
+      return bTime - aTime; // Latest first
+    }
   );
 
   const formatDate = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor(diff / (1000 * 60));
 
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString();
+    // Format time as HH:MM
+    const timeStr = date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+
+    // Format date
+    if (days === 0) {
+      if (minutes < 1) return 'Just now';
+      if (hours < 1) return `${minutes}m ago`;
+      return `Today ${timeStr}`;
+    }
+    if (days === 1) return `Yesterday ${timeStr}`;
+    if (days < 7) return `${days}d ago ${timeStr}`;
+    
+    // For older dates, show full date and time
+    const dateStr = date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+    return `${dateStr} ${timeStr}`;
   };
 
   return (
@@ -177,13 +204,13 @@ function ConversationCard({
           >
             {conversation.title}
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
               {conversation.messageCount} message{conversation.messageCount !== 1 ? 's' : ''}
             </span>
             <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>•</span>
             <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
-              {formatDate(conversation.updatedAt)}
+              {formatDate(conversation.createdAt || conversation.updatedAt)}
             </span>
           </div>
         </div>
