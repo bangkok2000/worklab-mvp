@@ -132,10 +132,13 @@ export default function ProjectWorkspace() {
       const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
       const allContent = savedContent ? JSON.parse(savedContent) : [];
       
+      console.log('[Project] Direct docs from localStorage:', directDocs);
+      console.log('[Project] Content items from localStorage:', allContent);
+      
       // Convert all content to document format for display
       const contentAsDocs = allContent.map((item: any) => ({
         id: item.id,
-        name: item.title || item.name || 'Untitled',
+        name: item.title || item.name || item.filename || 'Untitled',
         status: item.processed ? 'ready' as const : 'processing' as const,
         chunks: item.chunksProcessed,
         uploadedAt: item.addedAt ? new Date(item.addedAt) : undefined,
@@ -145,7 +148,9 @@ export default function ProjectWorkspace() {
       }));
 
       // Merge direct documents with content items
-      setDocuments([...directDocs, ...contentAsDocs]);
+      const mergedDocs = [...directDocs, ...contentAsDocs];
+      console.log('[Project] Merged documents:', mergedDocs);
+      setDocuments(mergedDocs);
 
       // Load project conversations
       const savedConvs = localStorage.getItem(`moonscribe-project-${projectId}-conversations`);
