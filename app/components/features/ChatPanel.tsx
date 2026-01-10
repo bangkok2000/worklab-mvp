@@ -182,7 +182,7 @@ export default function ChatPanel({
             <span>Searching in {documentCount} document{documentCount !== 1 ? 's' : ''}</span>
           )}
           <span style={{ color: hasApiKey ? '#10b981' : '#f59e0b' }}>
-            {hasApiKey ? `✓ Using your ${provider} key` : '⚠ Using default key'}
+            {hasApiKey ? `✓ Using your ${provider} key` : '⚠ Using server key (credits)'}
           </span>
         </div>
       </div>

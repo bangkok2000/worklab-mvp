@@ -118,14 +118,31 @@ export default function ProjectWorkspace() {
         }
       }
 
-      // Load project documents
+      // Load project documents (PDFs uploaded directly)
       const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
-      if (savedDocs) {
-        setDocuments(JSON.parse(savedDocs).map((d: any) => ({
-          ...d,
-          uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined,
-        })));
-      }
+      const directDocs = savedDocs ? JSON.parse(savedDocs).map((d: any) => ({
+        ...d,
+        uploadedAt: d.uploadedAt ? new Date(d.uploadedAt) : undefined,
+      })) : [];
+
+      // Load all project content (YouTube, Web, Notes, Images, etc.)
+      const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
+      const allContent = savedContent ? JSON.parse(savedContent) : [];
+      
+      // Convert all content to document format for display
+      const contentAsDocs = allContent.map((item: any) => ({
+        id: item.id,
+        name: item.title || item.name || 'Untitled',
+        status: item.processed ? 'ready' as const : 'processing' as const,
+        chunks: item.chunksProcessed,
+        uploadedAt: item.addedAt ? new Date(item.addedAt) : undefined,
+        type: item.type, // Store original type for display
+        url: item.url,
+        thumbnail: item.thumbnail,
+      }));
+
+      // Merge direct documents with content items
+      setDocuments([...directDocs, ...contentAsDocs]);
 
       // Load project conversations
       const savedConvs = localStorage.getItem(`moonscribe-project-${projectId}-conversations`);
@@ -179,7 +196,12 @@ export default function ProjectWorkspace() {
     }
   };
 
+  // Check if user has BYOK (any active key) or is using team key
   const hasApiKey = apiKeys.some(k => k.provider === provider && k.isActive);
+  const hasAnyApiKey = apiKeys.some(k => k.isActive);
+  
+  // For display purposes, show BYOK if any key is active (not just for selected provider)
+  const isUsingBYOK = hasAnyApiKey;
 
   // Handlers
   const handleUpload = async (files: File[]) => {
@@ -228,18 +250,41 @@ export default function ProjectWorkspace() {
     if (!doc) return;
 
     try {
-      const res = await fetch('/api/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: doc.name }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setDocuments(prev => prev.filter(d => d.id !== id));
-        setStatus(`Deleted ${doc.name}`);
-        setTimeout(() => setStatus(''), 3000);
+      // If it's a PDF document, delete from Pinecone via API
+      if (!doc.type || doc.type === 'document') {
+        const res = await fetch('/api/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: doc.name }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setStatus(`Error: ${data.error}`);
+          return;
+        }
       }
+
+      // Remove from documents state
+      setDocuments(prev => prev.filter(d => d.id !== id));
+
+      // Also remove from project content storage
+      const savedContent = localStorage.getItem(`moonscribe-project-content-${projectId}`);
+      if (savedContent) {
+        const content = JSON.parse(savedContent);
+        const updated = content.filter((item: any) => item.id !== id);
+        localStorage.setItem(`moonscribe-project-content-${projectId}`, JSON.stringify(updated));
+      }
+
+      // Also remove from direct documents storage
+      const savedDocs = localStorage.getItem(`moonscribe-project-${projectId}-documents`);
+      if (savedDocs) {
+        const docs = JSON.parse(savedDocs);
+        const updated = docs.filter((d: any) => d.id !== id);
+        localStorage.setItem(`moonscribe-project-${projectId}-documents`, JSON.stringify(updated));
+      }
+
+      setStatus(`Deleted ${doc.name}`);
+      setTimeout(() => setStatus(''), 3000);
     } catch (error: any) {
       setStatus(`Error: ${error.message}`);
     }
@@ -539,7 +584,7 @@ export default function ProjectWorkspace() {
             onModelChange={setModel}
             availableModels={modelsByProvider[provider] || []}
             documentCount={documents.length}
-            hasApiKey={hasApiKey}
+            hasApiKey={isUsingBYOK || hasApiKey}
           />
         </div>
 

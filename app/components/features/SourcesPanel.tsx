@@ -9,6 +9,9 @@ interface Document {
   status: 'ready' | 'processing' | 'error';
   chunks?: number;
   uploadedAt?: Date;
+  type?: string; // Content type: 'document', 'youtube', 'article', 'note', etc.
+  url?: string;
+  thumbnail?: string;
 }
 
 interface SourcesPanelProps {
@@ -64,7 +67,7 @@ export default function SourcesPanel({
       {/* Search */}
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
         <Input
-          placeholder="Search documents..."
+          placeholder="Search sources..."
           value={searchQuery}
           onChange={(e) => onSearchChange?.(e.target.value)}
           leftIcon={
@@ -124,8 +127,8 @@ export default function SourcesPanel({
         {filteredDocuments.length === 0 ? (
           <EmptyState
             icon="📄"
-            title={searchQuery ? 'No documents found' : 'No documents yet'}
-            description={searchQuery ? 'Try a different search term' : 'Upload PDFs to get started with your research'}
+            title={searchQuery ? 'No sources found' : 'No sources yet'}
+            description={searchQuery ? 'Try a different search term' : 'Add PDFs, YouTube videos, web pages, or notes to get started'}
           />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -148,7 +151,7 @@ export default function SourcesPanel({
             justifyContent: 'space-between',
           }}
         >
-          <span>{documents.length} document{documents.length !== 1 ? 's' : ''}</span>
+          <span>{documents.length} source{documents.length !== 1 ? 's' : ''}</span>
           <span>{documents.filter((d) => d.status === 'ready').length} ready</span>
         </div>
       )}
@@ -168,6 +171,16 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
 
   const { badge, label } = statusConfig[document.status];
 
+  // Get icon based on content type
+  const getIcon = () => {
+    const type = document.type?.toLowerCase() || 'document';
+    if (type === 'youtube' || type === 'video') return '🎬';
+    if (type === 'article' || type === 'url' || type === 'web') return '🌐';
+    if (type === 'note') return '📝';
+    if (type === 'image' || type === 'photo') return '🖼️';
+    return '📄'; // Default to document icon
+  };
+
   return (
     <div
       onMouseEnter={() => setIsHovered(true)}
@@ -184,7 +197,7 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-            <span style={{ fontSize: '1rem' }}>📄</span>
+            <span style={{ fontSize: '1rem' }}>{getIcon()}</span>
             <span
               style={{
                 fontSize: '0.8125rem',
@@ -205,6 +218,11 @@ function DocumentCard({ document, onDelete }: { document: Document; onDelete: ()
             {document.chunks && (
               <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
                 {document.chunks} chunks
+              </span>
+            )}
+            {document.type && document.type !== 'document' && (
+              <span style={{ fontSize: '0.6875rem', color: '#64748b', textTransform: 'capitalize' }}>
+                {document.type}
               </span>
             )}
           </div>
