@@ -68,6 +68,42 @@ export default function SourcesPanel({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div
+        style={{
+          padding: '1rem 1.25rem',
+          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+        }}
+      >
+        <span
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '8px',
+            background: 'rgba(139, 92, 246, 0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.875rem',
+          }}
+        >
+          📚
+        </span>
+        <h2
+          style={{
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            color: '#f1f5f9',
+            margin: 0,
+          }}
+        >
+          Sources
+        </h2>
+      </div>
+
       {/* Search */}
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid rgba(139, 92, 246, 0.15)' }}>
         <Input
