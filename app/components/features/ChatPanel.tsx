@@ -208,18 +208,31 @@ function MessageBubble({
   message, 
   projectId, 
   projectName, 
-  projectColor 
+  projectColor,
+  allMessages
 }: { 
   message: Message;
   projectId?: string;
   projectName?: string;
   projectColor?: string;
+  allMessages?: Message[];
 }) {
   const isUser = message.role === 'user';
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   // Find the user's question that prompted this AI response
-  const userQuestion = message.sources ? '' : ''; // We'll get this from context
+  const userQuestion = React.useMemo(() => {
+    if (!allMessages || isUser) return '';
+    // Find the user message that came before this assistant message
+    const messageIndex = allMessages.findIndex(m => m.id === message.id);
+    if (messageIndex > 0) {
+      const prevMessage = allMessages[messageIndex - 1];
+      if (prevMessage.role === 'user') {
+        return prevMessage.content;
+      }
+    }
+    return '';
+  }, [allMessages, message.id, isUser]);
 
   return (
     <>
