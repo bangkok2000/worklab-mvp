@@ -20,7 +20,6 @@ const PROJECT_COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#10b981', '#f59e0b', '
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewProject, setShowNewProject] = useState(false);
@@ -32,14 +31,17 @@ export default function ProjectsPage() {
   useEffect(() => {
     setIsMounted(true);
     // Check if we should auto-open the modal from query param
-    if (searchParams.get('new') === 'true') {
-      setShowNewProject(true);
-      // Clean up URL without scroll
-      const url = new URL(window.location.href);
-      url.searchParams.delete('new');
-      router.replace(url.pathname + url.search, { scroll: false });
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('new') === 'true') {
+        setShowNewProject(true);
+        // Clean up URL without scroll
+        const url = new URL(window.location.href);
+        url.searchParams.delete('new');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
     }
-  }, [searchParams, router]);
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return;
