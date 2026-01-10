@@ -461,6 +461,7 @@ export async function POST(req: NextRequest) {
     const pageId = `web-${Buffer.from(normalizedUrl).toString('base64').substring(0, 20)}-${Date.now()}`;
 
     // Prepare vectors for Pinecone
+    // Pinecone doesn't allow null values in metadata - convert to empty strings or omit
     const vectors = chunks.map((chunk, idx) => ({
       id: `${pageId}-chunk-${idx}`,
       values: embeddings[idx],
@@ -470,12 +471,13 @@ export async function POST(req: NextRequest) {
         source_type: 'web',
         url: normalizedUrl,
         domain: domain,
-        author: extracted.author,
-        published_date: extracted.publishedDate,
-        description: extracted.description,
-        favicon: extracted.favicon,
-        image: extracted.image,
-        project_id: projectId || null,
+        // Only include fields that are not null
+        ...(extracted.author && { author: extracted.author }),
+        ...(extracted.publishedDate && { published_date: extracted.publishedDate }),
+        ...(extracted.description && { description: extracted.description }),
+        ...(extracted.favicon && { favicon: extracted.favicon }),
+        ...(extracted.image && { image: extracted.image }),
+        ...(projectId && { project_id: projectId }),
         chunk_index: idx,
         total_chunks: chunks.length,
         processed_at: new Date().toISOString(),
