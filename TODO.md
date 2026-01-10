@@ -651,38 +651,60 @@ Week 10-14: [████████████████████] Mobil
 
 ---
 
-*Last Updated: After Audio/Podcast Transcription implementation and Development Protocol creation*
+*Last Updated: After Flashcards implementation and AI hallucination prevention fixes*
 
-## 📅 Today's Progress (Latest Session)
+## 📅 Today's Progress (Latest Session - Study Tools & AI Quality)
 
 ### ✅ Completed Today
-1. **Audio/Podcast Transcription** - Full implementation
-   - Created `/api/audio` route with OpenAI Whisper API
-   - Audio file upload (MP3, WAV, M4A) support
-   - Transcript storage in Pinecone with timestamps
-   - Timestamp-linked citations in chat responses
-   - Credit deduction (3 credits per minute)
-   - UI integration across all upload points
+1. **Study Tools: Flashcards Implementation** ✅ COMPLETE
+   - Created `/api/study/flashcards` route with per-source generation
+   - Created `FlashcardsPanel` component with flip animation
+   - Implemented advanced deduplication system:
+     - Chunk hash tracking to prevent using same content chunks
+     - Query variation (8 different queries that rotate per generation)
+     - Random sampling from top 70% instead of always top chunks
+   - Added "Delete All" button with confirmation
+   - Flashcards save to localStorage automatically
+   - Generate button appends to existing stack (no duplicates)
 
-2. **Timestamp-Linked Citations**
-   - Clickable timestamps in audio source citations
-   - Timestamp formatting (MM:SS or HH:MM:SS)
-   - Copy to clipboard functionality
-   - AI prompt enhancement to mention timestamps naturally
+2. **AI Hallucination Prevention** ✅ COMPLETE
+   - Stricter prompt instructions (EXPLICITLY and DIRECTLY stated)
+   - Added system messages for better behavioral control
+   - Lowered temperature from 0.3 to 0.1 for more deterministic responses
+   - Post-retrieval source verification (case-insensitive matching)
+   - Explicit prohibition against inferring/assuming when answer not found
+   - When answer not found: ONLY state "I couldn't find this information" (no related info)
+   - Special handling for meta-questions about sources
 
-3. **Bug Fixes**
-   - Fixed `deductCredits` function call in audio route (TypeScript error)
-   - Fixed left arrow button positioning (accounting for AppShell sidebar)
+3. **UI Improvements** ✅ COMPLETE
+   - Replaced 'X' delete button with "Delete" button + confirmation dialog
+   - Added "Conversations" heading to HistoryPanel (matches Sources panel)
+   - Moved search bar below file drop zone in SourcesPanel
+   - Standardized all search bars across app (using Input component)
+   - Increased search bar height (no longer squeezed vertically)
+   - Date/time display consistency across Dashboard Insights and Project Sources
 
-4. **Development Process**
-   - Created `DEVELOPMENT_PROTOCOL.md` - Mandatory checklist for all code changes
-   - Establishes systematic approach to prevent repeated mistakes
+4. **Bug Fixes**
+   - Fixed compilation errors (duplicate variables, Set iteration issues)
+   - Fixed scope issues with `loadedFlashcards` variable
+   - Fixed TypeScript downlevelIteration errors (using Array.from())
 
-### 🔄 Remaining High Priority Items
-1. **Browser Extension** (P1) - 5-7 days
-2. **Hybrid RAG** (P1) - 5-6 days  
-3. **Rich Note Editor** (P1) - 4-5 days
-4. **Password Reset Flow** (P1) - 1-2 days
-5. **OAuth Setup** (P1) - 1 day (code ready, needs Supabase config)
-6. **Speaker Diarization** (Future) - For audio transcription
-7. **Podcast RSS Feed Import** (Future) - For audio transcription
+### 🔄 Next Steps (Tomorrow)
+1. **Study Tools: Continue Implementation**
+   - Quiz feature (multiple choice, true/false questions)
+   - Summary feature (document summaries)
+   - Study Guide feature (structured outlines)
+   - Mind Map feature (concept visualization)
+   - Audio Overview (text-to-speech) - Future
+
+2. **Test & Verify**
+   - Test flashcards generation with multiple sources
+   - Verify AI no longer hallucinates or infers when answer not found
+   - Test that "not found" responses are clean (no related information)
+
+3. **Remaining High Priority Items**
+   - Browser Extension (P1) - 5-7 days
+   - Hybrid RAG (P1) - 5-6 days  
+   - Rich Note Editor (P1) - 4-5 days
+   - Password Reset Flow (P1) - 1-2 days
+   - OAuth Setup (P1) - 1 day (code ready, needs Supabase config)
