@@ -362,13 +362,19 @@ export default function ProjectWorkspace() {
 
       // Only include ready/processed documents in the search
       const readyDocuments = documents.filter(d => d.status === 'ready');
+      const sourceFilenames = readyDocuments.map(d => d.name);
+      
+      // Debug logging
+      console.log('[Project] Documents in state:', documents);
+      console.log('[Project] Ready documents:', readyDocuments);
+      console.log('[Project] Sending sourceFilenames to API:', sourceFilenames);
       
       const res = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: content,
-          sourceFilenames: readyDocuments.map(d => d.name),
+          sourceFilenames: sourceFilenames,
           apiKey: userApiKey || undefined,
           provider,
           model,
