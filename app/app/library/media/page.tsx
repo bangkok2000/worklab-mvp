@@ -27,7 +27,7 @@ export default function MediaPage() {
       if (inbox) {
         const items = JSON.parse(inbox);
         items.forEach((item: any) => {
-          if (['youtube', 'tiktok', 'podcast', 'audio', 'video'].includes(item.type)) {
+          if (['youtube', 'tiktok', 'podcast', 'audio', 'video', 'image'].includes(item.type)) {
             allMedia.push({
               id: item.id,
               title: item.title || 'Untitled Media',
@@ -89,6 +89,7 @@ export default function MediaPage() {
     podcast: '🎙️',
     audio: '🔊',
     video: '🎬',
+    image: '🖼️',
   };
 
   return (

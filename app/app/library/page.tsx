@@ -89,10 +89,13 @@ export default function LibraryPage() {
         tiktok: { type: 'media', subtype: 'tiktok' },
         podcast: { type: 'media', subtype: 'podcast' },
         audio: { type: 'media', subtype: 'audio' },
+        image: { type: 'media', subtype: 'image' },
+        video: { type: 'media', subtype: 'video' },
         article: { type: 'web', subtype: 'article' },
         url: { type: 'web', subtype: 'url' },
         note: { type: 'notes', subtype: 'note' },
         pdf: { type: 'documents', subtype: 'pdf' },
+        document: { type: 'documents', subtype: 'document' },
       };
 
       const mapped = typeMapping[item.type] || { type: 'web', subtype: item.type || 'url' };

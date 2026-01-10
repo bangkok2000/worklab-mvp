@@ -68,6 +68,56 @@ export default function Dashboard() {
     }
   };
 
+  const loadLibraryStats = () => {
+    if (typeof window === 'undefined') return;
+
+    // Load all content from inbox and projects
+    const allContent: RecentContent[] = [];
+    let docCount = 0;
+    let mediaCount = 0;
+    let webCount = 0;
+
+    // Get inbox content
+    const inboxData = localStorage.getItem('moonscribe-inbox');
+    if (inboxData) {
+      const inboxItems = JSON.parse(inboxData);
+      allContent.push(...inboxItems);
+    }
+
+    // Get content from all projects
+    const projectsData = localStorage.getItem('moonscribe-projects');
+    if (projectsData) {
+      const projectsList = JSON.parse(projectsData);
+      projectsList.forEach((project: any) => {
+        const projectContent = localStorage.getItem(`moonscribe-project-content-${project.id}`);
+        if (projectContent) {
+          const items = JSON.parse(projectContent);
+          allContent.push(...items);
+        }
+      });
+    }
+
+    // Count by type and set recent content
+    allContent.forEach(item => {
+      const type = item.type?.toLowerCase() || '';
+      if (type === 'document' || type === 'pdf') docCount++;
+      else if (type === 'youtube' || type === 'podcast' || type === 'audio' || type === 'tiktok' || type === 'image' || type === 'video') mediaCount++;
+      else if (type === 'article' || type === 'url' || type === 'bookmark') webCount++;
+    });
+
+    // Sort by date and take recent 4
+    const sorted = allContent.sort((a, b) => 
+      new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+    ).slice(0, 4);
+    
+    setRecentContent(sorted);
+    setLibraryStats([
+      { label: 'Documents', value: docCount, icon: '📄', color: '#8b5cf6' },
+      { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#6366f1' },
+      { label: 'Web Pages', value: webCount, icon: '🌐', color: '#3b82f6' },
+    ]);
+  };
+
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== 'undefined') {
@@ -83,62 +133,32 @@ export default function Dashboard() {
       // Load insights
       loadInsights();
 
-      // Load all content from inbox and projects
-      const allContent: RecentContent[] = [];
-      let docCount = 0;
-      let mediaCount = 0;
-      let webCount = 0;
-
-      // Get inbox content
-      const inboxData = localStorage.getItem('moonscribe-inbox');
-      if (inboxData) {
-        const inboxItems = JSON.parse(inboxData);
-        allContent.push(...inboxItems);
-      }
-
-      // Get content from all projects
-      const projectsData = localStorage.getItem('moonscribe-projects');
-      if (projectsData) {
-        const projectsList = JSON.parse(projectsData);
-        projectsList.forEach((project: any) => {
-          const projectContent = localStorage.getItem(`moonscribe-project-content-${project.id}`);
-          if (projectContent) {
-            const items = JSON.parse(projectContent);
-            allContent.push(...items);
-          }
-        });
-      }
-
-      // Count by type and set recent content
-      allContent.forEach(item => {
-        const type = item.type?.toLowerCase() || '';
-        if (type === 'document' || type === 'pdf') docCount++;
-        else if (type === 'youtube' || type === 'podcast' || type === 'audio' || type === 'tiktok') mediaCount++;
-        else if (type === 'article' || type === 'url' || type === 'bookmark') webCount++;
-      });
-
-      // Sort by date and take recent 4
-      const sorted = allContent.sort((a, b) => 
-        new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
-      ).slice(0, 4);
-      
-      setRecentContent(sorted);
-      setLibraryStats([
-        { label: 'Documents', value: docCount, icon: '📄', color: '#8b5cf6' },
-        { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#6366f1' },
-        { label: 'Web Pages', value: webCount, icon: '🌐', color: '#3b82f6' },
-      ]);
+      // Load library stats
+      loadLibraryStats();
 
       // Listen for insight changes
       const handleInsightChange = () => {
         loadInsights();
       };
+      
+      // Listen for content changes
+      const handleContentAdded = () => {
+        loadLibraryStats();
+      };
+
+      const handleStorageChange = () => {
+        handleInsightChange();
+        handleContentAdded();
+      };
+
       window.addEventListener('moonscribe-insights-changed', handleInsightChange);
-      window.addEventListener('storage', handleInsightChange); // Also listen for cross-tab changes
+      window.addEventListener('moonscribe-content-added', handleContentAdded);
+      window.addEventListener('storage', handleStorageChange); // Also listen for cross-tab changes
 
       return () => {
         window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
-        window.removeEventListener('storage', handleInsightChange);
+        window.removeEventListener('moonscribe-content-added', handleContentAdded);
+        window.removeEventListener('storage', handleStorageChange);
       };
     }
   }, []);
@@ -154,6 +174,8 @@ export default function Dashboard() {
     audio: '🎵',
     tiktok: '📱',
     bookmark: '🔖',
+    image: '🖼️',
+    video: '🎬',
   };
 
   return (
