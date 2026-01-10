@@ -98,9 +98,28 @@ export default function FlashcardsPanel({
         throw new Error(data.error || 'Failed to generate flashcards');
       }
 
-      // Add new flashcards to existing ones (they are automatically saved via useEffect)
+      // Add new flashcards to existing ones, avoiding duplicates
       setFlashcards(prev => {
-        const updated = [...prev, ...data.flashcards];
+        // Deduplicate: Check if flashcard with same front/back already exists
+        const existingFronts = new Set(prev.map(f => f.front.toLowerCase().trim()));
+        const existingBacks = new Set(prev.map(f => f.back.toLowerCase().trim()));
+        
+        // Filter out duplicates (same front OR same back is considered duplicate)
+        const newFlashcards = data.flashcards.filter(newCard => {
+          const frontNormalized = newCard.front.toLowerCase().trim();
+          const backNormalized = newCard.back.toLowerCase().trim();
+          return !existingFronts.has(frontNormalized) && !existingBacks.has(backNormalized);
+        });
+        
+        const updated = [...prev, ...newFlashcards];
+        
+        // Show message if duplicates were filtered
+        if (newFlashcards.length < data.flashcards.length) {
+          const duplicatesCount = data.flashcards.length - newFlashcards.length;
+          console.log(`Filtered out ${duplicatesCount} duplicate flashcard(s)`);
+          // Could show a toast/notification here if desired
+        }
+        
         // Ensure flashcards are saved immediately after generation (like insights)
         // Save explicitly here to ensure persistence
         try {
