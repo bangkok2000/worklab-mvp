@@ -523,28 +523,42 @@ Try using a direct article URL or a page with static HTML content.`
     const pageId = `web-${Buffer.from(normalizedUrl).toString('base64').substring(0, 20)}-${Date.now()}`;
 
     // Prepare vectors for Pinecone
-    // Pinecone doesn't allow null values in metadata - convert to empty strings or omit
-    const vectors = chunks.map((chunk, idx) => ({
-      id: `${pageId}-chunk-${idx}`,
-      values: embeddings[idx],
-      metadata: {
-        text: chunk.text,
-        source: extracted.title,
-        source_type: 'web',
-        url: normalizedUrl,
-        domain: domain,
-        // Only include fields that are not null
-        ...(extracted.author && { author: extracted.author }),
-        ...(extracted.publishedDate && { published_date: extracted.publishedDate }),
-        ...(extracted.description && { description: extracted.description }),
-        ...(extracted.favicon && { favicon: extracted.favicon }),
-        ...(extracted.image && { image: extracted.image }),
-        ...(projectId && { project_id: projectId }),
-        chunk_index: idx,
-        total_chunks: chunks.length,
-        processed_at: new Date().toISOString(),
-      },
-    }));
+    // Pinecone metadata limit is 40KB per vector - keep it minimal
+    // Store full text in metadata but truncate other fields
+    const vectors = chunks.map((chunk, idx) => {
+      // Truncate text if too long (main contributor to metadata size)
+      const maxTextLength = 30000; // Leave room for other metadata
+      const chunkText = chunk.text.length > maxTextLength 
+        ? chunk.text.substring(0, maxTextLength) 
+        : chunk.text;
+      
+      // Truncate title and description
+      const title = extracted.title.length > 200 ? extracted.title.substring(0, 200) : extracted.title;
+      const description = extracted.description && extracted.description.length > 500 
+        ? extracted.description.substring(0, 500) 
+        : extracted.description || '';
+      
+      return {
+        id: `${pageId}-chunk-${idx}`,
+        values: embeddings[idx],
+        metadata: {
+          text: chunkText, // Main content - keep as much as possible
+          source: title, // Truncated title
+          source_type: 'web',
+          url: normalizedUrl.length > 500 ? normalizedUrl.substring(0, 500) : normalizedUrl, // Truncate if needed
+          domain: domain.length > 100 ? domain.substring(0, 100) : domain,
+          // Only include small optional fields
+          ...(extracted.author && extracted.author.length < 200 && { author: extracted.author }),
+          ...(extracted.publishedDate && { published_date: extracted.publishedDate }),
+          ...(description && { description }),
+          // Skip favicon, image - too large and not essential
+          ...(projectId && projectId.length < 100 && { project_id: projectId }),
+          chunk_index: idx,
+          total_chunks: chunks.length,
+          processed_at: new Date().toISOString(),
+        },
+      };
+    });
 
     // Upsert to Pinecone
     const index = getIndex();
