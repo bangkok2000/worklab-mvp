@@ -218,10 +218,19 @@ export default function ProjectWorkspace() {
         return;
       }
       try {
-        const keys = getStoredApiKeys(user?.id || null);
-        const hasActive = keys.some(k => k.isActive);
+        // Check user-specific keys first
+        const userKeys = getStoredApiKeys(user?.id || null);
+        let hasActive = userKeys.some(k => k.isActive);
+        
+        // Also check anonymous keys as fallback (in case user logged in but keys are still in anonymous storage)
+        if (!hasActive) {
+          const anonymousKeys = getStoredApiKeys(null);
+          hasActive = anonymousKeys.some(k => k.isActive);
+        }
+        
         setIsUsingBYOK(hasActive);
-      } catch {
+      } catch (error) {
+        console.error('Error checking BYOK:', error);
         setIsUsingBYOK(false);
       }
     };
