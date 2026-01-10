@@ -167,7 +167,6 @@ export async function POST(req: NextRequest) {
       chunkHash?: string;
     };
 
-    // Extract context from results
     // Create a simple hash function for chunk identification
     const hashChunk = (text: string): string => {
       // Simple hash: use first 100 chars + length as identifier
@@ -175,22 +174,26 @@ export async function POST(req: NextRequest) {
       return `${normalized.length}-${normalized.substring(0, 50)}`;
     };
 
-    const allMatches: MatchItem[] = searchResults.matches
-      .map((match: any) => ({
-        text: match.metadata?.text || '',
-        source: match.metadata?.source || 'Unknown',
-        score: match.score || 0,
-        sourceType: match.metadata?.source_type || 'document',
-        url: match.metadata?.url,
-        startTime: match.metadata?.start_time,
-        audioId: match.metadata?.audio_id,
-        chunkHash: hashChunk(match.metadata?.text || ''), // Add hash for tracking
-      }))
-      .filter((item: MatchItem & { chunkHash?: string }) => {
+    // Extract context from results
+    const allMatches: (MatchItem & { chunkHash: string })[] = searchResults.matches
+      .map((match: any) => {
+        const text = match.metadata?.text || '';
+        return {
+          text,
+          source: match.metadata?.source || 'Unknown',
+          score: match.score || 0,
+          sourceType: match.metadata?.source_type || 'document',
+          url: match.metadata?.url,
+          startTime: match.metadata?.start_time,
+          audioId: match.metadata?.audio_id,
+          chunkHash: hashChunk(text), // Add hash for tracking
+        };
+      })
+      .filter((item) => {
         // Filter out very short chunks
         if (!item.text || item.text.trim().length < 50) return false;
         // Filter out already used chunks
-        if (usedChunkHashes && usedChunkHashes.length > 0 && item.chunkHash) {
+        if (usedChunkHashes && Array.isArray(usedChunkHashes) && usedChunkHashes.length > 0) {
           return !usedChunkHashes.includes(item.chunkHash);
         }
         return true;
@@ -209,7 +212,7 @@ export async function POST(req: NextRequest) {
     };
     
     // Group matches by source and select diverse chunks
-    const bySource = new Map<string, (MatchItem & { chunkHash?: string })[]>();
+    const bySource = new Map<string, (MatchItem & { chunkHash: string })[]>();
     const sourceNameMap = new Map<string, string>();
     
     allMatches.forEach(match => {
@@ -232,7 +235,7 @@ export async function POST(req: NextRequest) {
     let totalTokensUsed = 0;
 
     // Helper function to generate flashcards for a single source
-    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: (MatchItem & { chunkHash?: string })[]): Promise<Array<{ front: string; back: string; source: string; chunkHash?: string }>> => {
+    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: (MatchItem & { chunkHash: string })[]): Promise<Array<{ front: string; back: string; source: string; chunkHash: string }>> => {
       // Use random sampling instead of always top chunks to get diverse content
       // Sort by score first, then sample from top 70% with some randomness
       const sortedMatches = sourceMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
