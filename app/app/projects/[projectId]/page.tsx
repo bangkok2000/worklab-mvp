@@ -518,7 +518,7 @@ export default function ProjectWorkspace() {
               {project.name}
             </h1>
             <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
-              {documents.length} documents • {conversations.length} conversations
+              {documents.filter(d => d.status === 'ready').length} ready • {documents.length} total • {conversations.length} conversations
             </p>
           </div>
         </div>
