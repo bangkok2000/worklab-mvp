@@ -991,16 +991,33 @@ export default function InsightsPage() {
 function formatRelativeDate(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor(diff / (1000 * 60));
+
+  // Format time as HH:MM
+  const timeStr = date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+
+  // Format date
+  if (days === 0) {
+    if (minutes < 1) return 'Just now';
+    if (hours < 1) return `${minutes}m ago`;
+    return `Today ${timeStr}`;
+  }
+  if (days === 1) return `Yesterday ${timeStr}`;
+  if (days < 7) return `${days}d ago ${timeStr}`;
   
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // For older dates, show full date and time
+  const dateStr = date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+  return `${dateStr} ${timeStr}`;
 }
 
 function ExportModal({ insight, onClose }: { insight: Insight; onClose: () => void }) {
