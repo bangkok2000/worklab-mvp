@@ -137,11 +137,29 @@ export default function FlashcardsPanel({
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Delete this flashcard?')) {
-      setFlashcards(prev => prev.filter(f => f.id !== id));
-      if (currentIndex >= flashcards.length - 1 && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
-      }
+    if (window.confirm('Delete this flashcard?')) {
+      setFlashcards(prev => {
+        const filtered = prev.filter(f => f.id !== id);
+        // Adjust current index if needed
+        const deletedIndex = prev.findIndex(f => f.id === id);
+        if (deletedIndex !== -1) {
+          // If we deleted the last card, move to the new last card
+          if (deletedIndex >= filtered.length && filtered.length > 0) {
+            setCurrentIndex(filtered.length - 1);
+          } else if (deletedIndex < currentIndex) {
+            // If we deleted a card before current, no change needed
+            // currentIndex stays the same (but now points to next card)
+          } else if (deletedIndex === currentIndex && filtered.length > 0) {
+            // If we deleted the current card, stay at same index (which is now next card)
+            // But if it was the last card, move back
+            if (currentIndex >= filtered.length) {
+              setCurrentIndex(filtered.length - 1);
+            }
+          }
+        }
+        return filtered;
+      });
+      setIsFlipped(false); // Reset flip state
     }
   };
 
