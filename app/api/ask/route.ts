@@ -192,13 +192,28 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Group matches by source file to ensure diversity
+    // Normalize source names for deduplication (case-insensitive, trim whitespace)
+    const normalizeSourceName = (name: string): string => {
+      return name.trim().toLowerCase();
+    };
+    
+    // Group matches by normalized source file to ensure diversity and deduplication
     const bySource = new Map<string, typeof allMatches>();
+    const sourceNameMap = new Map<string, string>(); // Maps normalized -> original name
+    
     allMatches.forEach(match => {
-      if (!bySource.has(match.source)) {
-        bySource.set(match.source, []);
+      const normalized = normalizeSourceName(match.source);
+      const originalName = sourceNameMap.get(normalized) || match.source;
+      
+      // Store original name for display
+      if (!sourceNameMap.has(normalized)) {
+        sourceNameMap.set(normalized, match.source);
       }
-      bySource.get(match.source)!.push(match);
+      
+      if (!bySource.has(normalized)) {
+        bySource.set(normalized, []);
+      }
+      bySource.get(normalized)!.push(match);
     });
 
     // Adaptive context selection based on question complexity and model limits
@@ -251,13 +266,19 @@ export async function POST(req: NextRequest) {
       diverseContext.splice(targetChunks);
     }
 
-    // Build context text with clear source attribution
+    // Build context text with clear source attribution (use original names)
     const contextText = diverseContext
-      .map((item, idx) => `[${idx + 1}] From ${item.source}:\n${item.text}`)
+      .map((item, idx) => {
+        const normalized = normalizeSourceName(item.source);
+        const displayName = sourceNameMap.get(normalized) || item.source;
+        return `[${idx + 1}] From ${displayName}:\n${item.text}`;
+      })
       .join('\n\n');
 
-    // Build list of unique sources
-    const uniqueSources = Array.from(bySource.keys());
+    // Build list of unique sources (use original names, deduplicated)
+    const uniqueSources = Array.from(new Set(
+      Array.from(bySource.keys()).map(normalized => sourceNameMap.get(normalized) || normalized)
+    ));
     const sourceList = uniqueSources.length > 1 
       ? `You have context from ${uniqueSources.length} different documents: ${uniqueSources.join(', ')}. `
       : '';
@@ -343,11 +364,28 @@ Provide a comprehensive answer:`;
     }
 
     const answer = completion.choices[0].message.content;
-    const sources = diverseContext.map((item, idx) => ({
-      number: idx + 1,
-      source: item.source,
-      relevance: Math.round(item.score! * 100),
-    }));
+    // Deduplicate sources by normalizing names
+    const seenSources = new Set<string>();
+    const sources = diverseContext
+      .map((item, idx) => {
+        const normalized = normalizeSourceName(item.source);
+        const displayName = sourceNameMap.get(normalized) || item.source;
+        return {
+          number: idx + 1,
+          source: displayName,
+          relevance: Math.round(item.score! * 100),
+          normalized,
+        };
+      })
+      .filter((item, idx, arr) => {
+        // Only include first occurrence of each normalized source
+        if (seenSources.has(item.normalized)) {
+          return false;
+        }
+        seenSources.add(item.normalized);
+        return true;
+      })
+      .map(({ normalized, ...rest }) => rest); // Remove normalized from final output
 
     // Deduct credits if using credits mode (not BYOK)
     let remainingBalance: number | null = null;
