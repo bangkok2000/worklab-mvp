@@ -148,22 +148,13 @@ export async function POST(req: NextRequest) {
 
     // Build filter for specific documents if provided
     // Priority: sourceFilenames (works for all users) > documentIds (authenticated only)
+    // NOTE: We don't use Pinecone filter for sourceFilenames because it requires exact match
+    // Instead, we retrieve more results and filter post-retrieval (case-insensitive, flexible)
     let filter: any = undefined;
     
-    if (sourceFilenames && Array.isArray(sourceFilenames) && sourceFilenames.length > 0) {
-      // Filter by source filename (works for both authenticated and anonymous users)
-      // Normalize filenames for matching (case-insensitive, handle truncation)
-      // Pinecone stores full titles, but we might send truncated ones, so use case-insensitive matching
-      // IMPORTANT: Use case-insensitive matching by normalizing both sides
-      const normalizedSourceFilenames = sourceFilenames.map(f => f.trim().toLowerCase());
-      filter = {
-        source: { $in: sourceFilenames } // Pinecone filter uses exact match, but we'll also verify after retrieval
-      };
-      console.log('[API] Filtering by sourceFilenames:', sourceFilenames);
-      console.log('[API] Normalized sourceFilenames for verification:', normalizedSourceFilenames);
-      console.log('[API] Filter object:', JSON.stringify(filter));
-    } else if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+    if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
       // Filter by document_id if provided (for authenticated users with UUIDs)
+      // This works because document_id is a UUID stored exactly
       filter = {
         document_id: { $in: documentIds }
       };
@@ -173,15 +164,25 @@ export async function POST(req: NextRequest) {
         document_id: { $eq: documentIds }
       };
     }
+    // NOTE: We intentionally DON'T filter by sourceFilenames in Pinecone because:
+    // 1. Pinecone requires exact match, but filenames might have slight variations
+    // 2. We do case-insensitive post-retrieval filtering instead (more flexible)
+    // 3. This ensures we get results even if there are minor filename differences
 
     // Search Pinecone - get enough results but not too many
-    // We'll filter down to 3-10 chunks based on question complexity
+    // If filtering by sourceFilenames, we'll retrieve more and filter post-retrieval
+    const topK = (sourceFilenames && sourceFilenames.length > 0) ? 30 : 15; // Get more if we need to filter
     const searchResults = await getIndex().query({
       vector: questionEmbedding,
-      topK: 15, // Reduced from 25 - we'll filter to 3-10 chunks anyway
+      topK: topK,
       includeMetadata: true,
-      filter: filter, // Filter by specific documents if provided
+      filter: filter, // Only use filter for documentIds (UUIDs), not sourceFilenames
     });
+    
+    console.log('[API] Pinecone search results:', searchResults.matches.length, 'matches');
+    if (sourceFilenames && sourceFilenames.length > 0) {
+      console.log('[API] Will filter by sourceFilenames post-retrieval:', sourceFilenames);
+    }
 
     // Extract context from results
     // Normalize source filenames for verification (case-insensitive)
@@ -204,24 +205,32 @@ export async function POST(req: NextRequest) {
       }))
       .filter(item => {
         // Filter out empty text
-        if (!item.text || item.text.trim().length < 50) return false;
+        if (!item.text || item.text.trim().length < 50) {
+          console.log(`[API] Filtered out chunk: text too short (${item.text?.length || 0} chars)`);
+          return false;
+        }
         
         // If sourceFilenames filter was applied, verify the source matches (case-insensitive)
         if (normalizedSourceFilenames.length > 0) {
-          const normalizedSource = normalizeForMatch(item.source);
+          const normalizedSource = normalizeForMatch(item.source || '');
           const matches = normalizedSourceFilenames.some(filterName => 
             normalizedSource === filterName || 
             normalizedSource.includes(filterName) || 
             filterName.includes(normalizedSource)
           );
           if (!matches) {
-            console.log(`[API] Filtered out chunk from source "${item.source}" (not in filtered list: ${sourceFilenames.join(', ')})`);
+            console.log(`[API] Filtered out chunk from source "${item.source}" (normalized: "${normalizedSource}") - not matching any of: ${normalizedSourceFilenames.join(', ')}`);
             return false;
           }
         }
         
         return true;
       });
+    
+    console.log(`[API] After filtering: ${allMatches.length} matches from ${searchResults.matches.length} total results`);
+    if (allMatches.length > 0) {
+      console.log(`[API] Sample match sources:`, allMatches.slice(0, 3).map(m => m.source));
+    }
 
     if (allMatches.length === 0) {
       return NextResponse.json({ 
@@ -338,14 +347,33 @@ export async function POST(req: NextRequest) {
       Array.from(bySource.keys()).map(normalized => sourceNameMap.get(normalized) || normalized)
     ));
     
-    // Detect meta-questions about sources (do this before other question analysis)
+    // Detect question types to adjust prompt strategy
     const questionLower = question.toLowerCase();
+    
+    // Detect meta-questions about sources (do this before other question analysis)
     const isMetaQuestion = questionLower.includes('where are you getting') || 
                            questionLower.includes('where did you get') ||
                            questionLower.includes('what is your source') ||
                            questionLower.includes('where is this from') ||
                            questionLower.includes('where does this come from') ||
                            (questionLower.includes('what document') && questionLower.includes('from'));
+    
+    // Detect synthesis tasks (summarize, analyze, tell me about, etc.)
+    // These require the AI to synthesize information from multiple chunks
+    const isSynthesisTask = questionLower.includes('summarize') || 
+                            questionLower.includes('summary') ||
+                            questionLower.includes('summarise') ||
+                            questionLower.includes('tell me about') ||
+                            questionLower.includes('what can you tell me') ||
+                            questionLower.includes('describe') ||
+                            questionLower.includes('analyze') ||
+                            questionLower.includes('analyse') ||
+                            questionLower.includes('overview') ||
+                            questionLower.includes('what is this') ||
+                            questionLower.includes('what is the document') ||
+                            questionLower.includes('what does this document') ||
+                            questionLower.includes('what does it say') ||
+                            questionLower.includes('what is it about');
     
     // Detect if question is asking about a specific source type
     const isAskingAboutWebLink = questionLower.includes('web link') || questionLower.includes('url') || 
@@ -430,8 +458,32 @@ ${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
 QUESTION: ${question}
 
 Provide a direct answer about where you are getting information from:`;
+    } else if (isSynthesisTask) {
+      // Special handling for synthesis tasks (summarize, analyze, tell me about, etc.)
+      // These tasks REQUIRE the AI to synthesize information from multiple chunks
+      prompt = `You are an expert research assistant. The user is asking you to ${isSynthesisTask ? 'synthesize and summarize' : 'analyze'} information from the provided documents.
+
+${sourceList}
+CRITICAL INSTRUCTIONS FOR SYNTHESIS TASKS:
+- You MUST synthesize information from the provided context below to create a comprehensive answer
+- You CAN and SHOULD connect information from different parts of the context to provide a complete answer
+- You CAN summarize, analyze, and organize information from the context
+- You MUST base your synthesis ONLY on information that is EXPLICITLY stated in the provided context
+- DO NOT use any information from your training data or general knowledge
+- DO NOT make up facts, numbers, names, or details that are not in the context
+- DO NOT infer information that is not directly stated (e.g., if the context doesn't mention an author, don't guess who wrote it)
+- If the context is empty or doesn't contain enough information to answer, say "I couldn't find enough information in the provided documents to answer this question."
+- Always cite your sources using [1], [2], etc. when referencing specific information
+- Write in a clear, professional tone
+
+CONTEXT FROM DOCUMENTS (SYNTHESIZE INFORMATION FROM THIS CONTEXT):
+${contextText}
+
+QUESTION: ${question}
+
+Provide a comprehensive, synthesized answer that addresses the question using information from the context above.`;
     } else {
-      // Standard question handling
+      // Standard fact-finding questions (specific questions with direct answers)
       prompt = `You are an expert research assistant. Analyze the provided context and give a comprehensive, well-structured answer to the question.
 
 ${sourceList}
@@ -474,6 +526,8 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       // Use system message for stricter control over behavior
       const systemMessage = isMetaQuestion 
         ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        : isSynthesisTask
+        ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
         : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
       
       const result = await openaiClient.chat.completions.create({
@@ -503,6 +557,8 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
               role: 'system', 
               content: isMetaQuestion 
                 ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+                : isSynthesisTask
+                ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
                 : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`
             },
             { role: 'user', content: prompt }
@@ -524,6 +580,8 @@ Provide a comprehensive answer that directly addresses the question. Remember: O
       // Fallback to OpenAI (using BYOK key already initialized)
       const systemMessage = isMetaQuestion 
         ? `You are a research assistant. When asked about where you get information, you MUST only state the source documents provided. Do not make up or infer anything.`
+        : isSynthesisTask
+        ? `You are a research assistant. For synthesis tasks (summarize, analyze, tell me about), you MUST synthesize information from the provided context. You CAN connect information from different parts of the context, but you MUST base your synthesis ONLY on information explicitly stated in the context. DO NOT use training data, general knowledge, or make up facts.`
         : `You are a research assistant. You MUST ONLY use information that is EXPLICITLY stated in the provided context. DO NOT use training data, general knowledge, or make inferences. If the direct answer is not in the context, respond with ONLY "I couldn't find this information in the provided documents." Do not provide related information or make connections.`;
       
       const result = await openai.chat.completions.create({
