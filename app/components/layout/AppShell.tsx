@@ -281,15 +281,19 @@ export default function AppShell({ children }: AppShellProps) {
           {/* Right Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Credit Balance for signed-in users, Guest indicator for guests */}
-            {user ? (
-              <CreditBalance 
-                compact 
-                onBuyCredits={() => setShowBuyCredits(true)} 
-              />
-            ) : (
-              <GuestUsageIndicator 
-                onSignUpClick={() => setShowSignUpRequired(true)} 
-              />
+            {!loading && (
+              <>
+                {user ? (
+                  <CreditBalance 
+                    compact 
+                    onBuyCredits={() => setShowBuyCredits(true)} 
+                  />
+                ) : (
+                  <GuestUsageIndicator 
+                    onSignUpClick={() => setShowSignUpRequired(true)} 
+                  />
+                )}
+              </>
             )}
             
             {/* Notifications */}
@@ -762,6 +766,7 @@ function NavItemComponent({
 
 // Quick Capture Modal
 function QuickCaptureModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
   const [captureType, setCaptureType] = useState<'url' | 'note' | 'upload'>('url');
   const [inputValue, setInputValue] = useState('');
   const [selectedProject, setSelectedProject] = useState<string>('inbox');
@@ -793,17 +798,82 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
       && !isYouTubeUrl(trimmed);
   };
 
-  // Get API key from localStorage
-  const getApiKey = (): string | undefined => {
-    const savedKeys = localStorage.getItem('moonscribe-api-keys');
-    if (savedKeys) {
-      const keys = JSON.parse(savedKeys);
-      const openaiKey = keys.find((k: any) => k.provider === 'openai' && k.isActive);
-      if (openaiKey) {
-        return openaiKey.key;
-      }
+  // Get API key using the correct utility function
+  const getApiKey = async (): Promise<string | undefined> => {
+    try {
+      const { getDecryptedApiKey } = await import('@/lib/utils/api-keys');
+      return await getDecryptedApiKey('openai', user?.id || null) || undefined;
+    } catch (error) {
+      console.error('Failed to get API key:', error);
+      return undefined;
     }
-    return undefined;
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (file: File) => {
+    setIsProcessing(true);
+    setError('');
+    setProcessingStatus('Uploading file...');
+
+    try {
+      const apiKey = await getApiKey();
+      const formData = new FormData();
+      formData.append('file', file);
+      if (selectedProject !== 'inbox') {
+        formData.append('projectId', selectedProject);
+      }
+      if (apiKey) {
+        formData.append('apiKey', apiKey);
+      }
+
+      setProcessingStatus('Processing file...');
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload file');
+      }
+
+      setProcessingStatus('Saving to library...');
+
+      // Create the content item
+      const newItem = {
+        id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'document',
+        title: data.filename || file.name,
+        filename: data.filename,
+        chunksProcessed: data.chunks || 0,
+        processed: true,
+        addedAt: new Date().toISOString(),
+      };
+
+      // Save to local storage
+      if (typeof window !== 'undefined') {
+        if (selectedProject === 'inbox') {
+          const existingInbox = localStorage.getItem('moonscribe-inbox');
+          const inbox = existingInbox ? JSON.parse(existingInbox) : [];
+          inbox.unshift(newItem);
+          localStorage.setItem('moonscribe-inbox', JSON.stringify(inbox));
+        } else {
+          const existingContent = localStorage.getItem(`moonscribe-project-content-${selectedProject}`);
+          const content = existingContent ? JSON.parse(existingContent) : [];
+          content.unshift(newItem);
+          localStorage.setItem(`moonscribe-project-content-${selectedProject}`, JSON.stringify(content));
+        }
+        
+        window.dispatchEvent(new CustomEvent('moonscribe-content-added', { detail: newItem }));
+      }
+
+      setProcessingStatus('Done!');
+      setTimeout(() => onClose(), 500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload file');
+      setIsProcessing(false);
+    }
   };
 
   const captureTypes = [
@@ -815,7 +885,7 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
   // Process YouTube video via API
   const processYouTube = async (url: string): Promise<any> => {
     setProcessingStatus('Fetching video info...');
-    const apiKey = getApiKey();
+    const apiKey = await getApiKey();
     
     setProcessingStatus('Extracting transcript...');
     
@@ -841,7 +911,7 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
   // Process web page via API
   const processWebPage = async (url: string): Promise<any> => {
     setProcessingStatus('Fetching page...');
-    const apiKey = getApiKey();
+    const apiKey = await getApiKey();
     
     setProcessingStatus('Extracting content...');
     
@@ -1202,14 +1272,29 @@ function QuickCaptureModal({ onClose }: { onClose: () => void }) {
           )}
 
           {!isProcessing && captureType === 'upload' ? (
-            <div style={{
-              border: '2px dashed rgba(139, 92, 246, 0.3)',
-              borderRadius: '12px',
-              padding: '3rem',
-              textAlign: 'center',
-              cursor: 'pointer',
-              marginBottom: '1rem',
-            }}>
+            <div 
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.pdf,.doc,.docx,.txt,.mp3,.mp4,.wav';
+                input.multiple = false;
+                input.onchange = async (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    await handleFileUpload(file);
+                  }
+                };
+                input.click();
+              }}
+              style={{
+                border: '2px dashed rgba(139, 92, 246, 0.3)',
+                borderRadius: '12px',
+                padding: '3rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                marginBottom: '1rem',
+              }}
+            >
               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
               <p style={{ color: '#94a3b8', marginBottom: '0.5rem' }}>Drop files here or click to upload</p>
               <p style={{ color: '#64748b', fontSize: '0.8125rem' }}>
