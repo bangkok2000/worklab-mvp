@@ -326,12 +326,14 @@ function MessageBubble({
 // Save Insight Modal Component
 function SaveInsightModal({
   message,
+  userQuestion,
   projectId,
   projectName,
   projectColor,
   onClose,
 }: {
   message: Message;
+  userQuestion: string;
   projectId?: string;
   projectName?: string;
   projectColor?: string;
