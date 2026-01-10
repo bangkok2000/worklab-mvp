@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
       provider = 'openai', // Provider: 'openai' | 'anthropic'
       model, // Model name (optional, uses default if not provided)
       count = 10, // Number of flashcards to generate
+      usedChunkHashes = [], // Array of chunk text hashes that have already been used
+      generationNumber = 0, // Generation number to vary queries
     } = await req.json();
 
     if (!sourceFilenames || !Array.isArray(sourceFilenames) || sourceFilenames.length === 0) {
@@ -117,8 +119,19 @@ export async function POST(req: NextRequest) {
     const openai = new OpenAI({ apiKey: openaiKey });
     
     // Build a query to get comprehensive context for flashcards
-    // Use a broad query to get diverse content
-    const query = 'key concepts important information main points definitions facts';
+    // Vary the query based on generation number to get different content each time
+    const queryVariations = [
+      'key concepts important information main points definitions facts',
+      'advanced concepts detailed explanations complex topics in-depth analysis',
+      'practical examples real-world applications use cases scenarios',
+      'fundamental principles core ideas essential knowledge basics',
+      'detailed explanations step-by-step processes how-to guides procedures',
+      'comparisons contrasts differences similarities relationships',
+      'important details specific facts statistics data measurements',
+      'theoretical frameworks models theories concepts principles',
+    ];
+    const queryIndex = generationNumber % queryVariations.length;
+    const query = queryVariations[queryIndex];
     const expandedQuery = expandQuery(query);
     
     // Embed the query
@@ -151,9 +164,17 @@ export async function POST(req: NextRequest) {
       url?: string;
       startTime?: number;
       audioId?: string;
+      chunkHash?: string;
     };
 
     // Extract context from results
+    // Create a simple hash function for chunk identification
+    const hashChunk = (text: string): string => {
+      // Simple hash: use first 100 chars + length as identifier
+      const normalized = text.trim().toLowerCase().substring(0, 100);
+      return `${normalized.length}-${normalized.substring(0, 50)}`;
+    };
+
     const allMatches: MatchItem[] = searchResults.matches
       .map((match: any) => ({
         text: match.metadata?.text || '',
@@ -163,8 +184,17 @@ export async function POST(req: NextRequest) {
         url: match.metadata?.url,
         startTime: match.metadata?.start_time,
         audioId: match.metadata?.audio_id,
+        chunkHash: hashChunk(match.metadata?.text || ''), // Add hash for tracking
       }))
-      .filter((item: MatchItem) => item.text && item.text.trim().length > 50); // Filter out very short chunks
+      .filter((item: MatchItem & { chunkHash?: string }) => {
+        // Filter out very short chunks
+        if (!item.text || item.text.trim().length < 50) return false;
+        // Filter out already used chunks
+        if (usedChunkHashes && usedChunkHashes.length > 0 && item.chunkHash) {
+          return !usedChunkHashes.includes(item.chunkHash);
+        }
+        return true;
+      });
 
     if (allMatches.length === 0) {
       return NextResponse.json({ 
@@ -179,7 +209,7 @@ export async function POST(req: NextRequest) {
     };
     
     // Group matches by source and select diverse chunks
-    const bySource = new Map<string, MatchItem[]>();
+    const bySource = new Map<string, (MatchItem & { chunkHash?: string })[]>();
     const sourceNameMap = new Map<string, string>();
     
     allMatches.forEach(match => {
@@ -202,10 +232,18 @@ export async function POST(req: NextRequest) {
     let totalTokensUsed = 0;
 
     // Helper function to generate flashcards for a single source
-    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: MatchItem[]): Promise<Array<{ front: string; back: string; source: string }>> => {
-      // Get top chunks for this source (up to 10 chunks per source)
+    const generateFlashcardsForSource = async (sourceName: string, sourceMatches: (MatchItem & { chunkHash?: string })[]): Promise<Array<{ front: string; back: string; source: string; chunkHash?: string }>> => {
+      // Use random sampling instead of always top chunks to get diverse content
+      // Sort by score first, then sample from top 70% with some randomness
       const sortedMatches = sourceMatches.sort((a, b) => (b.score || 0) - (a.score || 0));
-      const sourceContext = sortedMatches.slice(0, 10);
+      
+      // Take top 70% by score, then randomly sample from them
+      const topPercent = Math.max(10, Math.floor(sortedMatches.length * 0.7));
+      const topMatches = sortedMatches.slice(0, topPercent);
+      
+      // Randomly sample up to 10 chunks from top matches
+      const shuffled = [...topMatches].sort(() => Math.random() - 0.5);
+      const sourceContext = shuffled.slice(0, Math.min(10, shuffled.length));
 
       if (sourceContext.length === 0) return [];
 
@@ -318,13 +356,14 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
         return [];
       }
 
-      // Ensure source is set correctly
+      // Ensure source is set correctly and include chunk hash for tracking
       return flashcards
         .filter((card: any) => card.front && card.back)
-        .map((card: any) => ({
+        .map((card: any, idx: number) => ({
           front: card.front.trim(),
           back: card.back.trim(),
           source: sourceName, // Always use the source name we're processing
+          chunkHash: sourceContext[idx]?.chunkHash, // Track which chunk was used
         }));
     };
 
@@ -353,8 +392,14 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
         front: card.front,
         back: card.back,
         source: card.source,
+        chunkHash: card.chunkHash, // Include chunk hash for tracking
         createdAt: new Date(),
       }));
+
+    // Collect all used chunk hashes from this generation
+    const usedChunkHashesFromGeneration = formattedFlashcards
+      .map((f: any) => f.chunkHash)
+      .filter((hash: string | undefined): hash is string => !!hash);
 
     // Deduct credits if using credits mode
     let remainingBalance: number | null = null;
@@ -385,6 +430,7 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
           return [originalName, formattedFlashcards.filter(f => f.source === originalName)];
         })
       ),
+      usedChunkHashes: usedChunkHashesFromGeneration, // Return used chunk hashes for client tracking
       keySource,
       teamName,
       remainingBalance,

@@ -10,6 +10,7 @@ interface Flashcard {
   front: string;
   back: string;
   source: string;
+  chunkHash?: string; // Track which chunk was used
   createdAt: Date;
 }
 
@@ -32,8 +33,10 @@ export default function FlashcardsPanel({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [usedChunkHashes, setUsedChunkHashes] = useState<string[]>([]);
+  const [generationNumber, setGenerationNumber] = useState(0);
 
-  // Load flashcards from localStorage
+  // Load flashcards and used chunks from localStorage
   useEffect(() => {
     if (!projectId) return;
     
@@ -41,10 +44,24 @@ export default function FlashcardsPanel({
       const saved = localStorage.getItem(`moonscribe-project-${projectId}-flashcards`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setFlashcards(parsed.map((f: any) => ({
+        const loadedFlashcards = parsed.map((f: any) => ({
           ...f,
           createdAt: new Date(f.createdAt),
-        })));
+        }));
+        setFlashcards(loadedFlashcards);
+        
+        // Extract used chunk hashes from existing flashcards
+        const hashes = loadedFlashcards
+          .map((f: Flashcard) => f.chunkHash)
+          .filter((hash: string | undefined): hash is string => !!hash);
+        setUsedChunkHashes(hashes);
+        setGenerationNumber(Math.floor(hashes.length / 10)); // Estimate generation number
+      }
+      
+      // Load generation number separately
+      const genNumber = localStorage.getItem(`moonscribe-project-${projectId}-flashcards-generation`);
+      if (genNumber) {
+        setGenerationNumber(parseInt(genNumber, 10));
       }
     } catch (error) {
       console.error('Failed to load flashcards:', error);
@@ -89,6 +106,8 @@ export default function FlashcardsPanel({
           provider,
           model,
           count: 10, // Generate 10 flashcards
+          usedChunkHashes, // Pass used chunks to exclude them
+          generationNumber, // Pass generation number to vary queries
         }),
       });
 
@@ -112,6 +131,35 @@ export default function FlashcardsPanel({
         });
         
         const updated = [...prev, ...newFlashcards];
+        
+        // Update used chunk hashes with new ones from this generation
+        if (data.usedChunkHashes && Array.isArray(data.usedChunkHashes)) {
+          setUsedChunkHashes(prevHashes => {
+            const combined = [...new Set([...prevHashes, ...data.usedChunkHashes])];
+            // Save to localStorage
+            try {
+              localStorage.setItem(
+                `moonscribe-project-${projectId}-used-chunks`,
+                JSON.stringify(combined)
+              );
+            } catch (error) {
+              console.error('Failed to save used chunks:', error);
+            }
+            return combined;
+          });
+        }
+        
+        // Increment generation number
+        const newGenNumber = generationNumber + 1;
+        setGenerationNumber(newGenNumber);
+        try {
+          localStorage.setItem(
+            `moonscribe-project-${projectId}-flashcards-generation`,
+            newGenNumber.toString()
+          );
+        } catch (error) {
+          console.error('Failed to save generation number:', error);
+        }
         
         // Show message if duplicates were filtered
         if (newFlashcards.length < data.flashcards.length) {
@@ -185,11 +233,15 @@ export default function FlashcardsPanel({
   const handleDeleteAll = () => {
     if (window.confirm(`Delete all ${flashcards.length} flashcards? This action cannot be undone.`)) {
       setFlashcards([]);
+      setUsedChunkHashes([]);
+      setGenerationNumber(0);
       setCurrentIndex(0);
       setIsFlipped(false);
       // Clear from localStorage
       try {
         localStorage.removeItem(`moonscribe-project-${projectId}-flashcards`);
+        localStorage.removeItem(`moonscribe-project-${projectId}-used-chunks`);
+        localStorage.removeItem(`moonscribe-project-${projectId}-flashcards-generation`);
       } catch (error) {
         console.error('Failed to clear flashcards from localStorage:', error);
       }
