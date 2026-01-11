@@ -61,6 +61,8 @@ export default function AppShell({ children }: AppShellProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const userMenuButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [userMenuPosition, setUserMenuPosition] = useState<{ top: number; right: number } | null>(null);
 
   // Listen for custom event to open Add Content modal from project pages
   useEffect(() => {
@@ -70,6 +72,19 @@ export default function AppShell({ children }: AppShellProps) {
     window.addEventListener('moonscribe-open-add-content', handleOpenAddContent as EventListener);
     return () => window.removeEventListener('moonscribe-open-add-content', handleOpenAddContent as EventListener);
   }, []);
+
+  // Calculate dropdown position when menu opens
+  useEffect(() => {
+    if (showUserMenu && userMenuButtonRef.current) {
+      const rect = userMenuButtonRef.current.getBoundingClientRect();
+      setUserMenuPosition({
+        top: rect.bottom + 8, // 8px gap (0.5rem)
+        right: window.innerWidth - rect.right, // Distance from right edge
+      });
+    } else {
+      setUserMenuPosition(null);
+    }
+  }, [showUserMenu]);
 
   // Get user initials or email initial
   const getUserInitial = () => {
@@ -445,6 +460,7 @@ export default function AppShell({ children }: AppShellProps) {
             {/* User Menu */}
             <div style={{ position: 'relative' }}>
               <button
+                ref={userMenuButtonRef}
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 style={{
                   width: '36px',
@@ -467,7 +483,7 @@ export default function AppShell({ children }: AppShellProps) {
               </button>
               
               {/* Dropdown Menu */}
-              {showUserMenu && (
+              {showUserMenu && userMenuPosition && (
                 <>
                   {/* Backdrop */}
                   <div 
@@ -475,20 +491,19 @@ export default function AppShell({ children }: AppShellProps) {
                     style={{
                       position: 'fixed',
                       inset: 0,
-                      zIndex: 40,
+                      zIndex: 9998, // High z-index to be above everything
                     }}
                   />
                   <div style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: '100%',
-                    marginTop: '0.5rem',
+                    position: 'fixed', // Fixed positioning to escape parent stacking contexts (like project cards with overflow:hidden)
+                    right: `${userMenuPosition.right}px`, // Position from right edge of viewport
+                    top: `${userMenuPosition.top}px`, // Position from top of viewport
                     width: '280px',
                     background: 'rgba(15, 15, 35, 0.95)',
                     border: '1px solid rgba(139, 92, 246, 0.2)',
                     borderRadius: '12px',
                     padding: '0.5rem',
-                    zIndex: 50,
+                    zIndex: 9999, // Very high z-index to be above all content including project cards
                     backdropFilter: 'blur(20px)',
                     boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
                   }}>
