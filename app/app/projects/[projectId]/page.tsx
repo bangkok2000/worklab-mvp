@@ -83,6 +83,7 @@ export default function ProjectWorkspace() {
   // UI State
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [rightPanelTab, setRightPanelTab] = useState<'conversations' | 'insights'>('conversations');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
