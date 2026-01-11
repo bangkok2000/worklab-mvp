@@ -121,7 +121,8 @@ export default function AppShell({ children }: AppShellProps) {
     background: 'transparent',
     border: 'none',
     borderRadius: '8px',
-    color: '#f1f5f9',
+    color: '#e2e8f0', // Softer white for better visibility
+    opacity: 1, // Explicit opacity
     fontSize: '0.8125rem',
     cursor: 'pointer',
     display: 'flex',
@@ -513,19 +514,20 @@ export default function AppShell({ children }: AppShellProps) {
                         {/* User Info */}
                         <div style={{
                           padding: '0.75rem',
-                          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+                          borderBottom: '1px solid rgba(124, 58, 237, 0.3)', // More visible border
                           marginBottom: '0.5rem',
                         }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#f1f5f9' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#e2e8f0', opacity: 1 }}> {/* Softer white, explicit opacity */}
                             {getDisplayName()}
                           </div>
                           <div style={{ 
                             fontSize: '0.75rem', 
-                            color: '#64748b', 
+                            color: '#94a3b8', // Lighter gray for better visibility
                             marginTop: '0.125rem',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
+                            opacity: 1, // Explicit opacity
                           }}>
                             {user.email}
                           </div>
@@ -538,7 +540,7 @@ export default function AppShell({ children }: AppShellProps) {
                         >
                           <span>⚙️</span> Settings
                         </button>
-                        <div style={{ height: '1px', background: 'rgba(139, 92, 246, 0.15)', margin: '0.5rem 0' }} />
+                        <div style={{ height: '1px', background: 'rgba(124, 58, 237, 0.3)', margin: '0.5rem 0' }} /> {/* More visible separator */}
                         <button
                           onClick={handleSignOut}
                           style={{ ...userMenuButtonStyle, color: '#f87171' }}
@@ -551,13 +553,13 @@ export default function AppShell({ children }: AppShellProps) {
                         {/* Guest Mode */}
                         <div style={{
                           padding: '0.75rem',
-                          borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+                          borderBottom: '1px solid rgba(124, 58, 237, 0.3)', // More visible border
                           marginBottom: '0.5rem',
                         }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#f1f5f9' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, color: '#e2e8f0', opacity: 1 }}> {/* Softer white, explicit opacity */}
                             Guest Mode
                           </div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.125rem' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.125rem', opacity: 1 }}> {/* Lighter gray, explicit opacity */}
                             Sign in to sync & save
                           </div>
                         </div>
