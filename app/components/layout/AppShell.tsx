@@ -499,13 +499,14 @@ export default function AppShell({ children }: AppShellProps) {
                     right: `${userMenuPosition.right}px`, // Position from right edge of viewport
                     top: `${userMenuPosition.top}px`, // Position from top of viewport
                     width: '280px',
-                    background: 'rgba(15, 15, 35, 0.95)',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    background: 'rgba(15, 15, 35, 1)', // Changed from 0.95 to 1 for full opacity - no transparency
+                    border: '1px solid rgba(124, 58, 237, 0.4)', // More visible border - increased opacity from 0.2 to 0.4
                     borderRadius: '12px',
                     padding: '0.5rem',
                     zIndex: 9999, // Very high z-index to be above all content including project cards
                     backdropFilter: 'blur(20px)',
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)', // Stronger shadow for better visibility
+                    opacity: 1, // Explicitly set to 1 to ensure full visibility
                   }}>
                     {user ? (
                       <>
