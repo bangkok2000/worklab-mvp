@@ -379,10 +379,8 @@ export async function POST(req: NextRequest) {
       Array.from(bySource.keys()).map(normalized => sourceNameMap.get(normalized) || normalized)
     ));
     
-    // Detect question types to adjust prompt strategy
-    const questionLower = question.toLowerCase();
-    
     // Detect meta-questions about sources (do this before other question analysis)
+    // Note: questionLower is already declared above (line ~300)
     const isMetaQuestion = questionLower.includes('where are you getting') || 
                            questionLower.includes('where did you get') ||
                            questionLower.includes('what is your source') ||
