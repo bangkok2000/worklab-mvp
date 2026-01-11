@@ -209,7 +209,7 @@ export default function SourcesPanel({
             {isUploading ? 'Processing...' : 'Drop files here or click to upload'}
           </p>
           <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-            Supports PDF, Images, Audio (MP3, WAV, M4A) up to 100MB
+            Supports PDF, Images, Audio (MP3, WAV, M4A) up to 4.5MB (Vercel limit - upgrade to Pro for larger files)
           </p>
         </div>
       </div>

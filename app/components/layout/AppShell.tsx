@@ -835,35 +835,39 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
                    file.name.toLowerCase().endsWith('.wav') ||
                    file.name.toLowerCase().endsWith('.m4a');
     
-    const MAX_IMAGE_SIZE = 20 * 1024 * 1024; // 20MB
-    const MAX_AUDIO_SIZE = 100 * 1024 * 1024; // 100MB
-    const MAX_PDF_SIZE = 100 * 1024 * 1024; // 100MB (but Next.js/Vercel limit is ~4.5MB by default)
-    const MAX_GENERAL_SIZE = 4 * 1024 * 1024; // 4MB (Next.js default limit)
+    // Actual platform limits (Vercel serverless functions)
+    // Free/Hobby: ~4.5MB hard limit
+    // Pro: Up to 4.5GB (configurable in Vercel settings)
+    // For now, we'll use 4.5MB as the safe limit until Vercel settings are configured
+    const VERCEL_LIMIT = 4.5 * 1024 * 1024; // 4.5MB (Vercel serverless function limit)
+    const MAX_IMAGE_SIZE = Math.min(20 * 1024 * 1024, VERCEL_LIMIT); // 20MB intended, but capped at Vercel limit
+    const MAX_AUDIO_SIZE = Math.min(100 * 1024 * 1024, VERCEL_LIMIT); // 100MB intended, but capped at Vercel limit
+    const MAX_PDF_SIZE = Math.min(100 * 1024 * 1024, VERCEL_LIMIT); // 100MB intended, but capped at Vercel limit
+    const MAX_GENERAL_SIZE = VERCEL_LIMIT; // Use Vercel limit as default
     
     let maxSize = MAX_GENERAL_SIZE;
-    let maxSizeLabel = '4MB';
+    let maxSizeLabel = '4.5MB';
+    let limitNote = '';
     
     if (isImage) {
       maxSize = MAX_IMAGE_SIZE;
-      maxSizeLabel = '20MB';
+      maxSizeLabel = '4.5MB';
+      limitNote = ' (Vercel limit - upgrade to Pro plan for up to 4.5GB)';
     } else if (isAudio) {
       maxSize = MAX_AUDIO_SIZE;
-      maxSizeLabel = '100MB';
+      maxSizeLabel = '4.5MB';
+      limitNote = ' (Vercel limit - upgrade to Pro plan for up to 4.5GB)';
     } else if (file.name.toLowerCase().endsWith('.pdf')) {
       maxSize = MAX_PDF_SIZE;
-      maxSizeLabel = '100MB (Note: Platform limit may be lower)';
+      maxSizeLabel = '4.5MB';
+      limitNote = ' (Vercel limit - upgrade to Pro plan for up to 4.5GB)';
     }
     
     if (file.size > maxSize) {
       const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      setError(`File too large: ${fileSizeMB}MB. Maximum size is ${maxSizeLabel}.`);
+      setError(`File too large: ${fileSizeMB}MB. Maximum size is ${maxSizeLabel}${limitNote}. See FILE_UPLOAD_SIZE_LIMIT_SOLUTION.md for details.`);
       setIsProcessing(false);
       return;
-    }
-    
-    // Warn about Next.js/Vercel platform limit for non-audio files
-    if (!isAudio && file.size > 4 * 1024 * 1024) {
-      console.warn(`File size (${(file.size / (1024 * 1024)).toFixed(2)}MB) may exceed platform limit. Upload may fail.`);
     }
 
     try {
