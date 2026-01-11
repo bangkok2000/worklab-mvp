@@ -664,7 +664,8 @@ Answer:`;
       
       // Adjust temperature based on task type
       // Lower (0.1) for fact-finding, higher (0.3-0.4) for synthesis tasks
-      const temperature = isSynthesisTask ? 0.3 : 0.1;
+      // Metadata questions can use slightly higher temperature for more natural responses
+      const temperature = isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1);
       
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
@@ -702,7 +703,7 @@ Answer:`;
             { role: 'user', content: prompt }
           ],
           max_tokens: 2000,
-          temperature: isSynthesisTask ? 0.3 : 0.1,
+          temperature: isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1),
         }),
       });
       
@@ -724,7 +725,7 @@ Answer:`;
         ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
         : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
       
-      const temperature = isSynthesisTask ? 0.3 : 0.1;
+      const temperature = isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1);
       
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
