@@ -1,4 +1,4 @@
-import { getSupabase } from './client';
+import { getSupabase, createServerClient } from './client';
 import type { 
   Credits, 
   CreditTransaction, 
@@ -15,9 +15,11 @@ import type {
 
 /**
  * Get user's current credit balance
+ * @param supabaseClient Optional Supabase client (for server-side usage with auth context)
  */
-export async function getCredits(userId: string): Promise<Credits | null> {
-  const supabase = getSupabase();
+export async function getCredits(userId: string, supabaseClient?: any): Promise<Credits | null> {
+  // Use provided client (server-side with auth) or get default client (client-side)
+  const supabase = supabaseClient || getSupabase();
   
   const { data, error } = await supabase
     .from('credits')
@@ -35,9 +37,10 @@ export async function getCredits(userId: string): Promise<Credits | null> {
 
 /**
  * Get user's credit balance (just the number)
+ * @param supabaseClient Optional Supabase client (for server-side usage with auth context)
  */
-export async function getBalance(userId: string): Promise<number> {
-  const credits = await getCredits(userId);
+export async function getBalance(userId: string, supabaseClient?: any): Promise<number> {
+  const credits = await getCredits(userId, supabaseClient);
   return credits?.balance ?? 0;
 }
 

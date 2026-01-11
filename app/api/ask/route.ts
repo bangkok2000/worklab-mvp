@@ -51,11 +51,29 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
+    let authenticatedSupabase = supabase; // Default to unauthenticated client
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      
+      // Create authenticated client for RLS policies
+      if (user && !authError) {
+        // Create a new client with the user's access token for RLS
+        const { createClient } = await import('@supabase/supabase-js');
+        authenticatedSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          }
+        );
+      }
     }
 
     // Determine which model/action for credit costs
@@ -111,8 +129,8 @@ export async function POST(req: NextRequest) {
       // Get credit cost for this action
       creditCost = await getCreditCost(creditAction);
       
-      // Check if user has enough credits
-      const balance = await getBalance(userId);
+      // Check if user has enough credits (use authenticated client for RLS)
+      const balance = await getBalance(userId, authenticatedSupabase);
       if (balance < creditCost) {
         return NextResponse.json({ 
           error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits, use your own API key, or join a team.`,
