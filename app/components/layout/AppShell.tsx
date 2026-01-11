@@ -803,7 +803,7 @@ function NavItemComponent({
 
 // Quick Capture Modal
 function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void; defaultProjectId?: string }) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [captureType, setCaptureType] = useState<'url' | 'note' | 'upload'>('url');
   const [inputValue, setInputValue] = useState('');
   const [selectedProject, setSelectedProject] = useState<string>(defaultProjectId || 'inbox');
@@ -921,7 +921,10 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
           setProcessingStatus('Preparing upload...');
           const presignedResponse = await fetch('/api/upload/presigned-url', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+            },
             body: JSON.stringify({
               filename: file.name,
               fileType: file.type || 'application/pdf',
@@ -953,7 +956,10 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
           setProcessingStatus('Processing file...');
           const processResponse = await fetch('/api/upload/process', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+            },
             body: JSON.stringify({
               fileId,
               key,
@@ -1006,6 +1012,9 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         setProcessingStatus(processingStatus);
         const response = await fetch(endpoint, {
           method: 'POST',
+          headers: {
+            ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+          },
           body: formData,
         });
 
@@ -1105,7 +1114,10 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
     
     const response = await fetch('/api/youtube', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+      },
       body: JSON.stringify({
         url,
         projectId: selectedProject === 'inbox' ? null : selectedProject,
@@ -1131,7 +1143,10 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
     
     const response = await fetch('/api/web', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
+      },
       body: JSON.stringify({
         url,
         projectId: selectedProject === 'inbox' ? null : selectedProject,
