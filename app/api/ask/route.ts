@@ -313,6 +313,18 @@ export async function POST(req: NextRequest) {
                                    questionLower.includes('connection') ||
                                    (questionLower.includes('are') && questionLower.includes('related'));
     
+    // Detect complex questions (must be declared before use in chunksPerSource calculation)
+    const isComplexQuestion = questionLower.includes('compare') ||
+                              questionLower.includes('contrast') ||
+                              questionLower.includes('explain why') ||
+                              questionLower.includes('how does') ||
+                              questionLower.includes('why does') ||
+                              questionLower.includes('what are the differences') ||
+                              questionLower.includes('what are the similarities') ||
+                              questionLower.includes('analyze the relationship') ||
+                              questionLower.includes('evaluate') ||
+                              questionLower.includes('discuss');
+    
     // For simple questions: 1-2 chunks per source. For complex/relationship: 2-4 chunks per source
     const chunksPerSource = isSimpleQuestion 
       ? Math.max(1, Math.floor(targetChunks / numSources))
