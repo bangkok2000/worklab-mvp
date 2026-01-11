@@ -657,8 +657,8 @@ Answer:`;
         : isMetaQuestion 
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
-        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
-        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons based on the context. For relationship or comparison questions, analyze the documents and provide insights. Only say you couldn't find information as a last resort - try to provide helpful insights based on what's available. Don't make up specific facts, numbers, or details that aren't in the context.`;
+        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content.`
+        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons. For relationship or comparison questions, analyze the documents and provide insights. Always try to provide helpful answers based on what's in the context - only say you couldn't find information if there's truly nothing relevant at all. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       // Adjust temperature based on task type
       // Higher temperature for more natural, conversational responses
@@ -720,8 +720,8 @@ Answer:`;
         : isMetaQuestion 
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
-        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
-        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons based on the context. For relationship or comparison questions, analyze the documents and provide insights. Only say you couldn't find information as a last resort - try to provide helpful insights based on what's available. Don't make up specific facts, numbers, or details that aren't in the context.`;
+        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content.`
+        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons. For relationship or comparison questions, analyze the documents and provide insights. Always try to provide helpful answers based on what's in the context - only say you couldn't find information if there's truly nothing relevant at all. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
       
