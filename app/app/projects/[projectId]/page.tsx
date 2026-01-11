@@ -857,7 +857,7 @@ export default function ProjectWorkspace() {
         </div>
 
         {/* Center - Studio (Chat + Study Tools) */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <StudioPanel
             messages={messages}
             onSendMessage={handleSendMessage}

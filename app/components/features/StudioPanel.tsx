@@ -72,7 +72,7 @@ export default function StudioPanel({
   const [activeTab, setActiveTab] = useState<StudioTab>('chat');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', position: 'relative' }}>
       {/* Tab Navigation - Sticky */}
       <div style={{
         display: 'flex',
@@ -83,7 +83,7 @@ export default function StudioPanel({
         backdropFilter: 'blur(20px)',
         overflowX: 'auto',
         position: 'sticky',
-        top: '64px', // Account for project page header height
+        top: 0,
         zIndex: 200,
         flexShrink: 0,
       }}>
@@ -114,8 +114,8 @@ export default function StudioPanel({
         ))}
       </div>
 
-      {/* Tab Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Tab Content - Scrollable */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
         {activeTab === 'chat' && (
           <ChatPanel
             messages={messages}
