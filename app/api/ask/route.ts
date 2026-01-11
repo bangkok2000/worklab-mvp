@@ -695,12 +695,12 @@ Answer:`;
     } else {
       // Fallback to OpenAI (using BYOK key already initialized)
       const systemMessage = isMetadataQuestion
-        ? `You are a research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
+        ? `You are a helpful research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
         : isMetaQuestion 
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
-                ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
-        : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
+        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
+        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences based on the context. Only say you couldn't find information if the context truly has nothing relevant. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
       
