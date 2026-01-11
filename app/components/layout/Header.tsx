@@ -14,12 +14,12 @@ export default function Header({ onSettingsClick, onNewChat, status }: HeaderPro
   return (
     <header
       style={{
-        height: '64px',
-        padding: '0 1.5rem',
+        height: '56px', // Reduced from 64px
+        padding: '0 1.25rem', // Reduced from 1.5rem
         background: 'rgba(15, 15, 35, 0.8)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(139, 92, 246, 0.2)',
+        borderBottom: '1px solid rgba(124, 58, 237, 0.2)', // More muted
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -29,18 +29,18 @@ export default function Header({ onSettingsClick, onNewChat, status }: HeaderPro
       }}
     >
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}> {/* Reduced gap */}
         <div
           style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            width: '32px', // Reduced from 38px
+            height: '32px',
+            borderRadius: '8px', // Reduced from 10px
+            background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '1.25rem',
-            boxShadow: '0 0 20px rgba(139, 92, 246, 0.4)',
+            fontSize: '1.125rem', // Reduced from 1.25rem
+            boxShadow: '0 0 16px rgba(124, 58, 237, 0.3)', // Softer shadow
           }}
         >
           🌙
@@ -48,9 +48,9 @@ export default function Header({ onSettingsClick, onNewChat, status }: HeaderPro
         <div>
           <h1
             style={{
-              fontSize: '1.25rem',
+              fontSize: '1.125rem', // Reduced from 1.25rem
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #fff 0%, #c4b5fd 100%)',
+              background: 'linear-gradient(135deg, #fff 0%, #a78bfa 100%)', // Softer gradient
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               letterSpacing: '-0.02em',
@@ -59,7 +59,7 @@ export default function Header({ onSettingsClick, onNewChat, status }: HeaderPro
           >
             MoonScribe
           </h1>
-          <p style={{ fontSize: '0.6875rem', color: '#8b5cf6', fontWeight: 500, margin: 0 }}>
+          <p style={{ fontSize: '0.625rem', color: '#7c3aed', fontWeight: 500, margin: 0 }}> {/* Reduced size, muted color */}
             Document Intelligence
           </p>
         </div>
