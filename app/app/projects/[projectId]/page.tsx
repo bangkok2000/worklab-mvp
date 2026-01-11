@@ -868,7 +868,7 @@ export default function ProjectWorkspace() {
           height: '100%',
           background: 'rgba(15, 15, 35, 0.6)',
           backdropFilter: 'blur(20px)',
-          borderLeft: rightPanelOpen ? '1px solid rgba(139, 92, 246, 0.15)' : 'none',
+          borderLeft: rightPanelOpen ? '1px solid rgba(124, 58, 237, 0.15)' : 'none', // More muted purple
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s ease',
