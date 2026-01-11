@@ -9,10 +9,12 @@
 - **Fix Applied:** QuickCaptureModal now uses `getDecryptedApiKey()` which correctly reads from `moonscribe-keys-anonymous` or `moonscribe-keys-${userId}`
 - **Verification:** Code review confirms correct localStorage key usage in `lib/utils/api-keys.ts`
 
-### Bug 2: Project page returns 404
+### Bug 2: Project page returns 404 ✅ FIXED
+- **Status:** ✅ **VERIFIED FIXED**
 - **Issue:** After creating a new project, clicking on it navigates to `/app/projects/project-{id}` which returns 404
-- **Root Cause:** Dynamic route `/app/projects/[projectId]/page.tsx` may not exist or has wrong path
-- **Fix:** Verify the dynamic route exists and matches the navigation URL
+- **Root Cause:** Duplicate route file at root level (`app/projects/[projectId]/page.tsx`) conflicting with correct route (`app/app/projects/[projectId]/page.tsx`)
+- **Fix Applied:** Removed duplicate route file. Navigation correctly uses `/app/projects/${project.id}` which matches the route at `app/app/projects/[projectId]/page.tsx`
+- **Verification:** Route exists at correct path, navigation URLs match route structure
 
 ### Bug 3: Old version of app appearing (cache issue?)
 - **Issue:** Sometimes the old UI appears with:
