@@ -414,6 +414,8 @@ export async function POST(req: NextRequest) {
                             questionLower.includes('what does this document') ||
                             questionLower.includes('what does it say') ||
                             questionLower.includes('what is it about') ||
+                            questionLower.includes('what do you know') ||
+                            questionLower.includes('what do the documents') ||
                             questionLower.includes('relationship') ||
                             questionLower.includes('related') ||
                             questionLower.includes('compare') ||
@@ -594,9 +596,10 @@ Guidelines:
 - You can make reasonable inferences, connections, and comparisons based on the information in the context
 - For questions about relationships, comparisons, or connections: analyze the documents and provide insights based on their content
 - Be helpful and provide useful insights - even if the answer requires synthesizing information from multiple sources
+- For general questions like "what do you know?" or "tell me about the documents": provide a helpful overview based on the context
 - Cite sources using [1], [2], etc. when referencing specific information
 - Write in a clear, conversational, and helpful tone
-- IMPORTANT: Only say you couldn't find information as a last resort - try to provide helpful insights based on what's in the context
+- ALWAYS provide a helpful answer based on the context - analyze what's there and share insights
 ${chainOfThought}
 
 Context from documents:
@@ -621,11 +624,12 @@ Guidelines:
 - Use information from the context to provide a helpful, insightful answer
 - You can make reasonable inferences, connections, and comparisons based on the information provided
 - For questions about relationships or comparisons: analyze the documents and provide insights based on their content
-- Be conversational and helpful - provide useful insights when the context contains relevant information
+- For general questions like "what do you know?": provide a helpful overview based on what's in the context
+- Be conversational and helpful - provide useful insights based on the context
 - Even if the exact answer isn't explicitly stated, provide helpful insights based on what you can infer from the context
 - Cite sources with [1], [2], etc. when referencing specific information
 - Write in a clear, natural, and helpful tone
-- IMPORTANT: Only say you couldn't find information as a last resort - try to provide helpful insights based on what's in the context
+- ALWAYS provide a helpful answer based on the context - analyze what's there and share insights
 ${chainOfThought}
 
 Context from documents:
@@ -657,7 +661,7 @@ Answer:`;
         : isMetaQuestion 
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
-        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content.`
+        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content. For general questions, provide helpful overviews. ALWAYS provide helpful answers based on the context.`
         : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons. For relationship or comparison questions, analyze the documents and provide insights. Always try to provide helpful answers based on what's in the context - only say you couldn't find information if there's truly nothing relevant at all. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       // Adjust temperature based on task type
@@ -720,7 +724,7 @@ Answer:`;
         : isMetaQuestion 
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
-        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content.`
+        ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content. For general questions, provide helpful overviews. ALWAYS provide helpful answers based on the context.`
         : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons. For relationship or comparison questions, analyze the documents and provide insights. Always try to provide helpful answers based on what's in the context - only say you couldn't find information if there's truly nothing relevant at all. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
