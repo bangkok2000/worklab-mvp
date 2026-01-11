@@ -13,7 +13,9 @@ import { useEffect } from 'react';
  * - Clears localStorage on version mismatch
  * - Forces reload to get new code
  */
-const APP_VERSION = '1.0.0'; // Update this when making breaking changes to localStorage structure
+// Use package.json version + build timestamp for better cache busting
+const APP_VERSION = '1.0.1'; // Update this when making breaking changes to localStorage structure or UI
+const BUILD_TIMESTAMP = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString();
 
 export default function VersionCheck() {
   useEffect(() => {
@@ -21,37 +23,40 @@ export default function VersionCheck() {
 
     try {
       const storedVersion = localStorage.getItem('moonscribe-version');
+      const storedBuildTime = localStorage.getItem('moonscribe-build-time');
       
-      // If version doesn't match or doesn't exist, clear cache and reload
-      if (storedVersion !== APP_VERSION) {
-        console.log(`[VersionCheck] Version mismatch: stored=${storedVersion}, current=${APP_VERSION}. Clearing cache...`);
+      // Check both version and build time for better cache detection
+      const versionMismatch = storedVersion !== APP_VERSION;
+      const buildTimeMismatch = storedBuildTime !== BUILD_TIMESTAMP;
+      
+      // If version doesn't match or build time is different, clear cache and reload
+      if (versionMismatch || buildTimeMismatch) {
+        console.log(`[VersionCheck] Cache mismatch detected:`);
+        console.log(`  Version: stored=${storedVersion}, current=${APP_VERSION}`);
+        console.log(`  Build: stored=${storedBuildTime}, current=${BUILD_TIMESTAMP}`);
+        console.log(`  Clearing cache and reloading...`);
         
-        // Clear all localStorage (except version itself to prevent loop)
-        const keysToKeep: string[] = [];
+        // Clear all MoonScribe localStorage keys
+        const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && !key.startsWith('moonscribe-')) {
-            keysToKeep.push(key);
+          if (key && key.startsWith('moonscribe-')) {
+            keysToRemove.push(key);
           }
         }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
         
-        // Clear MoonScribe-specific keys
-        localStorage.clear();
-        
-        // Restore non-MoonScribe keys (if any)
-        keysToKeep.forEach(key => {
-          // Note: We can't restore values as they're already cleared
-          // This is intentional - we want a clean slate
-        });
-        
-        // Set new version
+        // Set new version and build time
         localStorage.setItem('moonscribe-version', APP_VERSION);
+        localStorage.setItem('moonscribe-build-time', BUILD_TIMESTAMP);
         
-        // Force reload to get new code
-        window.location.reload();
+        // Force hard reload to bypass browser cache
+        // Using window.location.reload(true) is deprecated, so we use replace
+        window.location.replace(window.location.href + '?v=' + Date.now());
       } else {
         // Version matches - ensure it's set (for first-time users)
         localStorage.setItem('moonscribe-version', APP_VERSION);
+        localStorage.setItem('moonscribe-build-time', BUILD_TIMESTAMP);
       }
     } catch (error) {
       console.error('[VersionCheck] Error checking version:', error);

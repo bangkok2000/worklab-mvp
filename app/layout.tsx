@@ -5,6 +5,12 @@ import VersionCheck from './components/VersionCheck';
 export const metadata = {
   title: 'MoonScribe - Document Intelligence Platform',
   description: 'AI-powered document analysis with BYOK (Bring Your Own Key) support',
+  // Prevent caching of HTML
+  other: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  },
 };
 
 export default function RootLayout({
