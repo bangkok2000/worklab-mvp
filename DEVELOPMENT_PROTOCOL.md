@@ -108,6 +108,13 @@ Before making ANY code modification, you MUST:
    - Ensure your code handles the response correctly
    - Check for error cases
 
+4. [ ] **ALWAYS use authenticatedFetch for internal API calls**
+   - NEVER use raw fetch() for /api/* routes
+   - Use: `authenticatedFetch('/api/endpoint', { session, ... })`
+   - This prevents the recurring "Please sign in to use credits" error
+   - For FormData: Use `getAuthenticatedHeaders(session)` helper
+   - See: `lib/utils/authenticated-fetch.ts` for documentation
+
 ### TypeScript/Interface Changes
 1. [ ] **Check existing type definitions**
    - Read the actual type/interface file
