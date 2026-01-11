@@ -378,6 +378,17 @@ export async function POST(req: NextRequest) {
                            questionLower.includes('where does this come from') ||
                            (questionLower.includes('what document') && questionLower.includes('from'));
     
+    // Detect questions about document metadata (names, counts, lists) - these should ALWAYS be answerable
+    const isMetadataQuestion = questionLower.includes('what are the') && (questionLower.includes('document') || questionLower.includes('file') || questionLower.includes('source')) ||
+                               questionLower.includes('what documents') ||
+                               questionLower.includes('list the document') ||
+                               questionLower.includes('name of the document') ||
+                               questionLower.includes('names of the document') ||
+                               questionLower.includes('how many document') ||
+                               questionLower.includes('what files') ||
+                               questionLower.includes('what sources') ||
+                               (questionLower.includes('what are') && uniqueSources.length > 0 && (questionLower.includes('two') || questionLower.includes('three') || questionLower.includes('four') || questionLower.includes('five') || questionLower.match(/\d+/)));
+    
     // Detect synthesis tasks (summarize, analyze, tell me about, etc.)
     // These require the AI to synthesize information from multiple chunks
     const isSynthesisTask = questionLower.includes('summarize') || 
@@ -514,7 +525,24 @@ export async function POST(req: NextRequest) {
     // Construct comprehensive prompt for better answers
     let prompt = '';
     
-    if (isMetaQuestion) {
+    if (isMetadataQuestion) {
+      // Special handling for questions about document metadata (names, counts, etc.)
+      // These questions should ALWAYS be answerable from the source list
+      prompt = `You are a research assistant. Answer questions about what documents or sources are available.
+
+Available sources:
+${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
+
+Rules:
+- You can ALWAYS answer questions about what documents/sources are available
+- List the document names when asked "what are the documents" or similar questions
+- You can count how many documents there are
+- Be helpful and provide the information requested
+
+Question: ${question}
+
+Answer:`;
+    } else if (isMetaQuestion) {
       // Special handling for meta-questions about sources
       prompt = `You are a research assistant. Answer questions about your information sources.
 
@@ -576,14 +604,15 @@ Answer:`;
 4. Formulate a clear, direct answer
 5. Cite your sources\n` : '';
       
-      prompt = `You are a research assistant. Answer questions using ONLY the provided context.
+      prompt = `You are a research assistant. Answer questions using the provided context.
 
 ${sourceList}${contextAwareGuidance}
 Rules:
-- Use only information explicitly stated in the context
-- Do not use training data, general knowledge, or make inferences
+- Use information from the context to answer the question
+- If the context contains relevant information, provide a helpful answer
 - Cite sources with [1], [2], etc.
-- If information isn't in the context, say "I couldn't find this information in the provided documents."
+- Only say "I couldn't find this information" if the context truly doesn't contain any relevant information
+- Be helpful and provide useful answers when possible
 ${chainOfThought}
 Examples:
 Example 1:
@@ -595,6 +624,11 @@ Example 2:
 Context: [1] Document.pdf: "The study examined exercise."
 Question: "What was the sample size?"
 Answer: "I couldn't find this information in the provided documents."
+
+Example 3:
+Context: [1] Document.pdf: "The report discusses automation strategies."
+Question: "What does the document discuss?"
+Answer: "The document discusses automation strategies [1]."
 
 Context:
 ${contextText}
@@ -620,11 +654,13 @@ Answer:`;
       }
       const openaiClient = new OpenAI({ apiKey: chatApiKey });
       // Use system message for stricter control over behavior
-      const systemMessage = isMetaQuestion 
+      const systemMessage = isMetadataQuestion
+        ? `You are a research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
+        : isMetaQuestion 
         ? `You are a research assistant. When asked about sources, state only the documents provided.`
         : isSynthesisTask
         ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
-        : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`;
+        : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
       
       // Adjust temperature based on task type
       // Lower (0.1) for fact-finding, higher (0.3-0.4) for synthesis tasks
@@ -655,11 +691,13 @@ Answer:`;
           messages: [
             { 
               role: 'system', 
-              content: isMetaQuestion 
+              content: isMetadataQuestion
+                ? `You are a research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
+                : isMetaQuestion 
                 ? `You are a research assistant. When asked about sources, state only the documents provided.`
                 : isSynthesisTask
                 ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
-                : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`
+                : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`
             },
             { role: 'user', content: prompt }
           ],
@@ -678,11 +716,13 @@ Answer:`;
       tokensUsed = anthropicData.usage?.input_tokens + anthropicData.usage?.output_tokens || 0;
     } else {
       // Fallback to OpenAI (using BYOK key already initialized)
-      const systemMessage = isMetaQuestion 
+      const systemMessage = isMetadataQuestion
+        ? `You are a research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
+        : isMetaQuestion 
         ? `You are a research assistant. When asked about sources, state only the documents provided.`
         : isSynthesisTask
         ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
-        : `You are a research assistant. Use ONLY information explicitly stated in the provided context. Do not use training data or make inferences. If the answer isn't in the context, say "I couldn't find this information in the provided documents."`;
+        : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
       
       const temperature = isSynthesisTask ? 0.3 : 0.1;
       
