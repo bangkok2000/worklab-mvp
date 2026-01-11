@@ -79,11 +79,12 @@ export default function StudioPanel({
         gap: '0.25rem',
         padding: '0.75rem 1rem',
         borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
-        background: 'rgba(15, 15, 35, 0.4)',
+        background: 'rgba(15, 15, 35, 0.95)',
+        backdropFilter: 'blur(20px)',
         overflowX: 'auto',
         position: 'sticky',
         top: 0,
-        zIndex: 50,
+        zIndex: 200,
         flexShrink: 0,
       }}>
         {tabs.map(tab => (
