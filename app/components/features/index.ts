@@ -3,6 +3,7 @@ export { default as SourcesPanel } from './SourcesPanel';
 export { default as ChatPanel } from './ChatPanel';
 export { default as StudioPanel } from './StudioPanel';
 export { default as HistoryPanel } from './HistoryPanel';
+export { default as InsightsPanel } from './InsightsPanel';
 export { default as SettingsPanel } from './SettingsPanel';
 export { default as CreditBalance } from './CreditBalance';
 export { default as BuyCreditsModal } from './BuyCreditsModal';

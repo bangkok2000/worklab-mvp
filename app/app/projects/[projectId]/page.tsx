@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { SourcesPanel, StudioPanel, HistoryPanel, SettingsPanel, SignUpRequiredModal } from '../../../components/features';
+import { SourcesPanel, StudioPanel, HistoryPanel, InsightsPanel, SettingsPanel, SignUpRequiredModal } from '../../../components/features';
 import { Button, Badge } from '../../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
@@ -874,7 +874,7 @@ export default function ProjectWorkspace() {
           />
         </div>
 
-        {/* Right Panel - History */}
+        {/* Right Panel - History / Insights */}
         <div style={{
           width: rightPanelOpen ? '280px' : '0',
           minWidth: rightPanelOpen ? '280px' : '0',
@@ -888,19 +888,87 @@ export default function ProjectWorkspace() {
           overflow: 'hidden',
         }}>
           {rightPanelOpen && (
-            <HistoryPanel
-              conversations={conversations.map(c => ({
-                id: c.id,
-                title: c.title,
-                messageCount: c.messages.length,
-                createdAt: c.createdAt,
-                updatedAt: c.updatedAt,
-              }))}
-              currentConversationId={currentConversationId || undefined}
-              onSelectConversation={handleSelectConversation}
-              onDeleteConversation={handleDeleteConversation}
-              onNewConversation={handleNewConversation}
-            />
+            <>
+              {/* Tab Switcher */}
+              <div style={{
+                display: 'flex',
+                borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+                background: 'rgba(0, 0, 0, 0.2)',
+              }}>
+                <button
+                  onClick={() => setRightPanelTab('conversations')}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem 1rem',
+                    background: rightPanelTab === 'conversations' 
+                      ? 'rgba(139, 92, 246, 0.15)' 
+                      : 'transparent',
+                    border: 'none',
+                    borderBottom: rightPanelTab === 'conversations'
+                      ? '2px solid rgba(139, 92, 246, 0.5)'
+                      : '2px solid transparent',
+                    color: rightPanelTab === 'conversations' ? '#f1f5f9' : '#94a3b8',
+                    fontSize: '0.8125rem',
+                    fontWeight: rightPanelTab === 'conversations' ? 600 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  💬 Conversations
+                </button>
+                <button
+                  onClick={() => setRightPanelTab('insights')}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem 1rem',
+                    background: rightPanelTab === 'insights' 
+                      ? 'rgba(139, 92, 246, 0.15)' 
+                      : 'transparent',
+                    border: 'none',
+                    borderBottom: rightPanelTab === 'insights'
+                      ? '2px solid rgba(139, 92, 246, 0.5)'
+                      : '2px solid transparent',
+                    color: rightPanelTab === 'insights' ? '#f1f5f9' : '#94a3b8',
+                    fontSize: '0.8125rem',
+                    fontWeight: rightPanelTab === 'insights' ? 600 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  💡 Insights
+                </button>
+              </div>
+
+              {/* Panel Content */}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                {rightPanelTab === 'conversations' ? (
+                  <HistoryPanel
+                    conversations={conversations.map(c => ({
+                      id: c.id,
+                      title: c.title,
+                      messageCount: c.messages.length,
+                      createdAt: c.createdAt,
+                      updatedAt: c.updatedAt,
+                    }))}
+                    currentConversationId={currentConversationId || undefined}
+                    onSelectConversation={handleSelectConversation}
+                    onDeleteConversation={handleDeleteConversation}
+                    onNewConversation={handleNewConversation}
+                  />
+                ) : (
+                  <InsightsPanel
+                    projectId={projectId}
+                    onSelectInsight={(insight) => {
+                      // Navigate to insights page or show insight details
+                      router.push(`/app/insights?highlight=${insight.id}`);
+                    }}
+                    onDeleteInsight={(id) => {
+                      // Insight deleted, panel will refresh automatically via event listener
+                    }}
+                  />
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
