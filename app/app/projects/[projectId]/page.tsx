@@ -694,7 +694,7 @@ export default function ProjectWorkspace() {
       background: 'linear-gradient(135deg, #0a0a1a 0%, #0f0f23 50%, #1a1a2e 100%)',
       overflow: 'hidden',
     }}>
-      {/* Header */}
+      {/* Header - Fixed */}
       <header style={{
         height: '64px',
         padding: '0 1.5rem',
@@ -704,6 +704,10 @@ export default function ProjectWorkspace() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button
