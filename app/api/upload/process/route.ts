@@ -99,13 +99,13 @@ export async function POST(req: NextRequest) {
     const fileSize = parseInt(metadata.fileSize || '0', 10);
     
     // Convert stream to buffer
-    const chunks: Uint8Array[] = [];
+    const fileChunks: Uint8Array[] = [];
     if (response.Body) {
       for await (const chunk of response.Body as any) {
-        chunks.push(chunk);
+        fileChunks.push(chunk);
       }
     }
-    const buffer = Buffer.concat(chunks);
+    const buffer = Buffer.concat(fileChunks);
     
     // Create File-like object for processing
     const file = new File([buffer], originalFilename, { type: fileType });
