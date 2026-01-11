@@ -303,9 +303,18 @@ export async function POST(req: NextRequest) {
     const diverseContext: typeof allMatches = [];
     const numSources = bySource.size;
     
-    // For simple questions: 1-2 chunks per source. For complex: 2-4 chunks per source
+    // For relationship/comparison questions, we need more context from each source
+    const isRelationshipQuestion = questionLower.includes('relationship') || 
+                                   questionLower.includes('related') ||
+                                   questionLower.includes('compare') ||
+                                   questionLower.includes('connection') ||
+                                   (questionLower.includes('are') && questionLower.includes('related'));
+    
+    // For simple questions: 1-2 chunks per source. For complex/relationship: 2-4 chunks per source
     const chunksPerSource = isSimpleQuestion 
       ? Math.max(1, Math.floor(targetChunks / numSources))
+      : (isRelationshipQuestion || isComplexQuestion)
+      ? Math.max(3, Math.floor(targetChunks / numSources)) // More chunks for relationship questions
       : Math.max(2, Math.floor(targetChunks / numSources));
     
     bySource.forEach((matches, source) => {
@@ -404,7 +413,16 @@ export async function POST(req: NextRequest) {
                             questionLower.includes('what is the document') ||
                             questionLower.includes('what does this document') ||
                             questionLower.includes('what does it say') ||
-                            questionLower.includes('what is it about');
+                            questionLower.includes('what is it about') ||
+                            questionLower.includes('relationship') ||
+                            questionLower.includes('related') ||
+                            questionLower.includes('compare') ||
+                            questionLower.includes('similar') ||
+                            questionLower.includes('difference') ||
+                            questionLower.includes('connection') ||
+                            questionLower.includes('how are') ||
+                            questionLower.includes('how do they') ||
+                            (questionLower.includes('are') && questionLower.includes('related'));
     
     // Detect complex questions that would benefit from chain-of-thought reasoning
     const isComplexQuestion = questionLower.includes('compare') ||
@@ -573,11 +591,12 @@ Answer:`;
 ${sourceList}${contextAwareGuidance}
 Guidelines:
 - Synthesize and connect information from different parts of the context to provide a comprehensive answer
-- You can make reasonable inferences and connections based on the information in the context
-- Be helpful and provide useful insights when the context contains relevant information
+- You can make reasonable inferences, connections, and comparisons based on the information in the context
+- For questions about relationships, comparisons, or connections: analyze the documents and provide insights based on their content
+- Be helpful and provide useful insights - even if the answer requires synthesizing information from multiple sources
 - Cite sources using [1], [2], etc. when referencing specific information
-- Only say you couldn't find information if the context truly has nothing relevant to the question
 - Write in a clear, conversational, and helpful tone
+- IMPORTANT: Only say you couldn't find information as a last resort - try to provide helpful insights based on what's in the context
 ${chainOfThought}
 
 Context from documents:
@@ -599,12 +618,14 @@ Answer:`;
 
 ${sourceList}${contextAwareGuidance}
 Guidelines:
-- Use information from the context to provide a helpful answer
-- You can make reasonable inferences and connections based on the information provided
+- Use information from the context to provide a helpful, insightful answer
+- You can make reasonable inferences, connections, and comparisons based on the information provided
+- For questions about relationships or comparisons: analyze the documents and provide insights based on their content
 - Be conversational and helpful - provide useful insights when the context contains relevant information
+- Even if the exact answer isn't explicitly stated, provide helpful insights based on what you can infer from the context
 - Cite sources with [1], [2], etc. when referencing specific information
-- Only say you couldn't find information if the context truly has nothing relevant to answer the question
 - Write in a clear, natural, and helpful tone
+- IMPORTANT: Only say you couldn't find information as a last resort - try to provide helpful insights based on what's in the context
 ${chainOfThought}
 
 Context from documents:
@@ -637,7 +658,7 @@ Answer:`;
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
         ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
-        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences based on the context. Only say you couldn't find information if the context truly has nothing relevant. Don't make up specific facts, numbers, or details that aren't in the context.`;
+        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons based on the context. For relationship or comparison questions, analyze the documents and provide insights. Only say you couldn't find information as a last resort - try to provide helpful insights based on what's available. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       // Adjust temperature based on task type
       // Higher temperature for more natural, conversational responses
@@ -700,7 +721,7 @@ Answer:`;
         ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
         ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
-        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences based on the context. Only say you couldn't find information if the context truly has nothing relevant. Don't make up specific facts, numbers, or details that aren't in the context.`;
+        : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons based on the context. For relationship or comparison questions, analyze the documents and provide insights. Only say you couldn't find information as a last resort - try to provide helpful insights based on what's available. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
       const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
       
