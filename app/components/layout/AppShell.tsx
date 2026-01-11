@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
@@ -483,8 +484,8 @@ export default function AppShell({ children }: AppShellProps) {
                 {getUserInitial()}
               </button>
               
-              {/* Dropdown Menu */}
-              {showUserMenu && userMenuPosition && (
+              {/* Dropdown Menu - Rendered via Portal to escape overflow:hidden parent container */}
+              {showUserMenu && userMenuPosition && typeof window !== 'undefined' && createPortal(
                 <>
                   {/* Backdrop */}
                   <div 
@@ -496,18 +497,18 @@ export default function AppShell({ children }: AppShellProps) {
                     }}
                   />
                   <div style={{
-                    position: 'fixed', // Fixed positioning to escape parent stacking contexts (like project cards with overflow:hidden)
+                    position: 'fixed', // Fixed positioning relative to viewport
                     right: `${userMenuPosition.right}px`, // Position from right edge of viewport
                     top: `${userMenuPosition.top}px`, // Position from top of viewport
                     width: '280px',
-                    background: 'rgba(15, 15, 35, 1)', // Changed from 0.95 to 1 for full opacity - no transparency
-                    border: '1px solid rgba(124, 58, 237, 0.4)', // More visible border - increased opacity from 0.2 to 0.4
+                    background: 'rgba(15, 15, 35, 1)', // Full opacity - no transparency
+                    border: '1px solid rgba(124, 58, 237, 0.4)', // More visible border
                     borderRadius: '12px',
                     padding: '0.5rem',
-                    zIndex: 9999, // Very high z-index to be above all content including project cards
+                    zIndex: 9999, // Very high z-index to be above all content
                     backdropFilter: 'blur(20px)',
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)', // Stronger shadow for better visibility
-                    opacity: 1, // Explicitly set to 1 to ensure full visibility
+                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.8)', // Strong shadow for visibility
+                    opacity: 1, // Explicitly set to 1
                   }}>
                     {user ? (
                       <>
@@ -578,7 +579,8 @@ export default function AppShell({ children }: AppShellProps) {
                       </>
                     )}
                   </div>
-                </>
+                </>,
+                document.body // Render to document.body to escape parent overflow:hidden
               )}
             </div>
           </div>
