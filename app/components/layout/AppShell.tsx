@@ -591,10 +591,11 @@ export default function AppShell({ children }: AppShellProps) {
           </div>
         </header>
 
-        {/* Page Content */}
+        {/* Page Content - Scrollable */}
         <main style={{
           flex: 1,
           paddingBottom: '5rem', /* Space for FAB */
+          overflow: 'auto',
         }}>
           {children}
         </main>
