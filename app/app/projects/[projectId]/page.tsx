@@ -6,7 +6,6 @@ import { SourcesPanel, StudioPanel, HistoryPanel, SettingsPanel, SignUpRequiredM
 import { Button, Badge } from '../../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
-import { getSupabase } from '@/lib/supabase/client';
 import { 
   canGuestPerformAction, 
   recordGuestAction, 
