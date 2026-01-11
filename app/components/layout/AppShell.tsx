@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import CreditBalance from '@/app/components/features/CreditBalance';
 import BuyCreditsModal from '@/app/components/features/BuyCreditsModal';
 import { GuestUsageIndicator } from '@/app/components/features/GuestUsageIndicator';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 import { SignUpRequiredModal } from '@/app/components/features/SignUpRequiredModal';
 import { getGuestUsage, getGuestLimit } from '@/lib/utils/guest-limits';
 import Skeleton from '@/app/components/ui/Skeleton';
@@ -919,11 +920,11 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         try {
           // Step 1: Get pre-signed URL
           setProcessingStatus('Preparing upload...');
-          const presignedResponse = await fetch('/api/upload/presigned-url', {
+          const presignedResponse = await authenticatedFetch('/api/upload/presigned-url', {
             method: 'POST',
+            session,
             headers: { 
               'Content-Type': 'application/json',
-              ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
             },
             body: JSON.stringify({
               filename: file.name,
@@ -954,11 +955,11 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
           
           // Step 3: Notify API to process file from storage
           setProcessingStatus('Processing file...');
-          const processResponse = await fetch('/api/upload/process', {
+          const processResponse = await authenticatedFetch('/api/upload/process', {
             method: 'POST',
+            session,
             headers: { 
               'Content-Type': 'application/json',
-              ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
             },
             body: JSON.stringify({
               fileId,
@@ -1108,15 +1109,21 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
   // Process YouTube video via API
   const processYouTube = async (url: string): Promise<any> => {
     setProcessingStatus('Fetching video info...');
-    const apiKey = await getApiKey();
+    let apiKey: string | undefined;
+    try {
+      apiKey = await getApiKey() || undefined;
+    } catch (error) {
+      console.warn('[QuickCapture] Failed to get API key:', error);
+      // Continue without BYOK - API will check for team key or use credits
+    }
     
     setProcessingStatus('Extracting transcript...');
     
-    const response = await fetch('/api/youtube', {
+    const response = await authenticatedFetch('/api/youtube', {
       method: 'POST',
+      session,
       headers: { 
         'Content-Type': 'application/json',
-        ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
       },
       body: JSON.stringify({
         url,
@@ -1137,15 +1144,21 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
   // Process web page via API
   const processWebPage = async (url: string): Promise<any> => {
     setProcessingStatus('Fetching page...');
-    const apiKey = await getApiKey();
+    let apiKey: string | undefined;
+    try {
+      apiKey = await getApiKey() || undefined;
+    } catch (error) {
+      console.warn('[QuickCapture] Failed to get API key:', error);
+      // Continue without BYOK - API will check for team key or use credits
+    }
     
     setProcessingStatus('Extracting content...');
     
-    const response = await fetch('/api/web', {
+    const response = await authenticatedFetch('/api/web', {
       method: 'POST',
+      session,
       headers: { 
         'Content-Type': 'application/json',
-        ...(session?.access_token && { 'Authorization': `Bearer ${session.access_token}` }),
       },
       body: JSON.stringify({
         url,
