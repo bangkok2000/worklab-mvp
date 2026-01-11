@@ -72,7 +72,7 @@ export default function StudioPanel({
   const [activeTab, setActiveTab] = useState<StudioTab>('chat');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto', position: 'relative' }}>
       {/* Tab Navigation - Sticky */}
       <div style={{
         display: 'flex',
