@@ -667,7 +667,8 @@ Answer:`;
       // Adjust temperature based on task type
       // Higher temperature for more natural, conversational responses
       // Metadata questions and synthesis tasks benefit from more creativity
-      const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
+      // Increased temperatures to encourage more helpful, less conservative responses
+      const temperature = isMetadataQuestion ? 0.4 : (isSynthesisTask ? 0.5 : 0.3);
       
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
@@ -705,7 +706,7 @@ Answer:`;
             { role: 'user', content: prompt }
           ],
           max_tokens: 2000,
-          temperature: isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2),
+          temperature: isMetadataQuestion ? 0.4 : (isSynthesisTask ? 0.5 : 0.3),
         }),
       });
       
@@ -727,7 +728,7 @@ Answer:`;
         ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive, insightful answers. Connect information from different parts, make reasonable inferences, and provide useful insights. Be helpful and conversational. For relationship or comparison questions, analyze the documents and provide insights based on their content. For general questions, provide helpful overviews. ALWAYS provide helpful answers based on the context.`
         : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences, connections, and comparisons. For relationship or comparison questions, analyze the documents and provide insights. Always try to provide helpful answers based on what's in the context - only say you couldn't find information if there's truly nothing relevant at all. Don't make up specific facts, numbers, or details that aren't in the context.`;
       
-      const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
+      const temperature = isMetadataQuestion ? 0.4 : (isSynthesisTask ? 0.5 : 0.3);
       
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
