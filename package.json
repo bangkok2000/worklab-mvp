@@ -5,7 +5,8 @@
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "start": "next start"
+        "start": "next start",
+        "check-deploy": "./scripts/check-deployment-limit.sh"
     },
     "dependencies": {
         "@pinecone-database/pinecone": "^2.0.1",

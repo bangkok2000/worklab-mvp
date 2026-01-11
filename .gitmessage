@@ -1,0 +1,27 @@
+# Commit Message Template
+# 
+# Format: <type>: <subject>
+#
+# Types:
+#   feat:     New feature
+#   fix:      Bug fix
+#   refactor: Code refactoring
+#   style:    Formatting, styling
+#   docs:     Documentation
+#   test:     Tests
+#   chore:    Maintenance tasks
+#
+# Subject should be concise and descriptive.
+# Use imperative mood: "Add feature" not "Added feature"
+#
+# Examples:
+#   feat: Add flashcard generation from multiple sources
+#   fix: Remove 'couldn't find' language from AI prompts
+#   refactor: Improve UI spacing and color palette
+#
+# For multiple related changes, use bullet points:
+#   fix: Improve AI responses
+#   
+#   - Removed all 'couldn't find' language
+#   - Increased temperature to 0.3-0.5
+#   - Added relationship question detection
