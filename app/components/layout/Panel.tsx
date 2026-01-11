@@ -20,7 +20,7 @@ export default function Panel({
   isOpen,
   onToggle,
   position,
-  width = '300px',
+  width = '280px', // Reduced from 300px for more compact UI
   headerAction,
 }: PanelProps) {
   return (
@@ -40,22 +40,22 @@ export default function Panel({
           alignItems: 'center',
           justifyContent: 'center',
           background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)',
-          border: '1px solid rgba(139, 92, 246, 0.4)',
-          borderRadius: position === 'left' ? '0 10px 10px 0' : '10px 0 0 10px',
+          border: '1px solid rgba(124, 58, 237, 0.4)', // More muted
+          borderRadius: position === 'left' ? '0 8px 8px 0' : '8px 0 0 8px', // Reduced
           cursor: 'pointer',
-          color: '#8b5cf6',
-          fontSize: '0.875rem',
+          color: '#7c3aed', // More muted
+          fontSize: '0.8125rem', // Reduced
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)';
+          e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'; // More muted
           e.currentTarget.style.color = '#ffffff';
-          e.currentTarget.style.boxShadow = '0 4px 20px rgba(139, 92, 246, 0.4)';
+          e.currentTarget.style.boxShadow = '0 4px 20px rgba(124, 58, 237, 0.3)'; // Softer
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)';
-          e.currentTarget.style.color = '#8b5cf6';
+          e.currentTarget.style.color = '#7c3aed'; // More muted
           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
         }}
       >
@@ -70,8 +70,8 @@ export default function Panel({
           height: '100%',
           background: 'rgba(15, 15, 35, 0.6)',
           backdropFilter: 'blur(20px)',
-          borderLeft: position === 'right' && isOpen ? '1px solid rgba(139, 92, 246, 0.15)' : 'none',
-          borderRight: position === 'left' && isOpen ? '1px solid rgba(139, 92, 246, 0.15)' : 'none',
+          borderLeft: position === 'right' && isOpen ? '1px solid rgba(124, 58, 237, 0.15)' : 'none', // More muted
+          borderRight: position === 'left' && isOpen ? '1px solid rgba(124, 58, 237, 0.15)' : 'none', // More muted
           display: 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -82,8 +82,8 @@ export default function Panel({
         {title && isOpen && (
           <div
             style={{
-              padding: '1rem 1.25rem',
-              borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+              padding: '0.875rem 1rem', // Reduced padding
+              borderBottom: '1px solid rgba(124, 58, 237, 0.15)', // More muted
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -96,11 +96,11 @@ export default function Panel({
                     width: '28px',
                     height: '28px',
                     borderRadius: '8px',
-                    background: 'rgba(139, 92, 246, 0.2)',
+                    background: 'rgba(124, 58, 237, 0.2)', // More muted
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '0.875rem',
+                    fontSize: '0.8125rem', // Reduced
                   }}
                 >
                   {icon}
@@ -108,9 +108,9 @@ export default function Panel({
               )}
               <h2
                 style={{
-                  fontSize: '0.9375rem',
+                  fontSize: '0.875rem', // Reduced from 0.9375rem
                   fontWeight: 600,
-                  color: '#f1f5f9',
+                  color: '#e2e8f0', // Softer white
                   margin: 0,
                 }}
               >

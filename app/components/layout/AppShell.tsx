@@ -152,12 +152,12 @@ export default function AppShell({ children }: AppShellProps) {
     }}>
       {/* Sidebar */}
       <aside style={{
-        width: sidebarCollapsed ? '64px' : '260px',
-        minWidth: sidebarCollapsed ? '64px' : '260px',
+        width: sidebarCollapsed ? '56px' : '200px', // Reduced for more compact UI
+        minWidth: sidebarCollapsed ? '56px' : '200px',
         height: '100%',
         background: 'rgba(10, 10, 26, 0.8)',
         backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(139, 92, 246, 0.15)',
+        borderRight: '1px solid rgba(124, 58, 237, 0.15)', // More muted purple
         display: 'flex',
         flexDirection: 'column',
         transition: 'all 0.3s ease',
@@ -165,21 +165,21 @@ export default function AppShell({ children }: AppShellProps) {
       }}>
         {/* Logo */}
         <div style={{
-          padding: sidebarCollapsed ? '1rem 0.75rem' : '1.25rem 1rem',
-          borderBottom: '1px solid rgba(139, 92, 246, 0.1)',
+          padding: sidebarCollapsed ? '0.875rem 0.625rem' : '1rem 0.875rem', // Reduced padding
+          borderBottom: '1px solid rgba(124, 58, 237, 0.1)', // More muted
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
         }}>
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            width: '32px', // Reduced from 40px
+            height: '32px',
+            borderRadius: '8px', // Reduced from 12px
+            background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '1.25rem',
+            fontSize: '1.125rem', // Reduced from 1.25rem
             flexShrink: 0,
           }}>
             🌙
@@ -187,9 +187,9 @@ export default function AppShell({ children }: AppShellProps) {
           {!sidebarCollapsed && (
             <div>
               <h1 style={{
-                fontSize: '1.125rem',
+                fontSize: '1rem', // Reduced from 1.125rem
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #fff 0%, #c4b5fd 100%)',
+                background: 'linear-gradient(135deg, #fff 0%, #a78bfa 100%)', // Softer gradient
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 margin: 0,
@@ -246,11 +246,11 @@ export default function AppShell({ children }: AppShellProps) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Top Header */}
         <header style={{
-          height: '60px',
-          padding: '0 1.5rem',
+          height: '56px', // Reduced from 60px
+          padding: '0 1.25rem', // Reduced from 1.5rem
           background: 'rgba(15, 15, 35, 0.6)',
           backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(139, 92, 246, 0.1)',
+          borderBottom: '1px solid rgba(124, 58, 237, 0.1)', // More muted
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',

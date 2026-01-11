@@ -755,11 +755,11 @@ export default function ProjectWorkspace() {
           onClick={() => setLeftPanelOpen(!leftPanelOpen)}
           style={{
             position: 'fixed',
-            // Sidebar is 260px, Sources panel is 300px when open, 0px when closed
+            // Sidebar is 200px, Sources panel is 280px when open, 0px when closed
             // Button's right edge should align with left edge of main content (second column)
-            // When Sources open: 260px (sidebar) + 300px (sources) - 28px (button width) = 532px
-            // When Sources closed: 260px (sidebar) + 0px - 28px = 232px
-            left: leftPanelOpen ? '532px' : '232px',
+            // When Sources open: 200px (sidebar) + 280px (sources) - 28px (button width) = 452px
+            // When Sources closed: 200px (sidebar) + 0px - 28px = 172px
+            left: leftPanelOpen ? '452px' : '172px', // Updated for new sidebar (200px) and panel (280px) widths
             top: '50%',
             transform: 'translateY(-50%)',
             zIndex: 1000,
@@ -808,8 +808,8 @@ export default function ProjectWorkspace() {
 
         {/* Left Panel - Sources */}
         <div style={{
-          width: leftPanelOpen ? '300px' : '0',
-          minWidth: leftPanelOpen ? '300px' : '0',
+          width: leftPanelOpen ? '280px' : '0', // Reduced from 300px
+          minWidth: leftPanelOpen ? '280px' : '0',
           height: '100%',
           background: 'rgba(15, 15, 35, 0.6)',
           backdropFilter: 'blur(20px)',

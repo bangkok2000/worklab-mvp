@@ -129,7 +129,7 @@ export default function CreditBalance({
   // Not logged in - show sign in prompt
   // BUT: Don't show "Guest Mode" if auth is still loading (prevents race condition)
   if (!user) {
-    // If auth is loading, show skeleton instead of "Guest Mode"
+    // If auth is loading, show skeleton instead of "Guest Mode" to prevent flicker
     if (authLoading) {
       if (compact) return null;
       return (
@@ -138,6 +138,7 @@ export default function CreditBalance({
         </div>
       );
     }
+    // Only show "Guest Mode" after auth has finished loading and confirmed no user
     if (compact) return null;
     return (
       <div style={styles.container}>
