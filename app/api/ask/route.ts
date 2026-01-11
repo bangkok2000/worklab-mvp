@@ -297,6 +297,9 @@ export async function POST(req: NextRequest) {
                             !question.toLowerCase().includes('analyze') && 
                             !question.toLowerCase().includes('all documents');
     
+    // Convert question to lowercase for analysis (must be done before using questionLower)
+    const questionLower = question.toLowerCase();
+    
     // Adjust chunk count based on question complexity
     const targetChunks = isSimpleQuestion ? Math.min(5, maxChunks) : Math.min(10, maxChunks);
     
