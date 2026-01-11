@@ -51,6 +51,7 @@ export default function InsightsPanel({
           const data = JSON.parse(saved);
           if (data.insights) {
             // Filter insights for this project and not archived
+            // Deduplicate: Remove insights with identical content
             const projectInsights = data.insights
               .filter((i: any) => 
                 i.projectId === projectId && !i.isArchived
@@ -60,6 +61,13 @@ export default function InsightsPanel({
                 createdAt: new Date(i.createdAt),
                 updatedAt: new Date(i.updatedAt),
               }))
+              // Deduplicate by content (normalized)
+              .filter((insight: Insight, index: number, self: Insight[]) => {
+                const contentNormalized = insight.content.trim().toLowerCase();
+                return index === self.findIndex((i: Insight) => 
+                  i.content.trim().toLowerCase() === contentNormalized
+                );
+              })
               .sort((a: Insight, b: Insight) => 
                 b.createdAt.getTime() - a.createdAt.getTime()
               );

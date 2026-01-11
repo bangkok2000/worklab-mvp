@@ -226,6 +226,63 @@ function MessageBubble({
 }) {
   const isUser = message.role === 'user';
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Check if this message is already saved as an insight
+  useEffect(() => {
+    if (isUser) return;
+    
+    try {
+      const STORAGE_KEY = 'moonscribe_insights_v2';
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.insights) {
+          // Check if an insight with the same content already exists
+          const contentNormalized = message.content.trim().toLowerCase();
+          const exists = data.insights.some((i: any) => 
+            !i.isArchived && 
+            i.content.trim().toLowerCase() === contentNormalized &&
+            (projectId ? i.projectId === projectId : true) // Match project if specified
+          );
+          setIsSaved(exists);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check if insight exists:', error);
+    }
+  }, [message.content, projectId, isUser]);
+
+  // Listen for insight changes to update saved state
+  useEffect(() => {
+    if (isUser) return;
+
+    const handleInsightChange = () => {
+      try {
+        const STORAGE_KEY = 'moonscribe_insights_v2';
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (data.insights) {
+            const contentNormalized = message.content.trim().toLowerCase();
+            const exists = data.insights.some((i: any) => 
+              !i.isArchived && 
+              i.content.trim().toLowerCase() === contentNormalized &&
+              (projectId ? i.projectId === projectId : true)
+            );
+            setIsSaved(exists);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check if insight exists:', error);
+      }
+    };
+
+    window.addEventListener('moonscribe-insights-changed', handleInsightChange);
+    return () => {
+      window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
+    };
+  }, [message.content, projectId, isUser]);
 
   // Find the user's question that prompted this AI response
   const userQuestion = React.useMemo(() => {
@@ -341,29 +398,40 @@ function MessageBubble({
           {/* Save as Insight button (only for AI responses) */}
           {!isUser && (
             <button
-              onClick={() => setShowSaveModal(true)}
+              onClick={() => !isSaved && setShowSaveModal(true)}
+              disabled={isSaved}
               style={{
                 marginTop: '0.75rem',
                 padding: '0.5rem 0.875rem',
-                background: 'rgba(139, 92, 246, 0.15)',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
+                background: isSaved 
+                  ? 'rgba(16, 185, 129, 0.15)' 
+                  : 'rgba(139, 92, 246, 0.15)',
+                border: isSaved
+                  ? '1px solid rgba(16, 185, 129, 0.3)'
+                  : '1px solid rgba(139, 92, 246, 0.3)',
                 borderRadius: '8px',
-                color: '#c4b5fd',
+                color: isSaved ? '#6ee7b7' : '#c4b5fd',
                 fontSize: '0.8125rem',
-                cursor: 'pointer',
+                cursor: isSaved ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.375rem',
                 transition: 'all 0.2s',
+                opacity: isSaved ? 0.7 : 1,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.25)';
+                if (!isSaved) {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.25)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                if (!isSaved) {
+                  e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                }
               }}
+              title={isSaved ? 'This insight has already been saved' : 'Save this response as an insight'}
             >
-              💡 Save as Insight
+              {isSaved ? '✓ Saved' : '💡 Save as Insight'}
             </button>
           )}
         </div>
@@ -381,6 +449,10 @@ function MessageBubble({
           projectName={projectName}
           projectColor={projectColor}
           onClose={() => setShowSaveModal(false)}
+          onSaved={() => {
+            setIsSaved(true);
+            setShowSaveModal(false);
+          }}
         />
       )}
     </>
@@ -395,6 +467,7 @@ function SaveInsightModal({
   projectName,
   projectColor,
   onClose,
+  onSaved,
 }: {
   message: Message;
   userQuestion: string;
@@ -402,6 +475,7 @@ function SaveInsightModal({
   projectName?: string;
   projectColor?: string;
   onClose: () => void;
+  onSaved?: () => void;
 }) {
   const [title, setTitle] = useState('');
   const [tagsInput, setTagsInput] = useState('');
@@ -434,6 +508,25 @@ function SaveInsightModal({
         if (data.insights) {
           insights = data.insights;
         }
+      }
+
+      // Check for duplicates before saving
+      const contentNormalized = message.content.trim().toLowerCase();
+      const questionNormalized = (userQuestion || '').trim().toLowerCase();
+      
+      // Check if an insight with the same content already exists
+      const duplicate = insights.find((i: any) => 
+        !i.isArchived &&
+        i.content.trim().toLowerCase() === contentNormalized &&
+        (projectId ? i.projectId === projectId : true) // Match project if specified
+      );
+
+      if (duplicate) {
+        alert('This insight has already been saved. Please check your insights list.');
+        setIsSaving(false);
+        onClose();
+        if (onSaved) onSaved(); // Update button state
+        return;
       }
 
       // Get all projects for project selection
@@ -483,6 +576,7 @@ function SaveInsightModal({
 
       alert('Insight saved!');
       onClose();
+      if (onSaved) onSaved(); // Update button state to show "Saved"
     } catch (error) {
       console.error('Failed to save insight:', error);
       alert('Failed to save insight. Please try again.');
