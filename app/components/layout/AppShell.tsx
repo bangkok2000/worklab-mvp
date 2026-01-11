@@ -1018,11 +1018,6 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         data = await response.json();
       }
 
-      if (!response.ok) {
-        const errorMsg = isImage ? 'process image' : isAudio ? 'transcribe audio' : 'upload file';
-        throw new Error(data.error || `Failed to ${errorMsg}`);
-      }
-
       setProcessingStatus('Saving to library...');
 
       // Create the content item (different structure for images, audio, and documents)
@@ -1118,12 +1113,12 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
       }),
     });
 
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to process YouTube video');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to process YouTube video');
     }
 
+    const data = await response.json();
     return data;
   };
 
@@ -1144,12 +1139,12 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
       }),
     });
 
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to process web page');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to process web page');
     }
 
+    const data = await response.json();
     return data;
   };
 
