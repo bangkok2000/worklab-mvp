@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button, EmptyState } from '../../ui';
 import { getDecryptedApiKey, type Provider } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 interface Flashcard {
   id: string;
@@ -27,7 +28,7 @@ export default function FlashcardsPanel({
   provider = 'openai',
   model = 'gpt-3.5-turbo',
 }: FlashcardsPanelProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -110,11 +111,11 @@ export default function FlashcardsPanel({
     try {
       const userApiKey = await getDecryptedApiKey(provider as Provider, user?.id || null);
 
-      const res = await fetch('/api/study/flashcards', {
+      const res = await authenticatedFetch('/api/study/flashcards', {
         method: 'POST',
+        session,
         headers: { 
           'Content-Type': 'application/json',
-          ...(user && { 'Authorization': `Bearer ${user.id}` }),
         },
         body: JSON.stringify({
           sourceFilenames,
