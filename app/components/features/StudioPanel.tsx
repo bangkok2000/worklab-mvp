@@ -114,7 +114,7 @@ export default function StudioPanel({
       </div>
 
       {/* Tab Content */}
-      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {activeTab === 'chat' && (
           <ChatPanel
             messages={messages}
