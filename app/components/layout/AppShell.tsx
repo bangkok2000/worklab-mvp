@@ -872,40 +872,127 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
 
     try {
       const apiKey = await getApiKey();
-      const formData = new FormData();
-      formData.append('file', file);
-      if (selectedProject !== 'inbox') {
-        formData.append('projectId', selectedProject);
-      }
-      if (apiKey) {
-        formData.append('apiKey', apiKey);
-      }
-
-      // Detect file type and route to appropriate endpoint
+      
+      // Threshold for using direct-to-storage (10MB)
+      const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB
+      const useDirectStorage = file.size > LARGE_FILE_THRESHOLD;
+      
+      // Detect file type
       const isImage = file.type.startsWith('image/');
       const isAudio = file.type.startsWith('audio/') || 
                      file.name.toLowerCase().endsWith('.mp3') ||
                      file.name.toLowerCase().endsWith('.wav') ||
                      file.name.toLowerCase().endsWith('.m4a');
       
-      let endpoint = '/api/upload';
-      let processingStatus = 'Processing file...';
+      let data: any;
+      let usedStorageUpload = false;
       
-      if (isImage) {
-        endpoint = '/api/image';
-        processingStatus = 'Analyzing image...';
-      } else if (isAudio) {
-        endpoint = '/api/audio';
-        processingStatus = 'Transcribing audio...';
+      // For large files, use direct-to-storage upload
+      if (useDirectStorage && !isImage && !isAudio) {
+        // Only PDFs support storage upload for now
+        // Images and audio will use direct upload until their routes support storage
+        
+        try {
+          // Step 1: Get pre-signed URL
+          setProcessingStatus('Preparing upload...');
+          const presignedResponse = await fetch('/api/upload/presigned-url', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name,
+              fileType: file.type || 'application/pdf',
+              fileSize: file.size,
+              projectId: selectedProject !== 'inbox' ? selectedProject : null,
+            }),
+          });
+          
+          if (!presignedResponse.ok) {
+            const error = await presignedResponse.json();
+            throw new Error(error.error || 'Failed to get upload URL');
+          }
+          
+          const { uploadUrl, fileId, key } = await presignedResponse.json();
+          
+          // Step 2: Upload directly to storage with progress tracking
+          setProcessingStatus('Uploading to storage...');
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': file.type || 'application/pdf' },
+          });
+          
+          if (!uploadResponse.ok) {
+            throw new Error('Upload to storage failed');
+          }
+          
+          // Step 3: Notify API to process file from storage
+          setProcessingStatus('Processing file...');
+          const processResponse = await fetch('/api/upload/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileId,
+              key,
+              projectId: selectedProject !== 'inbox' ? selectedProject : null,
+              apiKey: apiKey || undefined,
+            }),
+          });
+          
+          if (!processResponse.ok) {
+            const error = await processResponse.json();
+            throw new Error(error.error || 'Processing failed');
+          }
+          
+          data = await processResponse.json();
+          usedStorageUpload = true;
+        } catch (storageError: any) {
+          // If storage upload fails, fall back to direct upload (if file is small enough)
+          if (file.size <= VERCEL_LIMIT) {
+            console.warn('[Upload] Storage upload failed, falling back to direct upload:', storageError);
+            // Fall through to direct upload logic below
+          } else {
+            // File is too large for direct upload, must use storage
+            throw new Error(storageError.message || 'Storage upload failed. Please configure storage service or try a smaller file.');
+          }
+        }
       }
       
-      setProcessingStatus(processingStatus);
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-      });
+      // For small files or if storage upload failed, use direct upload
+      if (!usedStorageUpload) {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (selectedProject !== 'inbox') {
+          formData.append('projectId', selectedProject);
+        }
+        if (apiKey) {
+          formData.append('apiKey', apiKey);
+        }
+        
+        let endpoint = '/api/upload';
+        let processingStatus = 'Processing file...';
+        
+        if (isImage) {
+          endpoint = '/api/image';
+          processingStatus = 'Analyzing image...';
+        } else if (isAudio) {
+          endpoint = '/api/audio';
+          processingStatus = 'Transcribing audio...';
+        }
+        
+        setProcessingStatus(processingStatus);
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
 
-      const data = await response.json();
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMsg = isImage ? 'process image' : isAudio ? 'transcribe audio' : 'upload file';
+          throw new Error(errorData.error || `Failed to ${errorMsg}`);
+        }
+        
+        data = await response.json();
+      }
 
       if (!response.ok) {
         const errorMsg = isImage ? 'process image' : isAudio ? 'transcribe audio' : 'upload file';
