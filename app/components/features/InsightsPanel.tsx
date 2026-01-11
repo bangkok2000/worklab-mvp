@@ -190,7 +190,7 @@ export default function InsightsPanel({
         }}>
           Insights
         </h3>
-        <Badge variant="secondary" style={{ fontSize: '0.75rem' }}>
+        <Badge variant="purple" style={{ fontSize: '0.75rem' }}>
           {insights.length}
         </Badge>
       </div>
