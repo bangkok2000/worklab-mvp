@@ -259,9 +259,9 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-        {/* Top Header - Fixed */}
+      {/* Main Content - Scrollable container */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', position: 'relative' }}>
+        {/* Top Header - Sticky */}
         <header style={{
           height: '56px', // Reduced from 60px
           padding: '0 1.25rem', // Reduced from 1.5rem
@@ -276,6 +276,7 @@ export default function AppShell({ children }: AppShellProps) {
           top: 0,
           zIndex: 100,
           flexShrink: 0,
+          width: '100%',
         }}>
           {/* Search */}
           <div style={{
@@ -593,7 +594,6 @@ export default function AppShell({ children }: AppShellProps) {
         {/* Page Content */}
         <main style={{
           flex: 1,
-          overflow: 'auto',
           paddingBottom: '5rem', /* Space for FAB */
         }}>
           {children}
