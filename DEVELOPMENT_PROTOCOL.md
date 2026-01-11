@@ -4,22 +4,38 @@
 
 ## 🚨 CRITICAL: Read This First Before ANY Code Change
 
+**YOU MUST READ THIS ENTIRE DOCUMENT FROM TOP TO BOTTOM BEFORE MAKING ANY CODE CHANGE.**
+
+**DO NOT ASSUME. DO NOT SKIP. DO NOT RUSH.**
+
 Before making ANY code modification, you MUST:
-1. Read this entire protocol
-2. Follow each step methodically
-3. Verify your work before committing
-4. Never skip steps to "save time"
+1. **READ THIS ENTIRE PROTOCOL** - Every single time, from start to finish. No exceptions.
+2. **READ INSTRUCTIONS.md** - Understand the project context and requirements.
+3. **UNDERSTAND THE FULL CONTEXT** - Read all relevant files, understand the structure, don't guess.
+4. **FOLLOW EACH STEP METHODICALLY** - Go through the checklist step by step.
+5. **VERIFY YOUR WORK** - Test, check, verify before committing.
+6. **NEVER SKIP STEPS** - Not even to "save time" or because you "think you know."
+7. **NEVER ASSUME** - Always read, always verify, always check.
+
+**If you find yourself making assumptions or skipping steps, STOP. Go back and read the protocol again.**
 
 ---
 
-## 📋 Pre-Change Checklist (MUST DO ALL)
+## 📋 Pre-Change Checklist (MUST DO ALL - NO EXCEPTIONS)
+
+**BEFORE YOU TOUCH ANY CODE:**
+1. [ ] **I have read DEVELOPMENT_PROTOCOL.md completely** - Every word, every section
+2. [ ] **I have read INSTRUCTIONS.md** - Understand project context
+3. [ ] **I understand what I'm trying to fix** - Not guessing, actually understand
+4. [ ] **I am ready to follow the checklist step by step** - No shortcuts
 
 ### Step 1: Understand the Full Context
-- [ ] Read ALL relevant files first (don't assume structure)
-- [ ] Understand parent/child component relationships
-- [ ] Check how components are wrapped/nested (layout files, wrappers)
-- [ ] Identify all related files that might be affected
-- [ ] Map out the data flow and component hierarchy
+- [ ] **Read ALL relevant files first** - Don't assume structure, actually read them
+- [ ] **Understand parent/child component relationships** - Trace the hierarchy
+- [ ] **Check how components are wrapped/nested** - Layout files, wrappers, containers
+- [ ] **Identify all related files that might be affected** - Don't miss any
+- [ ] **Map out the data flow and component hierarchy** - Draw it if needed
+- [ ] **Check for parent containers with overflow, z-index, or positioning** - These affect children
 
 ### Step 2: Find Working Examples
 - [ ] Look for similar working code (e.g., right arrow for left arrow)
@@ -105,49 +121,77 @@ Before making ANY code modification, you MUST:
 
 ---
 
-## ❌ NEVER DO THESE
+## ❌ NEVER DO THESE - ABSOLUTE PROHIBITIONS
 
-- ❌ **Never commit without verifying the fix is correct**
+- ❌ **NEVER skip reading DEVELOPMENT_PROTOCOL.md**
+  - Read it EVERY SINGLE TIME before making changes
+  - Don't assume you remember it - read it again
+  - This is not optional, it's mandatory
+
+- ❌ **NEVER assume anything**
+  - Don't assume you know the structure - READ IT
+  - Don't assume you know the fix - VERIFY IT
+  - Don't assume it will work - TEST IT
+  - When in doubt, READ MORE CODE, don't guess
+
+- ❌ **NEVER commit without verifying the fix is correct**
   - Don't push code that "should work" - verify it first
   - Run linters, check for errors
   - At minimum, verify logic/calculations are correct
+  - Test the actual behavior, don't just check if it compiles
 
-- ❌ **Never assume layout structure**
+- ❌ **NEVER assume layout structure**
   - Always check if components are wrapped
   - Always verify parent container dimensions
   - Always check for nested layouts
+  - Always check for overflow, z-index, positioning on parents
 
-- ❌ **Never copy patterns without understanding**
+- ❌ **NEVER copy patterns without understanding**
   - Don't just copy numbers from working code
   - Understand WHY it works
   - Apply the principle, not just the values
+  - If you don't understand why it works, READ MORE
 
-- ❌ **Never rush to "fix" without understanding**
+- ❌ **NEVER rush to "fix" without understanding**
   - Take time to understand the problem fully
   - Read code thoroughly before changing it
-  - Ask questions if unclear (don't guess)
+  - Read ALL relevant files, not just the one you're editing
+  - Map out the full context before making changes
 
-- ❌ **Never skip verification steps**
+- ❌ **NEVER skip verification steps**
   - Always check function signatures
   - Always verify calculations
   - Always run linters
   - Always check for TypeScript errors
+  - Always test the actual behavior
+
+- ❌ **NEVER make multiple "quick fixes" hoping one works**
+  - One correct fix is better than five rushed attempts
+  - If your first fix doesn't work, STOP and re-read the protocol
+  - Understand why it didn't work before trying again
 
 ---
 
-## ✅ Pre-Commit Checklist
+## ✅ Pre-Commit Checklist - MANDATORY VERIFICATION
 
-Before committing ANY code:
-- [ ] I have read ALL relevant files
-- [ ] I understand the full context
-- [ ] I have verified function signatures match usage
-- [ ] I have calculated/verified all values (especially positioning)
-- [ ] I have compared with working examples
-- [ ] I have run linter checks
-- [ ] I have verified the logic is correct
-- [ ] I have checked for TypeScript errors
-- [ ] I have accounted for all parent containers/layouts
-- [ ] I am confident this fix is correct
+**YOU CANNOT COMMIT UNTIL ALL OF THESE ARE CHECKED:**
+
+- [ ] **I have read DEVELOPMENT_PROTOCOL.md completely** - Not skimmed, READ IT
+- [ ] **I have read INSTRUCTIONS.md** - Understand project context
+- [ ] **I have read ALL relevant files** - Every file that might be affected
+- [ ] **I understand the full context** - Not guessing, actually understand
+- [ ] **I understand the root cause** - Not just symptoms, the actual problem
+- [ ] **I have verified function signatures match usage** - Checked actual code
+- [ ] **I have calculated/verified all values** - Especially positioning, show your work
+- [ ] **I have compared with working examples** - Found similar code that works
+- [ ] **I have run linter checks** - No errors
+- [ ] **I have verified the logic is correct** - Step by step, it makes sense
+- [ ] **I have checked for TypeScript errors** - No compilation errors
+- [ ] **I have accounted for all parent containers/layouts** - Checked overflow, z-index, positioning
+- [ ] **I have tested the actual behavior** - Not just "it should work"
+- [ ] **I am confident this fix is correct** - Not hoping, actually confident
+
+**If you cannot check ALL of these, DO NOT COMMIT. Go back and do the work.**
 
 ---
 
@@ -191,14 +235,26 @@ Before committing ANY code:
 
 ---
 
-## 📝 Notes
+## 📝 Critical Reminders
 
-- **Time spent understanding is NOT wasted** - it prevents rework
-- **One correct fix is better than five rushed attempts**
-- **When in doubt, read more code, don't guess**
-- **Always show your work/calculations in commit messages**
+- **READ THIS PROTOCOL EVERY SINGLE TIME** - Don't assume you remember it
+- **READ INSTRUCTIONS.md EVERY SINGLE TIME** - Understand the project context
+- **Time spent understanding is NOT wasted** - it prevents rework and frustration
+- **One correct fix is better than five rushed attempts** - Quality over speed
+- **When in doubt, read more code, don't guess** - Reading is faster than debugging
+- **Always show your work/calculations in commit messages** - Helps with review
+- **If you're making assumptions, STOP** - Go back and read the code
+- **If your fix doesn't work, STOP** - Re-read the protocol, understand why it failed
+- **Following this protocol is not optional** - It's mandatory for every change
+
+## 🎯 The Golden Rule
+
+**READ → UNDERSTAND → VERIFY → THEN CODE**
+
+Not: Code → Hope → Fix → Hope → Fix again
 
 ---
 
-**Last Updated:** After left arrow button positioning issues
-**Purpose:** Prevent repeated mistakes by enforcing systematic approach
+**Last Updated:** After user dropdown menu blocking issue
+**Purpose:** Prevent repeated mistakes by enforcing systematic approach and mandatory reading
+**Critical:** This protocol must be read and followed EVERY SINGLE TIME, without exception
