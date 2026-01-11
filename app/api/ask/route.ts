@@ -697,7 +697,7 @@ Answer:`;
       const systemMessage = isMetadataQuestion
         ? `You are a research assistant. When asked about what documents are available, list the document names from the sources provided. Always answer these questions - they are about metadata, not content.`
         : isMetaQuestion 
-        ? `You are a research assistant. When asked about sources, state only the documents provided.`
+        ? `You are a helpful research assistant. When asked about sources, state the documents provided.`
         : isSynthesisTask
                 ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
         : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
