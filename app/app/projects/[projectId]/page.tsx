@@ -6,6 +6,7 @@ import { SourcesPanel, StudioPanel, HistoryPanel, SettingsPanel, SignUpRequiredM
 import { Button, Badge } from '../../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
+import { getSupabase } from '@/lib/supabase/client';
 import { 
   canGuestPerformAction, 
   recordGuestAction, 
@@ -71,7 +72,7 @@ export default function ProjectWorkspace() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Project state
   const [project, setProject] = useState<Project | null>(null);
@@ -571,9 +572,15 @@ export default function ProjectWorkspace() {
       console.log('[Project] Ready documents:', readyDocuments);
       console.log('[Project] Sending sourceFilenames to API:', sourceFilenames);
       
+      // Get session token for authentication (required for credits mode)
+      const authToken = session?.access_token;
+
       const res = await fetch('/api/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        },
         body: JSON.stringify({
           question: content,
           sourceFilenames: sourceFilenames,
