@@ -26,18 +26,18 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: {
-      background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+      background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted purple
       color: 'white',
       border: 'none',
     },
     secondary: {
-      background: 'rgba(139, 92, 246, 0.1)',
-      color: '#c4b5fd',
-      border: '1px solid rgba(139, 92, 246, 0.3)',
+      background: 'rgba(124, 58, 237, 0.1)', // More muted
+      color: '#a78bfa', // Softer purple
+      border: '1px solid rgba(124, 58, 237, 0.25)', // More muted
     },
     ghost: {
       background: 'transparent',
-      color: '#94a3b8',
+      color: '#64748b', // More muted gray
       border: '1px solid transparent',
     },
     danger: {
@@ -48,9 +48,9 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const sizeStyles: Record<string, React.CSSProperties> = {
-    sm: { padding: '0.5rem 0.875rem', fontSize: '0.8125rem' },
-    md: { padding: '0.625rem 1.25rem', fontSize: '0.9375rem' },
-    lg: { padding: '0.875rem 1.75rem', fontSize: '1rem' },
+    sm: { padding: '0.4375rem 0.75rem', fontSize: '0.8125rem' }, // Reduced padding
+    md: { padding: '0.5625rem 1rem', fontSize: '0.875rem' }, // Reduced padding and font
+    lg: { padding: '0.75rem 1.5rem', fontSize: '0.9375rem' }, // Reduced padding and font
   };
 
   const isDisabled = disabled || isLoading;
@@ -61,7 +61,7 @@ const Button: React.FC<ButtonProps> = ({
       style={{
         ...variantStyles[variant],
         ...sizeStyles[size],
-        borderRadius: '8px',
+        borderRadius: '6px', // Reduced from 8px
         fontWeight: 500,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         opacity: isDisabled ? 0.5 : 1,

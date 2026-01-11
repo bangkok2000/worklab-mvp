@@ -39,8 +39,8 @@ export default function Dashboard() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [recentContent, setRecentContent] = useState<RecentContent[]>([]);
   const [libraryStats, setLibraryStats] = useState<LibraryStat[]>([
-    { label: 'Documents', value: 0, icon: '📄', color: '#8b5cf6' },
-    { label: 'Media Files', value: 0, icon: '🎬', color: '#6366f1' },
+    { label: 'Documents', value: 0, icon: '📄', color: '#7c3aed' }, // More muted
+    { label: 'Media Files', value: 0, icon: '🎬', color: '#5b21b6' }, // More muted
     { label: 'Web Pages', value: 0, icon: '🌐', color: '#3b82f6' },
   ]);
   const [isMounted, setIsMounted] = useState(false);
@@ -112,8 +112,8 @@ export default function Dashboard() {
     
     setRecentContent(sorted);
     setLibraryStats([
-      { label: 'Documents', value: docCount, icon: '📄', color: '#8b5cf6' },
-      { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#6366f1' },
+      { label: 'Documents', value: docCount, icon: '📄', color: '#7c3aed' }, // More muted
+      { label: 'Media Files', value: mediaCount, icon: '🎬', color: '#5b21b6' }, // More muted
       { label: 'Web Pages', value: webCount, icon: '🌐', color: '#3b82f6' },
     ]);
   };
@@ -182,29 +182,29 @@ export default function Dashboard() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto', minHeight: 'calc(100vh - 56px)' }}> {/* Reduced padding, ensure full height */}
       {/* Welcome Section */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+      <div style={{ marginBottom: '1.5rem' }}> {/* Reduced margin */}
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.375rem' }}> {/* Reduced font and margin */}
           Welcome back! 👋
         </h1>
-        <p style={{ color: '#94a3b8', fontSize: '1rem' }}>
+        <p style={{ color: '#64748b', fontSize: '0.9375rem' }}> {/* More muted, reduced font */}
           Start by selecting a project or create a new one
         </p>
       </div>
 
       {/* ========== SECTION 1: PROJECTS (Primary Focus) ========== */}
       <section style={{
-        padding: '1.5rem',
-        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)',
-        border: '1px solid rgba(139, 92, 246, 0.25)',
-        borderRadius: '16px',
-        marginBottom: '1.5rem',
+        padding: '1.25rem', // Reduced
+        background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(91, 33, 182, 0.04) 100%)', // More muted
+        border: '1px solid rgba(124, 58, 237, 0.2)', // More muted
+        borderRadius: '12px', // Reduced
+        marginBottom: '1.25rem', // Reduced
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>📁 Your Projects</h2>
-            <p style={{ fontSize: '0.875rem', color: '#94a3b8', margin: 0 }}>Everything starts here</p>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>📁 Your Projects</h2> {/* Reduced from 1.25rem */}
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Everything starts here</p> {/* Reduced font, more muted */}
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
@@ -212,9 +212,9 @@ export default function Dashboard() {
               style={{
                 padding: '0.5rem 1rem',
                 background: 'transparent',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
-                borderRadius: '8px',
-                color: '#c4b5fd',
+                border: '1px solid rgba(124, 58, 237, 0.25)', // More muted
+                borderRadius: '6px', // Reduced
+                color: '#a78bfa', // Softer purple
                 fontSize: '0.8125rem',
                 cursor: 'pointer',
               }}
@@ -225,7 +225,7 @@ export default function Dashboard() {
               onClick={() => router.push('/app/projects?new=true')}
               style={{
                 padding: '0.5rem 1rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
                 border: 'none',
                 borderRadius: '8px',
                 color: 'white',
@@ -241,21 +241,21 @@ export default function Dashboard() {
         
         {projects.length === 0 ? (
           <div style={{
-            padding: '3rem 2rem',
+            padding: '2rem 1.5rem', // Reduced padding
             textAlign: 'center',
             background: 'rgba(0, 0, 0, 0.2)',
             borderRadius: '12px',
           }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
             <h3 style={{ color: '#f1f5f9', marginBottom: '0.5rem' }}>Create your first project</h3>
-            <p style={{ color: '#94a3b8', marginBottom: '1.5rem', maxWidth: '400px', margin: '0 auto 1.5rem' }}>
+            <p style={{ color: '#64748b', marginBottom: '1.25rem', maxWidth: '400px', margin: '0 auto 1.25rem' }}> {/* More muted, reduced margin */}
               Projects help you organize sources, have focused AI conversations, and save insights on specific topics.
             </p>
             <button
               onClick={() => router.push('/app/projects?new=true')}
               style={{
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                padding: '0.625rem 1.25rem', // Reduced padding
+                background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
                 border: 'none',
                 borderRadius: '8px',
                 color: 'white',
@@ -274,10 +274,10 @@ export default function Dashboard() {
                 key={project.id}
                 onClick={() => router.push(`/app/projects/${project.id}`)}
                 style={{
-                  padding: '1.25rem',
+                  padding: '1rem', // Reduced from 1.25rem
                   background: 'rgba(0, 0, 0, 0.3)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
-                  borderRadius: '12px',
+                  border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+                  borderRadius: '10px', // Reduced from 12px
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s',
@@ -292,13 +292,13 @@ export default function Dashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '1.25rem',
+                    fontSize: '1.125rem', // Reduced from 1.25rem
                   }}>
                     📁
                   </div>
                   <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '1rem' }}>{project.name}</span>
                 </div>
-                <div style={{ color: '#94a3b8', fontSize: '0.8125rem' }}>
+                <div style={{ color: '#64748b', fontSize: '0.8125rem' }}> {/* More muted */}
                   {project.documentCount} sources • Updated {formatRelativeDate(project.updatedAt)}
                 </div>
               </button>
@@ -310,11 +310,11 @@ export default function Dashboard() {
               style={{
                 padding: '1.25rem',
                 background: 'transparent',
-                border: '2px dashed rgba(139, 92, 246, 0.3)',
-                borderRadius: '12px',
+                border: '2px dashed rgba(124, 58, 237, 0.25)', // More muted
+                borderRadius: '10px', // Reduced from 12px
                 cursor: 'pointer',
                 textAlign: 'center',
-                color: '#8b5cf6',
+                color: '#7c3aed', // More muted
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -322,7 +322,7 @@ export default function Dashboard() {
                 minHeight: '100px',
               }}
             >
-              <span style={{ fontSize: '1.5rem' }}>+</span>
+              <span style={{ fontSize: '1.25rem' }}>+</span> {/* Reduced from 1.5rem */}
               <span style={{ fontWeight: 500 }}>New Project</span>
             </button>
           </div>
@@ -333,14 +333,14 @@ export default function Dashboard() {
       <section style={{
         padding: '1.5rem',
         background: 'rgba(15, 15, 35, 0.6)',
-        border: '1px solid rgba(139, 92, 246, 0.15)',
-        borderRadius: '16px',
+        border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+                borderRadius: '12px', // Reduced from 16px
         marginBottom: '1.5rem',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>💡 Recent Insights</h2>
-            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0 }}>Saved answers from your AI conversations</p>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>💡 Recent Insights</h2> {/* Reduced from 1.125rem */}
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>Saved answers from your AI conversations</p> {/* More muted */}
           </div>
           <button
             onClick={() => router.push('/app/insights')}
@@ -358,7 +358,7 @@ export default function Dashboard() {
         
         {insights.length === 0 ? (
           <div style={{
-            padding: '2rem',
+            padding: '1.5rem', // Reduced from 2rem
             textAlign: 'center',
             background: 'rgba(0, 0, 0, 0.2)',
             borderRadius: '10px',
@@ -373,8 +373,8 @@ export default function Dashboard() {
                 onClick={() => router.push('/app/insights')}
                 style={{
                   padding: '1rem',
-                  background: 'rgba(139, 92, 246, 0.08)',
-                  border: '1px solid rgba(139, 92, 246, 0.2)',
+                  background: 'rgba(124, 58, 237, 0.08)', // More muted
+                  border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
                   borderRadius: '10px',
                   cursor: 'pointer',
                 }}
@@ -384,7 +384,7 @@ export default function Dashboard() {
                 </h3>
                 <p style={{
                   fontSize: '0.8125rem',
-                  color: '#94a3b8',
+                  color: '#64748b', // More muted
                   margin: 0,
                   marginBottom: '0.75rem',
                   display: '-webkit-box',
@@ -398,7 +398,7 @@ export default function Dashboard() {
                   {insight.projectName && (
                     <span style={{
                       fontSize: '0.6875rem',
-                      color: '#8b5cf6',
+                      color: '#7c3aed', // More muted
                       background: 'rgba(139, 92, 246, 0.15)',
                       padding: '0.25rem 0.5rem',
                       borderRadius: '4px',
@@ -423,13 +423,13 @@ export default function Dashboard() {
       <section style={{
         padding: '1.5rem',
         background: 'rgba(15, 15, 35, 0.6)',
-        border: '1px solid rgba(139, 92, 246, 0.15)',
-        borderRadius: '16px',
+        border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+                borderRadius: '12px', // Reduced from 16px
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>📚 Library</h2>
-            <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0 }}>All your content across projects</p>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, marginBottom: '0.25rem' }}>📚 Library</h2> {/* Reduced from 1.125rem */}
+            <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>All your content across projects</p> {/* More muted */}
           </div>
           <button
             onClick={() => router.push('/app/library')}
@@ -459,8 +459,8 @@ export default function Dashboard() {
               style={{
                 padding: '1.25rem',
                 background: 'rgba(0, 0, 0, 0.2)',
-                border: '1px solid rgba(139, 92, 246, 0.1)',
-                borderRadius: '12px',
+                border: '1px solid rgba(124, 58, 237, 0.1)', // More muted
+                borderRadius: '10px', // Reduced from 12px
                 display: 'flex',
                 alignItems: 'center',
                 gap: '1rem',
@@ -470,17 +470,17 @@ export default function Dashboard() {
               <div style={{
                 width: '48px',
                 height: '48px',
-                borderRadius: '12px',
+                borderRadius: '10px', // Reduced from 12px
                 background: `${stat.color}20`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.5rem',
+                fontSize: '1.25rem', // Reduced from 1.5rem
               }}>
                 {stat.icon}
               </div>
               <div>
-                <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f1f5f9', margin: 0 }}>
+                <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#e2e8f0', margin: 0 }}> {/* Reduced font, softer white */}
                   {stat.value}
                 </p>
                 <p style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>
@@ -493,7 +493,7 @@ export default function Dashboard() {
 
         {/* Recently Added */}
         <div>
-          <h3 style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#94a3b8', marginBottom: '0.75rem' }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 500, color: '#64748b', marginBottom: '0.625rem' }}> {/* Reduced font and margin */}
             Recently Added
           </h3>
           {recentContent.length === 0 ? (
@@ -532,7 +532,7 @@ export default function Dashboard() {
                     background: 'rgba(139, 92, 246, 0.15)',
                     borderRadius: '4px',
                     fontSize: '0.6875rem',
-                    color: '#c4b5fd',
+                    color: '#a78bfa', // Softer purple
                     textTransform: 'uppercase',
                   }}>
                     {content.type}

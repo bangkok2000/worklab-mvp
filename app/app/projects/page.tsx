@@ -17,7 +17,7 @@ interface Project {
   updatedAt: Date;
 }
 
-const PROJECT_COLORS = ['#8b5cf6', '#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
+const PROJECT_COLORS = ['#7c3aed', '#5b21b6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']; // More muted primary colors
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -142,12 +142,12 @@ export default function ProjectsPage() {
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '1.25rem', maxWidth: '1400px', margin: '0 auto', minHeight: 'calc(100vh - 56px)' }}> {/* Reduced padding, ensure full height */}
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}> {/* Reduced margin */}
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.25rem' }}>📁 Projects</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+          <h1 style={{ fontSize: '1.375rem', fontWeight: 600, marginBottom: '0.25rem' }}>📁 Projects</h1> {/* Reduced from 1.5rem */}
+          <p style={{ color: '#64748b', fontSize: '0.8125rem' }}> {/* More muted, reduced font */}
             Organize your sources and research into projects
           </p>
         </div>
@@ -155,7 +155,7 @@ export default function ProjectsPage() {
           onClick={() => setShowNewProject(true)}
           style={{
             padding: '0.625rem 1.25rem',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
             border: 'none',
             borderRadius: '8px',
             color: 'white',
@@ -202,10 +202,10 @@ export default function ProjectsPage() {
               onClick={() => setViewMode('grid')}
               style={{
                 padding: '0.5rem 0.75rem',
-                background: viewMode === 'grid' ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+                background: viewMode === 'grid' ? 'rgba(124, 58, 237, 0.15)' : 'transparent', // More muted
                 border: 'none',
                 borderRadius: '6px',
-                color: viewMode === 'grid' ? '#c4b5fd' : '#64748b',
+                color: viewMode === 'grid' ? '#a78bfa' : '#64748b', // Softer purple
                 cursor: 'pointer',
               }}
             >
@@ -215,10 +215,10 @@ export default function ProjectsPage() {
               onClick={() => setViewMode('list')}
               style={{
                 padding: '0.5rem 0.75rem',
-                background: viewMode === 'list' ? 'rgba(139, 92, 246, 0.2)' : 'transparent',
+                background: viewMode === 'list' ? 'rgba(124, 58, 237, 0.15)' : 'transparent', // More muted
                 border: 'none',
                 borderRadius: '6px',
-                color: viewMode === 'list' ? '#c4b5fd' : '#64748b',
+                color: viewMode === 'list' ? '#a78bfa' : '#64748b', // Softer purple
                 cursor: 'pointer',
               }}
             >
@@ -229,9 +229,9 @@ export default function ProjectsPage() {
           <select style={{
             padding: '0.5rem 1rem',
             background: 'rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '8px',
-            color: '#94a3b8',
+            border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+            borderRadius: '6px', // Reduced
+            color: '#64748b', // More muted
             fontSize: '0.875rem',
             outline: 'none',
           }}>
@@ -247,12 +247,12 @@ export default function ProjectsPage() {
         <div style={{
           padding: '4rem',
           background: 'rgba(15, 15, 35, 0.6)',
-          border: '1px solid rgba(139, 92, 246, 0.15)',
-          borderRadius: '16px',
+          border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+          borderRadius: '12px', // Reduced
           textAlign: 'center',
         }}>
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📁</div>
-          <h3 style={{ color: '#f1f5f9', fontSize: '1.25rem', marginBottom: '0.5rem' }}>
+          <h3 style={{ color: '#e2e8f0', fontSize: '1.125rem', marginBottom: '0.5rem' }}> {/* Softer white, reduced font */}
             {searchQuery ? 'No projects found' : 'No projects yet'}
           </h3>
           <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
@@ -262,8 +262,8 @@ export default function ProjectsPage() {
             <button
               onClick={() => setShowNewProject(true)}
               style={{
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                padding: '0.625rem 1.25rem', // Reduced padding
+                background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // More muted
                 border: 'none',
                 borderRadius: '8px',
                 color: 'white',
@@ -278,8 +278,8 @@ export default function ProjectsPage() {
       ) : viewMode === 'grid' ? (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '1rem',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', // Reduced from 300px
+          gap: '0.875rem', // Reduced from 1rem
         }}>
           {filteredProjects.map(project => (
             <ProjectCard 
@@ -319,20 +319,20 @@ export default function ProjectsPage() {
             width: '100%',
             maxWidth: '500px',
             background: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f23 100%)',
-            border: '1px solid rgba(139, 92, 246, 0.3)',
-            borderRadius: '16px',
+            border: '1px solid rgba(124, 58, 237, 0.25)', // More muted
+            borderRadius: '12px', // Reduced
             overflow: 'hidden',
           }} onClick={e => e.stopPropagation()}>
             <div style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
+              borderBottom: '1px solid rgba(124, 58, 237, 0.15)', // More muted
             }}>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>Create New Project</h2>
             </div>
 
             <div style={{ padding: '1.5rem' }}>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', color: '#64748b', fontSize: '0.8125rem', marginBottom: '0.5rem' }}> {/* More muted */}
                   Project Name *
                 </label>
                 <input
@@ -345,9 +345,9 @@ export default function ProjectsPage() {
                     width: '100%',
                     padding: '0.75rem',
                     background: 'rgba(0, 0, 0, 0.2)',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
                     borderRadius: '8px',
-                    color: '#f1f5f9',
+                    color: '#e2e8f0', // Softer white
                     fontSize: '0.9375rem',
                     outline: 'none',
                   }}
@@ -355,7 +355,7 @@ export default function ProjectsPage() {
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', color: '#64748b', fontSize: '0.8125rem', marginBottom: '0.5rem' }}> {/* More muted */}
                   Description (optional)
                 </label>
                 <textarea
@@ -367,9 +367,9 @@ export default function ProjectsPage() {
                     width: '100%',
                     padding: '0.75rem',
                     background: 'rgba(0, 0, 0, 0.2)',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                    border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
                     borderRadius: '8px',
-                    color: '#f1f5f9',
+                    color: '#e2e8f0', // Softer white
                     fontSize: '0.9375rem',
                     outline: 'none',
                     resize: 'none',
@@ -385,9 +385,9 @@ export default function ProjectsPage() {
                     flex: 1,
                     padding: '0.75rem',
                     background: 'transparent',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
-                    borderRadius: '8px',
-                    color: '#94a3b8',
+                    border: '1px solid rgba(124, 58, 237, 0.25)', // More muted
+                    borderRadius: '6px', // Reduced
+                    color: '#64748b', // More muted
                     cursor: 'pointer',
                   }}
                 >

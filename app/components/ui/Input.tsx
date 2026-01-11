@@ -35,7 +35,7 @@ const Input: React.FC<InputProps> = ({
           display: 'block',
           fontSize: '0.8125rem',
           fontWeight: 500,
-          color: '#94a3b8',
+          color: '#64748b', // More muted
           marginBottom: '0.5rem',
         }}>
           {label}
@@ -60,9 +60,9 @@ const Input: React.FC<InputProps> = ({
             background: 'rgba(0, 0, 0, 0.2)',
             border: error 
               ? '1px solid rgba(239, 68, 68, 0.5)' 
-              : '1px solid rgba(139, 92, 246, 0.2)',
-            borderRadius: '10px',
-            color: '#f1f5f9',
+              : '1px solid rgba(124, 58, 237, 0.2)', // More muted
+            borderRadius: '8px', // Reduced from 10px
+            color: '#e2e8f0', // Softer white
             outline: 'none',
             transition: 'all 0.2s',
             paddingLeft: hasLeftIcon ? '2.75rem' : sizeStyle.paddingHorizontal,

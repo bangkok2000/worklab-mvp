@@ -32,9 +32,9 @@ export default function Select({
     width: '100%',
     ...sizes[size],
     background: 'rgba(0, 0, 0, 0.2)',
-    border: `1px solid ${error ? 'rgba(239, 68, 68, 0.5)' : 'rgba(139, 92, 246, 0.2)'}`,
-    borderRadius: '10px',
-    color: '#f1f5f9',
+    border: `1px solid ${error ? 'rgba(239, 68, 68, 0.5)' : 'rgba(124, 58, 237, 0.2)'}`, // More muted
+    borderRadius: '8px', // Reduced from 10px
+    color: '#e2e8f0', // Softer white
     cursor: 'pointer',
     outline: 'none',
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -49,18 +49,18 @@ export default function Select({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
       {label && (
-        <label style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#94a3b8' }}>
+        <label style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#64748b' }}> {/* More muted */}
           {label}
         </label>
       )}
       <select
         style={selectStyle}
         onFocus={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.1)';
+          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.4)'; // More muted
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)'; // More muted
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.2)';
+          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.2)'; // More muted
           e.currentTarget.style.boxShadow = 'none';
         }}
         {...props}
