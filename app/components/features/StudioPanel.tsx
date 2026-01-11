@@ -83,7 +83,7 @@ export default function StudioPanel({
         backdropFilter: 'blur(20px)',
         overflowX: 'auto',
         position: 'sticky',
-        top: 0,
+        top: '64px', // Account for project page header height
         zIndex: 200,
         flexShrink: 0,
       }}>
