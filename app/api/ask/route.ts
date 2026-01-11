@@ -439,18 +439,7 @@ export async function POST(req: NextRequest) {
                             questionLower.includes('how do they') ||
                             (questionLower.includes('are') && questionLower.includes('related'));
     
-    // Detect complex questions that would benefit from chain-of-thought reasoning
-    const isComplexQuestion = questionLower.includes('compare') ||
-                              questionLower.includes('contrast') ||
-                              questionLower.includes('explain why') ||
-                              questionLower.includes('how does') ||
-                              questionLower.includes('why does') ||
-                              questionLower.includes('what are the differences') ||
-                              questionLower.includes('what are the similarities') ||
-                              questionLower.includes('analyze the relationship') ||
-                              questionLower.includes('evaluate') ||
-                              questionLower.includes('discuss') ||
-                              (question.length > 100); // Long questions are often complex
+    // Note: isComplexQuestion is already declared above (line ~317) before first use
     
     // Detect if question is asking about a specific source type
     const isAskingAboutWebLink = questionLower.includes('web link') || questionLower.includes('url') || 
