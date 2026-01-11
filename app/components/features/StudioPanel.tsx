@@ -72,8 +72,8 @@ export default function StudioPanel({
   const [activeTab, setActiveTab] = useState<StudioTab>('chat');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tab Navigation */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Tab Navigation - Sticky */}
       <div style={{
         display: 'flex',
         gap: '0.25rem',
@@ -81,6 +81,10 @@ export default function StudioPanel({
         borderBottom: '1px solid rgba(139, 92, 246, 0.15)',
         background: 'rgba(15, 15, 35, 0.4)',
         overflowX: 'auto',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        flexShrink: 0,
       }}>
         {tabs.map(tab => (
           <button
