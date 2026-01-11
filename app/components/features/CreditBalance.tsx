@@ -99,6 +99,24 @@ export default function CreditBalance({
     }
   }, [user, hasByok]);
 
+  // Listen for credit balance updates (when credits are deducted/added)
+  useEffect(() => {
+    if (!user || hasByok) return;
+
+    const handleCreditUpdate = () => {
+      // Debounce to avoid too many requests
+      setTimeout(() => {
+        loadBalance();
+      }, 500);
+    };
+
+    window.addEventListener('moonscribe-credits-updated', handleCreditUpdate);
+    
+    return () => {
+      window.removeEventListener('moonscribe-credits-updated', handleCreditUpdate);
+    };
+  }, [user, hasByok]);
+
   const loadBalance = async () => {
     if (!user) return;
     setLoading(true);

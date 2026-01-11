@@ -591,6 +591,13 @@ export default function ProjectWorkspace() {
 
       const data = await res.json();
 
+      // If credits were deducted, notify CreditBalance component to refresh
+      if (data.credits?.remaining !== undefined && data.credits?.remaining !== null) {
+        window.dispatchEvent(new CustomEvent('moonscribe-credits-updated', {
+          detail: { balance: data.credits.remaining }
+        }));
+      }
+
       const assistantMessage: Message = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
