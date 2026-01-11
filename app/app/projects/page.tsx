@@ -433,14 +433,16 @@ function ProjectCard({ project, onClick, onDelete }: {
       style={{
         padding: '1.25rem', // Reduced padding to match UI refinement
         paddingTop: '1.5rem', // Extra top padding to account for color bar
+        paddingBottom: '1.25rem', // Ensure bottom padding is explicit
         background: isHovered ? 'rgba(124, 58, 237, 0.1)' : 'rgba(15, 15, 35, 0.6)', // More muted
         border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
         borderRadius: '12px', // Reduced from 16px to match UI refinement
-        overflow: 'hidden', // Ensure color bar respects border-radius
+        overflow: 'hidden', // Keep hidden for color bar border-radius
         cursor: 'pointer',
         transition: 'all 0.2s',
         transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
         position: 'relative',
+        minHeight: '200px', // Ensure minimum height so content isn't cut off
       }}
     >
       {/* Color Bar */}
@@ -451,11 +453,12 @@ function ProjectCard({ project, onClick, onDelete }: {
         right: 0,
         height: '3px',
         background: project.color,
-        borderRadius: '16px 16px 0 0', // Match card border-radius at top
-        zIndex: 1, // Ensure it's above background but below content
+        borderRadius: '12px 12px 0 0', // Match card border-radius (12px)
+        zIndex: 0, // Lower z-index to ensure it's below all content
+        pointerEvents: 'none', // Don't block clicks
       }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 2 }}> {/* Ensure content is above color bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 1 }}> {/* Ensure content is above color bar */}
         <div style={{
           width: '48px',
           height: '48px',
@@ -539,7 +542,15 @@ function ProjectCard({ project, onClick, onDelete }: {
         </span>
       </div>
 
-      <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem', position: 'relative', zIndex: 2 }}> {/* Ensure "Updated" text is visible */}
+      <p style={{ 
+        fontSize: '0.75rem', 
+        color: '#64748b', 
+        marginTop: '1rem', 
+        marginBottom: 0, // Ensure no bottom margin cutting off
+        position: 'relative', 
+        zIndex: 1,
+        opacity: 1, // Explicitly set opacity to ensure visibility
+      }}> {/* Ensure "Updated" text is fully visible */}
         Updated {formatRelativeDate(project.updatedAt)}
       </p>
     </div>
