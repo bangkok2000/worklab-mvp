@@ -568,28 +568,19 @@ Answer:`;
 4. Synthesize into a coherent answer
 5. Cite your sources\n` : '';
       
-      prompt = `You are a research assistant. Synthesize information from the provided documents to answer the question.
+      prompt = `You are a helpful research assistant. Answer the question using information from the provided documents.
 
 ${sourceList}${contextAwareGuidance}
-Rules:
-- Synthesize and connect information from different parts of the context
-- Base your answer ONLY on information explicitly stated in the context
-- Do not use training data, general knowledge, or make up facts
-- Cite sources using [1], [2], etc.
-- If insufficient information, say "I couldn't find enough information in the provided documents."
+Guidelines:
+- Synthesize and connect information from different parts of the context to provide a comprehensive answer
+- You can make reasonable inferences and connections based on the information in the context
+- Be helpful and provide useful insights when the context contains relevant information
+- Cite sources using [1], [2], etc. when referencing specific information
+- Only say you couldn't find information if the context truly has nothing relevant to the question
+- Write in a clear, conversational, and helpful tone
 ${chainOfThought}
-Examples:
-Example 1:
-Context: [1] Document.pdf: "The study found that exercise improves mood by 30%."
-Question: "What did the study find about exercise?"
-Answer: "The study found that exercise improves mood by 30% [1]."
 
-Example 2:
-Context: [1] Document.pdf: "The study examined exercise."
-Question: "What was the sample size?"
-Answer: "I couldn't find enough information in the provided documents."
-
-Context:
+Context from documents:
 ${contextText}
 
 Question: ${question}
@@ -599,38 +590,24 @@ Answer:`;
       // Standard fact-finding questions (specific questions with direct answers)
       const chainOfThought = isComplexQuestion ? `\n\nThink step by step:
 1. Identify which parts of the context are relevant to the question
-2. Extract the specific information needed
-3. Verify the information is explicitly stated (not inferred)
-4. Formulate a clear, direct answer
-5. Cite your sources\n` : '';
+2. Extract and synthesize the information needed
+3. Make reasonable connections and inferences based on the context
+4. Formulate a clear, helpful answer
+5. Cite your sources when referencing specific information\n` : '';
       
-      prompt = `You are a research assistant. Answer questions using the provided context.
+      prompt = `You are a helpful research assistant. Answer the question using information from the provided documents.
 
 ${sourceList}${contextAwareGuidance}
-Rules:
-- Use information from the context to answer the question
-- If the context contains relevant information, provide a helpful answer
-- Cite sources with [1], [2], etc.
-- Only say "I couldn't find this information" if the context truly doesn't contain any relevant information
-- Be helpful and provide useful answers when possible
+Guidelines:
+- Use information from the context to provide a helpful answer
+- You can make reasonable inferences and connections based on the information provided
+- Be conversational and helpful - provide useful insights when the context contains relevant information
+- Cite sources with [1], [2], etc. when referencing specific information
+- Only say you couldn't find information if the context truly has nothing relevant to answer the question
+- Write in a clear, natural, and helpful tone
 ${chainOfThought}
-Examples:
-Example 1:
-Context: [1] Document.pdf: "The study found that exercise improves mood."
-Question: "What did the study find?"
-Answer: "The study found that exercise improves mood [1]."
 
-Example 2:
-Context: [1] Document.pdf: "The study examined exercise."
-Question: "What was the sample size?"
-Answer: "I couldn't find this information in the provided documents."
-
-Example 3:
-Context: [1] Document.pdf: "The report discusses automation strategies."
-Question: "What does the document discuss?"
-Answer: "The document discusses automation strategies [1]."
-
-Context:
+Context from documents:
 ${contextText}
 
 Question: ${question}
@@ -663,9 +640,9 @@ Answer:`;
         : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
       
       // Adjust temperature based on task type
-      // Lower (0.1) for fact-finding, higher (0.3-0.4) for synthesis tasks
-      // Metadata questions can use slightly higher temperature for more natural responses
-      const temperature = isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1);
+      // Higher temperature for more natural, conversational responses
+      // Metadata questions and synthesis tasks benefit from more creativity
+      const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
       
       const result = await openaiClient.chat.completions.create({
         model: selectedModel,
@@ -697,13 +674,13 @@ Answer:`;
                 : isMetaQuestion 
                 ? `You are a research assistant. When asked about sources, state only the documents provided.`
                 : isSynthesisTask
-                ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
-                : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`
+                ? `You are a helpful research assistant. Synthesize information from the context to provide comprehensive answers. Connect information from different parts and make reasonable inferences based on what's provided. Be helpful and insightful.`
+                : `You are a helpful research assistant. Answer questions using information from the provided context. Be conversational, helpful, and provide useful insights. You can make reasonable inferences based on the context. Only say you couldn't find information if the context truly has nothing relevant. Don't make up specific facts, numbers, or details that aren't in the context.`
             },
             { role: 'user', content: prompt }
           ],
           max_tokens: 2000,
-          temperature: isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1),
+          temperature: isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2),
         }),
       });
       
@@ -725,7 +702,7 @@ Answer:`;
         ? `You are a research assistant. For synthesis tasks, synthesize information from the context. Connect information from different parts, but base synthesis ONLY on explicitly stated information. Do not use training data or make up facts.`
         : `You are a research assistant. Answer questions using information from the provided context. Be helpful and provide useful answers when the context contains relevant information. Only say "I couldn't find this information" if the context truly doesn't contain any relevant information. Do not use training data or make up facts that aren't in the context.`;
       
-      const temperature = isMetadataQuestion ? 0.2 : (isSynthesisTask ? 0.3 : 0.1);
+      const temperature = isMetadataQuestion ? 0.3 : (isSynthesisTask ? 0.4 : 0.2);
       
       const result = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
