@@ -201,7 +201,7 @@ export default function InsightsPanel({
           placeholder="Search insights..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          size="sm"
+          inputSize="sm"
         />
       </div>
 
