@@ -431,10 +431,12 @@ function ProjectCard({ project, onClick, onDelete }: {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{
-        padding: '1.5rem',
-        background: isHovered ? 'rgba(139, 92, 246, 0.1)' : 'rgba(15, 15, 35, 0.6)',
-        border: '1px solid rgba(139, 92, 246, 0.2)',
-        borderRadius: '16px',
+        padding: '1.25rem', // Reduced padding to match UI refinement
+        paddingTop: '1.5rem', // Extra top padding to account for color bar
+        background: isHovered ? 'rgba(124, 58, 237, 0.1)' : 'rgba(15, 15, 35, 0.6)', // More muted
+        border: '1px solid rgba(124, 58, 237, 0.15)', // More muted
+        borderRadius: '12px', // Reduced from 16px to match UI refinement
+        overflow: 'hidden', // Ensure color bar respects border-radius
         cursor: 'pointer',
         transition: 'all 0.2s',
         transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
@@ -445,14 +447,15 @@ function ProjectCard({ project, onClick, onDelete }: {
       <div style={{
         position: 'absolute',
         top: 0,
-        left: '1rem',
-        right: '1rem',
+        left: 0,
+        right: 0,
         height: '3px',
         background: project.color,
-        borderRadius: '0 0 2px 2px',
+        borderRadius: '16px 16px 0 0', // Match card border-radius at top
+        zIndex: 1, // Ensure it's above background but below content
       }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', position: 'relative', zIndex: 2 }}> {/* Ensure content is above color bar */}
         <div style={{
           width: '48px',
           height: '48px',
@@ -461,7 +464,7 @@ function ProjectCard({ project, onClick, onDelete }: {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '1.5rem',
+          fontSize: '1.25rem', // Reduced from 1.5rem
         }}>
           📁
         </div>
@@ -488,14 +491,14 @@ function ProjectCard({ project, onClick, onDelete }: {
         </button>
       </div>
 
-      <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '0.5rem' }}>
+      <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#e2e8f0', marginBottom: '0.5rem' }}> {/* Reduced font, softer white */}
         {project.name}
       </h3>
 
       {project.description && (
         <p style={{
-          fontSize: '0.875rem',
-          color: '#94a3b8',
+          fontSize: '0.8125rem', // Reduced font
+          color: '#64748b', // More muted
           marginBottom: '1rem',
           display: '-webkit-box',
           WebkitLineClamp: 2,
@@ -508,8 +511,8 @@ function ProjectCard({ project, onClick, onDelete }: {
 
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span style={{
-          background: 'rgba(139, 92, 246, 0.1)',
-          color: '#c4b5fd',
+          background: 'rgba(124, 58, 237, 0.1)', // More muted
+          color: '#a78bfa', // Softer purple
           padding: '0.25rem 0.75rem',
           borderRadius: '6px',
           fontSize: '0.75rem',
@@ -517,8 +520,8 @@ function ProjectCard({ project, onClick, onDelete }: {
           📄 {project.documentCount} docs
         </span>
         <span style={{
-          background: 'rgba(99, 102, 241, 0.1)',
-          color: '#a5b4fc',
+          background: 'rgba(91, 33, 182, 0.1)', // More muted
+          color: '#8b5cf6', // Adjusted color
           padding: '0.25rem 0.75rem',
           borderRadius: '6px',
           fontSize: '0.75rem',
@@ -536,7 +539,7 @@ function ProjectCard({ project, onClick, onDelete }: {
         </span>
       </div>
 
-      <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem' }}>
+      <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1rem', position: 'relative', zIndex: 2 }}> {/* Ensure "Updated" text is visible */}
         Updated {formatRelativeDate(project.updatedAt)}
       </p>
     </div>
