@@ -15,7 +15,8 @@ import { useEffect } from 'react';
  */
 // Use package.json version + build timestamp for better cache busting
 const APP_VERSION = '1.0.1'; // Update this when making breaking changes to localStorage structure or UI
-const BUILD_TIMESTAMP = process.env.NEXT_PUBLIC_BUILD_TIME || new Date().toISOString();
+// Only use build timestamp in production - in dev, use a fixed value to prevent data loss
+const BUILD_TIMESTAMP = process.env.NEXT_PUBLIC_BUILD_TIME || (process.env.NODE_ENV === 'production' ? new Date().toISOString() : 'dev-build');
 
 export default function VersionCheck() {
   useEffect(() => {
@@ -27,9 +28,11 @@ export default function VersionCheck() {
       
       // Check both version and build time for better cache detection
       const versionMismatch = storedVersion !== APP_VERSION;
-      const buildTimeMismatch = storedBuildTime !== BUILD_TIMESTAMP;
+      // Only check build time in production - in dev, ignore build time to prevent data loss
+      const buildTimeMismatch = process.env.NODE_ENV === 'production' && storedBuildTime !== BUILD_TIMESTAMP;
       
-      // If version doesn't match or build time is different, clear cache and reload
+      // If version doesn't match (or build time in production), clear cache and reload
+      // NOTE: In development, we only clear on version mismatch to preserve user data
       if (versionMismatch || buildTimeMismatch) {
         console.log(`[VersionCheck] Cache mismatch detected:`);
         console.log(`  Version: stored=${storedVersion}, current=${APP_VERSION}`);

@@ -35,6 +35,12 @@ export default function SettingsPage() {
       if (tabFromUrl && validTabs.includes(tabFromUrl)) {
         setActiveTab(tabFromUrl);
       }
+      
+      // If teamCode is in URL (from invite), switch to team tab
+      const teamCodeFromUrl = params.get('teamCode');
+      if (teamCodeFromUrl) {
+        setActiveTab('team');
+      }
     }
   }, []);
   const [apiKeys, setApiKeys] = useState<ApiKeyConfig[]>([]);

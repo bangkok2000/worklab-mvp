@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 interface TeamMember {
   id: string;
@@ -43,7 +44,7 @@ const STORAGE_KEYS = {
 
 export default function TeamPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'workspaces' | 'activity'>('overview');
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -264,18 +265,82 @@ export default function TeamPage() {
   };
 
   // CRUD operations for members
-  const addMember = (name: string, email: string, role: TeamMember['role']) => {
-    const newMember: TeamMember = {
-      id: `member-${Date.now()}`,
-      name,
-      email,
-      role,
-      status: 'pending',
-      joinedAt: new Date().toISOString(),
-    };
-    const updatedMembers = [...members, newMember];
-    saveMembers(updatedMembers);
-    logActivity('You', 'invited', email, 'member');
+  const addMember = async (name: string, email: string, role: TeamMember['role']) => {
+    if (!session || !user) {
+      alert('Please sign in to invite team members');
+      return;
+    }
+    
+    try {
+      // First, check if user has a team in Supabase
+      console.log('[Invite] Checking for existing team...');
+      let teamRes = await authenticatedFetch('/api/teams', {
+        session,
+      });
+      let teamData = await teamRes.json();
+      console.log('[Invite] Team check result:', teamData);
+      
+      // If no team exists, create one
+      if (!teamData.team) {
+        console.log('[Invite] No team found, creating one...');
+        // Get team name from localStorage or use default
+        const teamName = workspaces.find(w => w.isDefault)?.name || 'My Team';
+        
+        const createRes = await authenticatedFetch('/api/teams', {
+          method: 'POST',
+          session,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: teamName }),
+        });
+        
+        const createData = await createRes.json();
+        console.log('[Invite] Team creation response:', createData);
+        
+        if (!createRes.ok) {
+          console.error('[Invite] Team creation failed:', createData);
+          const errorMsg = createData.details 
+            ? `${createData.error}\n\nDetails: ${createData.details}${createData.hint ? '\n\nHint: ' + createData.hint : ''}${createData.code ? '\n\nCode: ' + createData.code : ''}` 
+            : createData.error || 'Failed to create team. Please create a team in Settings first.';
+          alert(errorMsg);
+          return;
+        }
+        console.log('[Invite] Team created successfully:', createData.team?.id);
+      }
+      
+      // Now send invitation email via API
+      const res = await authenticatedFetch('/api/teams/invite', {
+        method: 'POST',
+        session,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, role }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        console.error('Invite error:', data);
+        alert(data.error || 'Failed to send invitation');
+        return;
+      }
+      
+      // Add to local state (will be synced when they join)
+      const newMember: TeamMember = {
+        id: `pending-${Date.now()}`,
+        name,
+        email,
+        role,
+        status: 'pending',
+        joinedAt: new Date().toISOString(),
+      };
+      const updatedMembers = [...members, newMember];
+      saveMembers(updatedMembers);
+      logActivity('You', 'invited', email, 'member');
+      
+      alert(`Invitation email sent to ${email}!`);
+    } catch (error) {
+      console.error('Failed to send invitation:', error);
+      alert('Failed to send invitation. Please try again.');
+    }
   };
 
   const updateMemberRole = (memberId: string, newRole: TeamMember['role']) => {
@@ -883,15 +948,27 @@ export default function TeamPage() {
   );
 }
 
-function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (name: string, email: string, role: TeamMember['role']) => void }) {
+function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (name: string, email: string, role: TeamMember['role']) => Promise<void> }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<TeamMember['role']>('editor');
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim() || !email.trim()) return;
-    onInvite(name, email, role);
-    onClose();
+    
+    setIsSending(true);
+    setError(null);
+    
+    try {
+      await onInvite(name, email, role);
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Failed to send invitation');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -921,6 +998,20 @@ function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (na
         </div>
 
         <div style={{ padding: '1.5rem' }}>
+          {error && (
+            <div style={{
+              padding: '0.75rem',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: '8px',
+              color: '#f87171',
+              fontSize: '0.875rem',
+              marginBottom: '1rem',
+            }}>
+              {error}
+            </div>
+          )}
+          
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
               Name
@@ -1003,19 +1094,19 @@ function InviteModal({ onClose, onInvite }: { onClose: () => void; onInvite: (na
             </button>
             <button 
               onClick={handleSubmit}
-              disabled={!name.trim() || !email.trim()}
+              disabled={isSending || !name.trim() || !email.trim()}
               style={{
                 flex: 1,
                 padding: '0.75rem',
-                background: (!name.trim() || !email.trim()) ? 'rgba(139, 92, 246, 0.3)' : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                background: (isSending || !name.trim() || !email.trim()) ? 'rgba(139, 92, 246, 0.3)' : 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
                 border: 'none',
                 borderRadius: '8px',
                 color: 'white',
                 fontWeight: 500,
-                cursor: (!name.trim() || !email.trim()) ? 'not-allowed' : 'pointer',
+                cursor: (isSending || !name.trim() || !email.trim()) ? 'not-allowed' : 'pointer',
               }}
             >
-              Add Member
+              {isSending ? 'Sending...' : 'Send Invitation'}
             </button>
           </div>
         </div>

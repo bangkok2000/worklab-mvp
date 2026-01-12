@@ -69,12 +69,30 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
+    let authenticatedSupabase = supabase; // Default to unauthenticated client
     
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
         userId = user?.id || null;
+        
+        // Create authenticated client for RLS policies
+        if (user && !authError) {
+          // Create a new client with the user's access token for RLS
+          const { createClient } = await import('@supabase/supabase-js');
+          authenticatedSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              global: {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            }
+          );
+        }
       } catch (authError) {
         console.warn('[Process Upload] Auth error:', authError);
       }
@@ -214,7 +232,7 @@ export async function POST(req: NextRequest) {
         }, { status: 401 });
       }
       
-      const balance = await getBalance(userId);
+      const balance = await getBalance(userId, authenticatedSupabase);
       if (balance < totalCreditCost) {
         return NextResponse.json({ 
           error: `Insufficient credits. This ${pageCount}-page document needs ${totalCreditCost} credits but you have ${balance}.`,
@@ -322,7 +340,7 @@ export async function POST(req: NextRequest) {
           referenceId: documentId || undefined,
           referenceType: 'document',
           metadata: { filename: originalFilename, pageCount, chunks: chunks.length },
-        });
+        }, authenticatedSupabase);
         
         if (deductResult.success) {
           remainingBalance = deductResult.balance;

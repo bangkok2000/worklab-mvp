@@ -446,25 +446,6 @@ export default function AppShell({ children }: AppShellProps) {
               )}
             </div>
 
-            {/* Settings */}
-            <Link
-              href="/app/settings"
-              prefetch={true}
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                background: pathname.includes('/settings') ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.1)',
-                border: '1px solid rgba(139, 92, 246, 0.2)',
-                color: '#c4b5fd',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textDecoration: 'none',
-              }}>
-              ⚙️
-            </Link>
             {/* User Menu */}
             <div style={{ position: 'relative' }}>
               <button
@@ -1143,6 +1124,11 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
 
   // Process web page via API
   const processWebPage = async (url: string): Promise<any> => {
+    // Check if user is authenticated (required for credits mode)
+    if (!session?.access_token && !user) {
+      throw new Error('Please sign in to use credits, add your own API key, or join a team.');
+    }
+    
     setProcessingStatus('Fetching page...');
     let apiKey: string | undefined;
     try {
@@ -1156,7 +1142,7 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
     
     const response = await authenticatedFetch('/api/web', {
       method: 'POST',
-      session,
+      session, // This will add Authorization header if session exists
       headers: { 
         'Content-Type': 'application/json',
       },
@@ -1237,15 +1223,23 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
       setIsProcessing(true);
       try {
         const result = await processWebPage(inputValue);
+        
+        if (!result || !result.pageId) {
+          throw new Error('Invalid response from server. Missing pageId.');
+        }
+        
         setProcessingStatus('Saving to library...');
+        
+        // Normalize URL for duplicate checking
+        const normalizedUrl = result.url?.toLowerCase().trim() || inputValue.toLowerCase().trim();
         
         // Create the content item with web page metadata
         const newItem = {
           id: result.pageId,
           type: 'article',
-          title: result.title,
+          title: result.title || 'Untitled',
           description: result.description,
-          url: result.url,
+          url: result.url || inputValue,
           domain: result.domain,
           favicon: result.favicon,
           thumbnail: result.image,
@@ -1261,11 +1255,37 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
           if (selectedProject === 'inbox') {
             const existingInbox = localStorage.getItem('moonscribe-inbox');
             const inbox = existingInbox ? JSON.parse(existingInbox) : [];
+            
+            // Check for duplicates by URL
+            const isDuplicate = inbox.some((item: any) => 
+              item.url?.toLowerCase().trim() === normalizedUrl || 
+              item.id === result.pageId
+            );
+            
+            if (isDuplicate) {
+              setError('This URL has already been added.');
+              setIsProcessing(false);
+              return;
+            }
+            
             inbox.unshift(newItem);
             localStorage.setItem('moonscribe-inbox', JSON.stringify(inbox));
           } else {
             const existingContent = localStorage.getItem(`moonscribe-project-content-${selectedProject}`);
             const content = existingContent ? JSON.parse(existingContent) : [];
+            
+            // Check for duplicates by URL
+            const isDuplicate = content.some((item: any) => 
+              item.url?.toLowerCase().trim() === normalizedUrl || 
+              item.id === result.pageId
+            );
+            
+            if (isDuplicate) {
+              setError('This URL has already been added to this project.');
+              setIsProcessing(false);
+              return;
+            }
+            
             content.unshift(newItem);
             localStorage.setItem(`moonscribe-project-content-${selectedProject}`, JSON.stringify(content));
           }
@@ -1277,6 +1297,7 @@ function QuickCaptureModal({ onClose, defaultProjectId }: { onClose: () => void;
         setTimeout(() => onClose(), 500);
         return;
       } catch (err: any) {
+        console.error('[QuickCapture] Error processing web page:', err);
         setError(err.message || 'Failed to process web page');
         setIsProcessing(false);
         return;

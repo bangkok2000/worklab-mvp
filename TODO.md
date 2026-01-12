@@ -372,11 +372,66 @@ Step 4: Server AI (Days 10-12)
 - [ ] Implement BM25 for keyword matching
 - [ ] Hybrid search (dense + sparse)
 - [ ] Cross-encoder reranking
-- [ ] LLM-based query expansion
+- [x] LLM-based query expansion ⚠️ **PARTIALLY DONE** (basic version exists, needs enhancement)
 - [ ] Context window optimization
 - [ ] Answer quality metrics
 
-**Effort:** 5-6 days
+**Effort Breakdown:**
+| Task | Time | Complexity | Notes |
+|------|------|------------|-------|
+| **1. Enable sparse vectors in Pinecone** | 2-3 days | Medium | Pinecone supports sparse vectors, need to configure index and update upsert logic |
+| **2. Implement BM25 for keyword matching** | 3-4 days | High | Need to build inverted index, implement BM25 algorithm, handle updates |
+| **3. Hybrid search (dense + sparse)** | 2-3 days | Medium | Combine results from both searches, implement fusion (RRF or weighted) |
+| **4. Cross-encoder reranking** | 2-3 days | Medium | Use cross-encoder model (e.g., ms-marco-MiniLM), rerank top results |
+| **5. LLM-based query expansion** | 1 day | Low | ✅ **Already exists** - just needs refinement (currently basic) |
+| **6. Context window optimization** | 1-2 days | Low | Smart chunk selection, relevance-based ordering, deduplication |
+| **7. Answer quality metrics** | 2-3 days | Medium | Implement ROUGE, BLEU, semantic similarity, user feedback tracking |
+
+**Total Effort:** **13-19 days** (~2.5-4 weeks)
+
+**Recommended Approach:**
+1. **Phase 1 (Week 1):** Sparse vectors + BM25 + Hybrid search (7-10 days)
+   - Foundation for better retrieval
+   - Biggest impact on answer quality
+2. **Phase 2 (Week 2):** Cross-encoder reranking + Context optimization (3-5 days)
+   - Fine-tuning retrieval results
+   - Better context selection
+3. **Phase 3 (Week 3):** Query expansion refinement + Quality metrics (3-4 days)
+   - Polish and measurement
+
+**Current Status:**
+- ✅ Basic query expansion exists (`lib/utils/query-expansion.ts`)
+- ✅ LLM-based expansion for complex queries (already in `/api/ask`)
+- ❌ No sparse vectors support
+- ❌ No BM25 implementation
+- ❌ No hybrid search
+- ❌ No reranking
+- ❌ No quality metrics
+
+### 2.3.1 Pinecone Data Management & Quality ✅ COMPLETE
+- [x] **Pinecone Clear Endpoint** - Created `/api/pinecone/clear` to delete all vectors
+  - Supports DELETE and POST methods
+  - Requires authentication
+  - Handles large indexes (batches of 10,000 vectors)
+  - Returns deletion count and status
+  - **Location:** `app/api/pinecone/clear/route.ts`
+- [x] **Project Isolation** - Added `project_id` filtering to Pinecone queries
+  - All new content includes `project_id` in metadata
+  - API routes filter by `project_id` when available
+  - Prevents cross-contamination between projects
+  - **Location:** `app/api/ask/route.ts`, all upload routes
+- [x] **Stricter Source Matching** - Enhanced source filtering logic
+  - Requires exact match, 70% substring match, or 2+ keyword matches with 50% overlap
+  - Prevents AI from seeing unrelated sources
+  - Filters out sources from other projects/users
+  - **Location:** `app/api/ask/route.ts`
+- [x] **AI Hallucination Prevention** - Enhanced prompts to prevent source hallucination
+  - Explicit rules: "You can ONLY cite sources from this list"
+  - Clear distinction between topics discussed IN sources vs separate sources
+  - Prevents AI from inventing sources based on content mentions
+  - **Location:** `app/api/ask/route.ts`
+
+**Effort:** ✅ **COMPLETED** (Today)
 
 ### 2.4 Rich Note Editor
 - [ ] Markdown support with preview
@@ -681,12 +736,20 @@ Week 10-14: [████████████████████] Mobil
 
 ---
 
-*Last Updated: After Flashcards implementation and AI hallucination prevention fixes*
+*Last Updated: After Pinecone data management enhancements and AI hallucination prevention fixes*
 
-## 📅 Today's Progress (Latest Session - Study Tools & AI Quality)
+## 📅 Today's Progress (Latest Session - Pinecone Data Management & AI Quality)
 
 ### ✅ Completed Today
-1. **Study Tools: Flashcards Implementation** ✅ COMPLETE
+1. **Pinecone Data Management & Quality** ✅ COMPLETE
+   - Created `/api/pinecone/clear` endpoint to delete all vectors from Pinecone
+   - Added `project_id` filtering to all Pinecone queries for project isolation
+   - Enhanced source matching logic (stricter filtering to prevent cross-contamination)
+   - Fixed AI hallucination by adding explicit source citation rules
+   - Cleared 76 old vectors from Pinecone (no project_id metadata)
+   - All new content will include proper project_id metadata
+
+2. **Study Tools: Flashcards Implementation** ✅ COMPLETE
    - Created `/api/study/flashcards` route with per-source generation
    - Created `FlashcardsPanel` component with flip animation
    - Implemented advanced deduplication system:

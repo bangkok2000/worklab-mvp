@@ -46,11 +46,29 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
+    let authenticatedSupabase = supabase; // Default to unauthenticated client
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      
+      // Create authenticated client for RLS policies
+      if (user && !authError) {
+        // Create a new client with the user's access token for RLS
+        const { createClient } = await import('@supabase/supabase-js');
+        authenticatedSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          }
+        );
+      }
     }
 
     // Determine which model/action for credit costs
@@ -100,7 +118,7 @@ export async function POST(req: NextRequest) {
       // Check credits if using credits mode
       if (userId) {
         creditCost = await getCreditCost(creditAction);
-        const balance = await getBalance(userId);
+        const balance = await getBalance(userId, authenticatedSupabase);
         if (balance < creditCost) {
           return NextResponse.json({ 
             error: `Insufficient credits. Need ${creditCost} credits but only have ${balance}. Please buy more credits or add your own API key.`,
@@ -412,7 +430,7 @@ Generate exactly ${cardsPerSource} flashcards from this document. Return ONLY th
           description: `Generated ${formattedFlashcards.length} flashcards from ${bySource.size} source(s)`,
           referenceType: 'study-tools',
           metadata: { model: selectedModel, tokens: totalTokensUsed, count: formattedFlashcards.length, sources: bySource.size },
-        });
+        }, authenticatedSupabase);
         
         if (deductResult.success) {
           remainingBalance = deductResult.balance;

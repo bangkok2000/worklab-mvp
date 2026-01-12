@@ -9,13 +9,14 @@
 **DO NOT ASSUME. DO NOT SKIP. DO NOT RUSH.**
 
 Before making ANY code modification, you MUST:
-1. **READ THIS ENTIRE PROTOCOL** - Every single time, from start to finish. No exceptions.
-2. **READ INSTRUCTIONS.md** - Understand the project context and requirements.
-3. **UNDERSTAND THE FULL CONTEXT** - Read all relevant files, understand the structure, don't guess.
-4. **FOLLOW EACH STEP METHODICALLY** - Go through the checklist step by step.
-5. **VERIFY YOUR WORK** - Test, check, verify before committing.
-6. **NEVER SKIP STEPS** - Not even to "save time" or because you "think you know."
-7. **NEVER ASSUME** - Always read, always verify, always check.
+1. **READ FIX_PROTOCOL.md FIRST** - This is MANDATORY for ANY fix. No exceptions.
+2. **READ THIS ENTIRE PROTOCOL** - Every single time, from start to finish. No exceptions.
+3. **READ INSTRUCTIONS.md** - Understand the project context and requirements.
+4. **UNDERSTAND THE FULL CONTEXT** - Read all relevant files, understand the structure, don't guess.
+5. **FOLLOW EACH STEP METHODICALLY** - Go through the checklist step by step.
+6. **VERIFY YOUR WORK** - Test, check, verify before committing.
+7. **NEVER SKIP STEPS** - Not even to "save time" or because you "think you know."
+8. **NEVER ASSUME** - Always read, always verify, always check.
 
 **If you find yourself making assumptions or skipping steps, STOP. Go back and read the protocol again.**
 
@@ -29,7 +30,51 @@ Before making ANY code modification, you MUST:
 3. [ ] **I understand what I'm trying to fix** - Not guessing, actually understand
 4. [ ] **I am ready to follow the checklist step by step** - No shortcuts
 
-### Step 1: Understand the Full Context
+### Step 1: FIND ALL ENTRY POINTS (CRITICAL - DO THIS FIRST)
+**BEFORE fixing ANYTHING, you MUST find ALL places that use the affected code:**
+
+- [ ] **Search for ALL API endpoint calls:**
+  ```bash
+  grep -r "/api/endpoint-name" app/
+  codebase_search for all callers
+  ```
+  
+- [ ] **Find ALL frontend components that use it:**
+  ```bash
+  grep -r "functionName" app/
+  glob_file_search for related files
+  ```
+  
+- [ ] **List ALL entry points:**
+  - Every component that calls the API
+  - Every API route that uses the function
+  - Every utility that references it
+  - Every database query that touches it
+  
+- [ ] **Check for multiple systems:**
+  - Is it localStorage? Supabase? Both?
+  - Are there duplicate implementations?
+  - Do they need to stay in sync?
+  
+- [ ] **Show the user the complete list BEFORE proceeding**
+
+**IF YOU SKIP THIS STEP, YOU WILL BREAK OTHER THINGS. NO EXCEPTIONS.**
+
+### Step 2: Trace the ENTIRE Workflow
+- [ ] **For EACH entry point found in Step 1:**
+  - Trace: User action → Frontend → API → Database → Response → UI
+  - Document EVERY step in the chain
+  - Identify ALL dependencies
+  
+- [ ] **Map ALL data sources:**
+  - localStorage keys used
+  - Supabase tables queried
+  - API endpoints called
+  - Data transformations
+  
+- [ ] **Show the user the workflow diagram BEFORE proceeding**
+
+### Step 3: Understand the Full Context
 - [ ] **Read ALL relevant files first** - Don't assume structure, actually read them
 - [ ] **Understand parent/child component relationships** - Trace the hierarchy
 - [ ] **Check how components are wrapped/nested** - Layout files, wrappers, containers
@@ -37,27 +82,50 @@ Before making ANY code modification, you MUST:
 - [ ] **Map out the data flow and component hierarchy** - Draw it if needed
 - [ ] **Check for parent containers with overflow, z-index, or positioning** - These affect children
 
-### Step 2: Find Working Examples
+### Step 4: Find Working Examples
 - [ ] Look for similar working code (e.g., right arrow for left arrow)
 - [ ] Understand WHY the working example works
 - [ ] Identify the pattern/principle, not just copy code
 - [ ] Compare your intended change with the working example
 
-### Step 3: Verify Function Signatures & APIs
+### Step 5: Verify Function Signatures & APIs
 - [ ] Check function signatures in source files (don't guess)
 - [ ] Verify parameter order and types
 - [ ] Check return types
 - [ ] Look at actual usage examples in the codebase
 - [ ] Verify imports are correct
 
-### Step 4: Calculate/Verify Logic
+### Step 6: Calculate/Verify Logic
 - [ ] For positioning: Calculate exact pixel values
 - [ ] For dimensions: Account for all parent containers
 - [ ] For calculations: Show your math/work
 - [ ] For API calls: Verify request/response structure
 - [ ] Double-check your calculations
 
-### Step 5: Check Dependencies
+### Step 7: List ALL Issues Before Fixing
+- [ ] **List EVERY issue you found:**
+  - Authentication issues
+  - Data source mismatches (localStorage vs Supabase)
+  - Missing error handling
+  - Inconsistent patterns
+  - Broken dependencies
+  
+- [ ] **Identify ALL potential problems:**
+  - What could break if I change X?
+  - What other code depends on this?
+  - Are there edge cases I'm missing?
+  
+- [ ] **Show the user the complete issue list BEFORE fixing**
+
+### Step 8: Get Approval
+- [ ] **Present findings to user:**
+  - All entry points found
+  - Complete workflow traced
+  - All issues identified
+  
+- [ ] **Wait for user approval before fixing**
+
+### Step 9: Check Dependencies
 - [ ] Verify all imports exist
 - [ ] Check if functions/utilities are available
 - [ ] Verify environment variables if needed
@@ -262,6 +330,12 @@ Not: Code → Hope → Fix → Hope → Fix again
 
 ---
 
-**Last Updated:** After user dropdown menu blocking issue
+**Last Updated:** After team invite fix - added FIX_PROTOCOL.md integration
 **Purpose:** Prevent repeated mistakes by enforcing systematic approach and mandatory reading
 **Critical:** This protocol must be read and followed EVERY SINGLE TIME, without exception
+
+## 🔗 Related Protocols
+
+- **FIX_PROTOCOL.md** - MANDATORY for ANY fix. Read this FIRST before fixing anything.
+- **DEPLOYMENT_WORKFLOW.md** - For deployment procedures
+- **INSTRUCTIONS.md** - Project context and requirements

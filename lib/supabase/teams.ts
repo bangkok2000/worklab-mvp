@@ -134,6 +134,52 @@ export async function getTeamApiKey(userId: string): Promise<TeamApiKeyResult> {
 }
 
 /**
+ * Get team leader's user ID (for pooled credits)
+ * Returns the owner_id if user is in a team, null otherwise
+ * @param userId The user ID to check
+ * @param supabaseClient Optional authenticated Supabase client (for RLS)
+ */
+export async function getTeamLeaderId(userId: string, supabaseClient?: any): Promise<string | null> {
+  try {
+    const supabase = supabaseClient || createServerClient();
+    
+    // First check if user owns a team (they are the leader)
+    const { data: ownedTeam } = await supabase
+      .from('teams')
+      .select('owner_id')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    
+    if (ownedTeam) {
+      return ownedTeam.owner_id; // User is the leader
+    }
+    
+    // Check if user is a member of a team
+    const { data: membership } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (!membership) {
+      return null; // Not in a team
+    }
+    
+    // Get the team's owner_id
+    const { data: team } = await supabase
+      .from('teams')
+      .select('owner_id')
+      .eq('id', membership.team_id)
+      .maybeSingle();
+    
+    return team?.owner_id || null;
+  } catch (error) {
+    console.error('Error getting team leader ID:', error);
+    return null;
+  }
+}
+
+/**
  * Check if a user has access to AI features (either via team API key or credits)
  */
 export async function checkUserAiAccess(userId: string): Promise<{

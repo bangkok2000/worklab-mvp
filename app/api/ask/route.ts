@@ -6,6 +6,7 @@ import { createConversation, addMessage } from '@/lib/supabase/conversations';
 import { estimateOpenAICost, estimateAnthropicCost, logUsage } from '@/lib/supabase/usage';
 import { expandQuery, expandQueryWithLLM } from '@/lib/utils/query-expansion';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
+import { getTeamLeaderId } from '@/lib/supabase/teams';
 import { getTeamApiKey } from '@/lib/supabase/teams';
 import type { CreditAction } from '@/lib/supabase/types';
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       collectionId, 
       documentIds, 
       sourceFilenames,
+      projectId, // Project ID for filtering Pinecone results
       apiKey, // User-provided API key (optional - for BYOK)
       provider = 'openai', // Provider: 'openai' | 'anthropic' | 'google' | 'ollama'
       model, // Model name (optional, uses default if not provided)
@@ -129,11 +131,16 @@ export async function POST(req: NextRequest) {
       // Get credit cost for this action
       creditCost = await getCreditCost(creditAction);
       
+      // Check if user is in a team - use leader's pooled credits
+      const leaderId = await getTeamLeaderId(userId);
+      const creditUserId = leaderId && leaderId !== userId ? leaderId : userId; // Use leader's ID if team member
+      
       // Check if user has enough credits (use authenticated client for RLS)
-      const balance = await getBalance(userId, authenticatedSupabase);
+      const balance = await getBalance(creditUserId, authenticatedSupabase);
       if (balance < creditCost) {
+        const creditOwner = leaderId && leaderId !== userId ? 'team leader' : 'you';
         return NextResponse.json({ 
-          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits, use your own API key, or join a team.`,
+          error: `Insufficient credits. You need ${creditCost} credits but ${creditOwner} has ${balance}. Buy more credits, use your own API key, or join a team.`,
           creditsNeeded: creditCost,
           currentBalance: balance,
         }, { status: 402 }); // 402 = Payment Required
@@ -141,7 +148,8 @@ export async function POST(req: NextRequest) {
       
       openaiKey = serverOpenAIKey;
       keySource = 'credits';
-      console.log(`[API] Credits mode: User ${userId} has ${balance} credits, action costs ${creditCost}`);
+      const creditOwner = leaderId && leaderId !== userId ? `Team leader (${leaderId})` : `User ${userId}`;
+      console.log(`[API] Credits mode: ${creditOwner} has ${balance} credits, action costs ${creditCost}`);
     }
     
     if (!openaiKey) {
@@ -185,7 +193,7 @@ export async function POST(req: NextRequest) {
     const questionEmbedding = embeddingResponse.data[0].embedding;
 
     // Build filter for specific documents if provided
-    // Priority: sourceFilenames (works for all users) > documentIds (authenticated only)
+    // Priority: documentIds > projectId > sourceFilenames (post-retrieval filtering)
     // NOTE: We don't use Pinecone filter for sourceFilenames because it requires exact match
     // Instead, we retrieve more results and filter post-retrieval (case-insensitive, flexible)
     let filter: any = undefined;
@@ -201,6 +209,13 @@ export async function POST(req: NextRequest) {
       filter = {
         document_id: { $eq: documentIds }
       };
+    } else if (projectId && typeof projectId === 'string' && projectId.length < 100) {
+      // Filter by project_id to isolate results to this project only
+      // This prevents retrieving chunks from other projects/users
+      filter = {
+        project_id: { $eq: projectId }
+      };
+      console.log(`[API] Filtering Pinecone by project_id: ${projectId}`);
     }
     // NOTE: We intentionally DON'T filter by sourceFilenames in Pinecone because:
     // 1. Pinecone requires exact match, but filenames might have slight variations
@@ -209,7 +224,9 @@ export async function POST(req: NextRequest) {
 
     // Search Pinecone - get enough results but not too many
     // If filtering by sourceFilenames, we'll retrieve more and filter post-retrieval
-    const topK = (sourceFilenames && sourceFilenames.length > 0) ? 30 : 15; // Get more if we need to filter
+    // Increase topK significantly when filtering to ensure we get chunks from all requested sources
+    const topK = (sourceFilenames && sourceFilenames.length > 0) ? Math.max(50, sourceFilenames.length * 15) : 15; // Get more if we need to filter
+    console.log(`[API] Searching Pinecone with topK=${topK} (${sourceFilenames?.length || 0} sources requested)`);
     const searchResults = await getIndex().query({
       vector: questionEmbedding,
       topK: topK,
@@ -249,13 +266,53 @@ export async function POST(req: NextRequest) {
         }
         
         // If sourceFilenames filter was applied, verify the source matches (case-insensitive)
+        // STRICT MATCHING: Only allow sources that closely match the requested filenames
         if (normalizedSourceFilenames.length > 0) {
           const normalizedSource = normalizeForMatch(item.source || '');
-          const matches = normalizedSourceFilenames.some(filterName => 
-            normalizedSource === filterName || 
-            normalizedSource.includes(filterName) || 
-            filterName.includes(normalizedSource)
-          );
+          const matches = normalizedSourceFilenames.some(filterName => {
+            // Strategy 1: Exact match (highest priority)
+            if (normalizedSource === filterName) {
+              return true;
+            }
+            
+            // Strategy 2: One contains the other (for partial matches)
+            // But require at least 70% of the shorter string to be in the longer one
+            const shorter = normalizedSource.length < filterName.length ? normalizedSource : filterName;
+            const longer = normalizedSource.length >= filterName.length ? normalizedSource : filterName;
+            if (longer.includes(shorter)) {
+              // Check if the match is substantial (at least 70% of shorter string)
+              const matchRatio = shorter.length / longer.length;
+              if (matchRatio >= 0.7 || shorter.length >= 20) { // Allow if >70% match or if shorter is substantial (>20 chars)
+                return true;
+              }
+            }
+            
+            // Strategy 3: Extract main keywords (remove common words like "wikipedia", "the", "and", etc.)
+            const commonWords = new Set(['wikipedia', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with', 'from']);
+            const sourceKeywords = normalizedSource
+              .split(/\s+/)
+              .filter(w => w.length > 3 && !commonWords.has(w))
+              .sort();
+            const filterKeywords = filterName
+              .split(/\s+/)
+              .filter(w => w.length > 3 && !commonWords.has(w))
+              .sort();
+            
+            // Require at least 2 matching keywords AND at least 50% keyword overlap
+            if (sourceKeywords.length > 0 && filterKeywords.length > 0) {
+              const matchingKeywords = sourceKeywords.filter(sk => 
+                filterKeywords.some(fk => sk === fk || sk.includes(fk) || fk.includes(sk))
+              );
+              const keywordOverlapRatio = matchingKeywords.length / Math.max(sourceKeywords.length, filterKeywords.length);
+              // Require at least 2 matching keywords AND >50% overlap
+              if (matchingKeywords.length >= 2 && keywordOverlapRatio >= 0.5) {
+                return true;
+              }
+            }
+            
+            return false;
+          });
+          
           if (!matches) {
             console.log(`[API] Filtered out chunk from source "${item.source}" (normalized: "${normalizedSource}") - not matching any of: ${normalizedSourceFilenames.join(', ')}`);
             return false;
@@ -268,6 +325,34 @@ export async function POST(req: NextRequest) {
     console.log(`[API] After filtering: ${allMatches.length} matches from ${searchResults.matches.length} total results`);
     if (allMatches.length > 0) {
       console.log(`[API] Sample match sources:`, allMatches.slice(0, 3).map(m => m.source));
+    }
+    
+    // Log all unique sources found in search results (before filtering)
+    const allSourcesInResults = new Set<string>();
+    searchResults.matches.forEach(m => {
+      const source = m.metadata?.source as string;
+      if (source) allSourcesInResults.add(source);
+    });
+    console.log(`[API] All sources in Pinecone search results (${allSourcesInResults.size}):`, Array.from(allSourcesInResults));
+    
+    // Log sources after filtering
+    const sourcesAfterFilter = new Set<string>();
+    allMatches.forEach(m => {
+      if (m.source) sourcesAfterFilter.add(m.source);
+    });
+    console.log(`[API] Sources after filtering (${sourcesAfterFilter.size}):`, Array.from(sourcesAfterFilter));
+    
+    if (normalizedSourceFilenames.length > 0) {
+      console.log(`[API] Requested sourceFilenames (${normalizedSourceFilenames.length}):`, normalizedSourceFilenames);
+      const missingSources = normalizedSourceFilenames.filter(req => 
+        !Array.from(sourcesAfterFilter).some(found => {
+          const normalizedFound = normalizeForMatch(found);
+          return normalizedFound === req || normalizedFound.includes(req) || req.includes(normalizedFound);
+        })
+      );
+      if (missingSources.length > 0) {
+        console.warn(`[API] WARNING: ${missingSources.length} requested sources have no matching chunks:`, missingSources);
+      }
     }
 
     if (allMatches.length === 0) {
@@ -350,10 +435,17 @@ export async function POST(req: NextRequest) {
       ? Math.max(3, Math.floor(targetChunks / numSources)) // More chunks for relationship questions
       : Math.max(2, Math.floor(targetChunks / numSources));
     
+    // Track which sources have been added to ensure all sources are represented
+    const sourcesInContext = new Set<string>();
+    
     bySource.forEach((matches, source) => {
       // Take top chunks from each source, prioritizing higher relevance scores
       const sortedMatches = matches.sort((a, b) => (b.score || 0) - (a.score || 0));
-      diverseContext.push(...sortedMatches.slice(0, chunksPerSource));
+      const chunksToAdd = sortedMatches.slice(0, chunksPerSource);
+      chunksToAdd.forEach(chunk => {
+        diverseContext.push(chunk);
+        sourcesInContext.add(source);
+      });
     });
 
     // If we still need more context and it's a complex question, add more
@@ -364,15 +456,65 @@ export async function POST(req: NextRequest) {
         if (diverseContext.length >= targetChunks) break;
         // Avoid duplicates
         if (!diverseContext.some(c => c.text === match.text && c.source === match.source)) {
+          const normalized = normalizeSourceName(match.source);
           diverseContext.push(match);
+          sourcesInContext.add(normalized);
         }
       }
     }
     
+    // Ensure ALL sources have at least 1 chunk in context (even if it means going slightly over target)
+    // This ensures the AI knows about all sources, not just the top-scoring ones
+    bySource.forEach((matches, source) => {
+      if (!sourcesInContext.has(source)) {
+        // This source has no chunks in context yet - add at least the top chunk
+        const sortedMatches = matches.sort((a, b) => (b.score || 0) - (a.score || 0));
+        if (sortedMatches.length > 0) {
+          diverseContext.push(sortedMatches[0]);
+          sourcesInContext.add(source);
+        }
+      }
+    });
+    
     // Final safety: limit to target chunks and sort by relevance
+    // BUT: preserve at least 1 chunk per source even if it means exceeding target slightly
     diverseContext.sort((a, b) => (b.score || 0) - (a.score || 0));
+    
+    // If we need to trim, do it carefully to preserve source diversity
     if (diverseContext.length > targetChunks) {
-      diverseContext.splice(targetChunks);
+      // Group by source first
+      const bySourceInContext = new Map<string, typeof diverseContext>();
+      diverseContext.forEach(chunk => {
+        const normalized = normalizeSourceName(chunk.source);
+        if (!bySourceInContext.has(normalized)) {
+          bySourceInContext.set(normalized, []);
+        }
+        bySourceInContext.get(normalized)!.push(chunk);
+      });
+      
+      // Rebuild diverseContext ensuring at least 1 chunk per source
+      diverseContext.length = 0;
+      bySourceInContext.forEach((chunks, source) => {
+        // Add top chunk from each source first (guaranteed)
+        const sorted = chunks.sort((a, b) => (b.score || 0) - (a.score || 0));
+        diverseContext.push(sorted[0]);
+      });
+      
+      // Then add remaining chunks up to target, sorted by score
+      const remainingChunks: typeof diverseContext = [];
+      bySourceInContext.forEach((chunks, source) => {
+        const sorted = chunks.sort((a, b) => (b.score || 0) - (a.score || 0));
+        remainingChunks.push(...sorted.slice(1)); // Skip first (already added)
+      });
+      
+      remainingChunks.sort((a, b) => (b.score || 0) - (a.score || 0));
+      for (const chunk of remainingChunks) {
+        if (diverseContext.length >= targetChunks) break;
+        diverseContext.push(chunk);
+      }
+      
+      // Final sort by relevance
+      diverseContext.sort((a, b) => (b.score || 0) - (a.score || 0));
     }
 
     // Helper function to format timestamp (seconds to MM:SS or HH:MM:SS)
@@ -565,19 +707,22 @@ export async function POST(req: NextRequest) {
     // Construct comprehensive prompt for better answers
     let prompt = '';
     
+    // CRITICAL: Build strict source list that AI must follow
+    const strictSourceList = uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n');
+    
     if (isMetadataQuestion) {
       // Special handling for questions about document metadata (names, counts, etc.)
       // These questions should ALWAYS be answerable from the source list
       prompt = `You are a research assistant. Answer questions about what documents or sources are available.
 
-Available sources:
-${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
+CRITICAL RULES:
+- You can ONLY reference the sources listed below
+- Do NOT mention any sources that are not in this list
+- Do NOT infer or make up source names
+- If asked "how many sources", count ONLY the sources listed below
 
-Rules:
-- You can ALWAYS answer questions about what documents/sources are available
-- List the document names when asked "what are the documents" or similar questions
-- You can count how many documents there are
-- Be helpful and provide the information requested
+Available sources (ONLY these sources exist):
+${strictSourceList}
 
 Question: ${question}
 
@@ -586,14 +731,14 @@ Answer:`;
       // Special handling for meta-questions about sources
       prompt = `You are a research assistant. Answer questions about your information sources.
 
-${sourceList}
-Rules:
-- State that you get information ONLY from the sources listed above
-- List the specific sources: ${uniqueSources.join(', ')}
-- Do not make up or infer anything
+CRITICAL RULES:
+- You get information ONLY from the sources listed below
+- Do NOT mention any sources that are not in this list
+- Do NOT infer or make up source names based on content
+- If the context mentions other topics (like "Cephalopod intelligence" or "Artificial intelligence"), these are just topics discussed IN the sources, not separate sources themselves
 
-Available sources:
-${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join('\n')}
+Available sources (ONLY these sources exist):
+${strictSourceList}
 
 Question: ${question}
 
@@ -610,6 +755,12 @@ Answer:`;
       
       prompt = `You are a helpful research assistant. Answer the question using information from the provided documents.
 
+CRITICAL RULES ABOUT SOURCES:
+- You can ONLY cite sources from this list: ${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join(', ')}
+- Do NOT mention or cite any sources that are not in this list
+- If the context mentions other topics or articles (like "Cephalopod intelligence" or "Artificial intelligence"), these are just topics DISCUSSED IN the sources, not separate sources
+- When citing, use the source numbers [1], [2], [3] etc. that correspond to the sources listed above
+
 ${sourceList}${contextAwareGuidance}
 Guidelines:
 - Synthesize and connect information from different parts of the context to provide a comprehensive answer
@@ -617,7 +768,7 @@ Guidelines:
 - For questions about relationships, comparisons, or connections: analyze the documents and provide insights based on their content
 - Be helpful and provide useful insights - even if the answer requires synthesizing information from multiple sources
 - For general questions like "what do you know?" or "tell me about the documents": provide a helpful overview based on the context
-- Cite sources using [1], [2], etc. when referencing specific information
+- Cite sources using [1], [2], etc. when referencing specific information - but ONLY use numbers that correspond to the sources listed above
 - Write in a clear, conversational, and helpful tone
 - ALWAYS provide a helpful answer based on the context - analyze what's there and share insights
 ${chainOfThought}
@@ -639,6 +790,12 @@ Answer:`;
       
       prompt = `You are a helpful research assistant. Answer the question using information from the provided documents.
 
+CRITICAL RULES ABOUT SOURCES:
+- You can ONLY cite sources from this list: ${uniqueSources.map((s, i) => `[${i + 1}] ${s}`).join(', ')}
+- Do NOT mention or cite any sources that are not in this list
+- If the context mentions other topics or articles (like "Cephalopod intelligence" or "Artificial intelligence"), these are just topics DISCUSSED IN the sources, not separate sources
+- When citing, use the source numbers [1], [2], [3] etc. that correspond to the sources listed above
+
 ${sourceList}${contextAwareGuidance}
 Guidelines:
 - Use information from the context to provide a helpful, insightful answer
@@ -647,7 +804,7 @@ Guidelines:
 - For general questions like "what do you know?": provide a helpful overview based on what's in the context
 - Be conversational and helpful - provide useful insights based on the context
 - Even if the exact answer isn't explicitly stated, provide helpful insights based on what you can infer from the context
-- Cite sources with [1], [2], etc. when referencing specific information
+- Cite sources with [1], [2], etc. when referencing specific information - but ONLY use numbers that correspond to the sources listed above
 - Write in a clear, natural, and helpful tone
 - ALWAYS provide a helpful answer based on the context - analyze what's there and share insights
 ${chainOfThought}
@@ -764,44 +921,102 @@ Answer:`;
     }
 
     const answer = completion.choices[0].message.content;
-    // Deduplicate sources by normalizing names, but keep timestamp info for audio
-    const seenSources = new Set<string>();
-    const sources = diverseContext
-      .map((item, idx) => {
-        const normalized = normalizeSourceName(item.source);
-        const displayName = sourceNameMap.get(normalized) || item.source;
-        return {
-          number: idx + 1,
-          source: displayName,
-          relevance: Math.round(item.score! * 100),
-          normalized,
-          // Include timestamp info for audio sources
-          ...(item.sourceType === 'audio' && item.startTime !== undefined && {
-            timestamp: item.startTime,
-            timestampFormatted: formatTimestamp(item.startTime),
-            audioId: item.audioId,
-          }),
-        };
-      })
-      .filter((item, idx, arr) => {
-        // Only include first occurrence of each normalized source
-        if (seenSources.has(item.normalized)) {
-          return false;
+    
+    // Build sources list from ALL sources found (bySource), not just those in diverseContext
+    // This ensures all sources appear even if their chunks weren't selected for the response
+    const sources: Array<{
+      number: number;
+      source: string;
+      relevance?: number;
+      timestamp?: number;
+      timestampFormatted?: string;
+      audioId?: string;
+    }> = [];
+    
+    // If sourceFilenames were provided, ensure all requested sources appear in the list
+    // even if they didn't have matching chunks (they'll show with no relevance score)
+    const requestedSources = new Set<string>();
+    if (sourceFilenames && Array.isArray(sourceFilenames) && sourceFilenames.length > 0) {
+      sourceFilenames.forEach(filename => {
+        const normalized = normalizeSourceName(filename);
+        requestedSources.add(normalized);
+        // Also check if any source in bySource matches this filename
+        bySource.forEach((_, key) => {
+          const normalizedKey = normalizeSourceName(key);
+          if (normalizedKey === normalized || normalizedKey.includes(normalized) || normalized.includes(normalizedKey)) {
+            requestedSources.add(normalizedKey);
+          }
+        });
+      });
+    }
+    
+    console.log(`[API] Building sources list: ${bySource.size} sources found in search, ${requestedSources.size} requested sources`);
+    
+    let sourceNumber = 1;
+    
+    // First, add all sources that had matching chunks
+    bySource.forEach((matches, normalizedKey) => {
+      const displayName = sourceNameMap.get(normalizedKey) || normalizedKey;
+      
+      // Find the highest-scoring chunk from this source for relevance
+      const topMatch = matches.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+      const relevance = topMatch ? Math.round((topMatch.score || 0) * 100) : undefined;
+      
+      // Check if this is an audio source with timestamp info
+      const audioMatch = matches.find(m => m.sourceType === 'audio' && m.startTime !== undefined);
+      
+      sources.push({
+        number: sourceNumber++,
+        source: displayName,
+        relevance,
+        // Include timestamp info for audio sources
+        ...(audioMatch && {
+          timestamp: audioMatch.startTime,
+          timestampFormatted: formatTimestamp(audioMatch.startTime!),
+          audioId: audioMatch.audioId,
+        }),
+      });
+      
+      // Mark this source as added
+      requestedSources.delete(normalizedKey);
+    });
+    
+    // Then, add any requested sources that didn't have matching chunks
+    // (This ensures all sources in the project appear, even if not relevant to the query)
+    if (requestedSources.size > 0 && sourceFilenames && Array.isArray(sourceFilenames)) {
+      requestedSources.forEach(normalizedRequested => {
+        // Find the original filename that matches
+        const originalFilename = sourceFilenames.find(f => 
+          normalizeSourceName(f) === normalizedRequested ||
+          normalizeSourceName(f).includes(normalizedRequested) ||
+          normalizedRequested.includes(normalizeSourceName(f))
+        );
+        
+        if (originalFilename) {
+          sources.push({
+            number: sourceNumber++,
+            source: originalFilename, // Use original filename
+            // No relevance score since no chunks matched
+          });
         }
-        seenSources.add(item.normalized);
-        return true;
-      })
-      .map(({ normalized, ...rest }) => rest); // Remove normalized from final output
+      });
+    }
+    
+    console.log(`[API] Final sources list: ${sources.length} sources`);
 
     // Deduct credits if using credits mode (not BYOK)
     let remainingBalance: number | null = null;
     if (!isUsingBYOK && userId && creditCost > 0) {
       try {
-        const deductResult = await deductCredits(userId, creditAction, {
+        // Use leader's credits if team member
+        const leaderId = await getTeamLeaderId(userId);
+        const creditUserId = leaderId && leaderId !== userId ? leaderId : userId;
+        
+        const deductResult = await deductCredits(creditUserId, creditAction, {
           description: `Asked: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`,
           referenceType: 'conversation',
-          metadata: { model: selectedModel, tokens: tokensUsed },
-        });
+          metadata: { model: selectedModel, tokens: tokensUsed, requestedBy: userId, isTeamDeduction: leaderId && leaderId !== userId },
+        }, authenticatedSupabase);
         
         if (deductResult.success) {
           remainingBalance = deductResult.balance;

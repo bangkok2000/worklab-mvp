@@ -6,6 +6,7 @@ import { SourcesPanel, StudioPanel, HistoryPanel, InsightsPanel, SettingsPanel, 
 import { Button, Badge } from '../../../components/ui';
 import { getDecryptedApiKey, getStoredApiKeys, type Provider, type ApiKeyConfig } from '@/lib/utils/api-keys';
 import { useAuth } from '@/lib/auth';
+import { authenticatedFetch, getAuthenticatedHeaders } from '@/lib/utils/authenticated-fetch';
 import { 
   canGuestPerformAction, 
   recordGuestAction, 
@@ -405,7 +406,13 @@ export default function ProjectWorkspace() {
           endpoint = '/api/audio';
         }
         
-        const res = await fetch(endpoint, { method: 'POST', body: formData });
+        // Use authenticatedFetch with getAuthenticatedHeaders for FormData
+        const res = await authenticatedFetch(endpoint, {
+          method: 'POST',
+          session,
+          headers: getAuthenticatedHeaders(session),
+          body: formData,
+        });
         const data = await res.json();
 
         if (data.success) {
@@ -501,8 +508,9 @@ export default function ProjectWorkspace() {
     try {
       // If it's a PDF document, delete from Pinecone via API
       if (!doc.type || doc.type === 'document') {
-        const res = await fetch('/api/delete', {
+        const res = await authenticatedFetch('/api/delete', {
           method: 'POST',
+          session,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filename: doc.name }),
         });
@@ -572,18 +580,17 @@ export default function ProjectWorkspace() {
       console.log('[Project] Ready documents:', readyDocuments);
       console.log('[Project] Sending sourceFilenames to API:', sourceFilenames);
       
-      // Get session token for authentication (required for credits mode)
-      const authToken = session?.access_token;
-
-      const res = await fetch('/api/ask', {
+      // Use authenticatedFetch to ensure Authorization header is always sent
+      const res = await authenticatedFetch('/api/ask', {
         method: 'POST',
+        session,
         headers: { 
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
         },
         body: JSON.stringify({
           question: content,
           sourceFilenames: sourceFilenames,
+          projectId: projectId, // Send projectId to filter Pinecone results
           apiKey: userApiKey || undefined,
           provider,
           model,

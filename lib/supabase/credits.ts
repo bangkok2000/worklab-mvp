@@ -217,16 +217,18 @@ export async function deductCredits(
     referenceId?: string;
     referenceType?: string;
     metadata?: Record<string, any>;
-  }
+  },
+  supabaseClient?: any // Optional authenticated Supabase client (for server-side usage with auth context)
 ): Promise<CreditDeductionResult> {
-  const supabase = getSupabase();
+  // Use provided client (server-side with auth) or get default client (client-side)
+  const supabase = supabaseClient || getSupabase();
   
   // Get cost for this action
   const cost = await getCreditCost(action);
   
   if (cost === 0) {
     // Free action, no deduction needed
-    const balance = await getBalance(userId);
+    const balance = await getBalance(userId, supabaseClient);
     return { success: true, balance };
   }
 
@@ -250,8 +252,8 @@ export async function deductCredits(
     return { success: false, balance: 0, error: 'Insufficient credits' };
   }
 
-  // Get updated balance
-  const balance = await getBalance(userId);
+  // Get updated balance (use authenticated client for RLS)
+  const balance = await getBalance(userId, supabaseClient);
   
   return { success: true, balance };
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { getBalance, claimFreeStarterCredits } from '@/lib/supabase/credits';
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
 
 interface CreditBalanceProps {
   onBuyCredits?: () => void;
@@ -53,11 +54,13 @@ export default function CreditBalance({
   compact = false,
   authLoading = false 
 }: CreditBalanceProps) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [hasByok, setHasByok] = useState(false);
+  const [isTeamMember, setIsTeamMember] = useState(false);
+  const [teamName, setTeamName] = useState<string | null>(null);
 
   useEffect(() => {
     // Debounced BYOK check to prevent rapid state changes
@@ -118,14 +121,49 @@ export default function CreditBalance({
   }, [user, hasByok]);
 
   const loadBalance = async () => {
-    if (!user) return;
+    if (!user || !session) return;
     setLoading(true);
     try {
-      const bal = await getBalance(user.id);
-      setBalance(bal);
+      // Use the new API endpoint that handles team pooled credits
+      const res = await authenticatedFetch('/api/credits/balance', {
+        session,
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to get balance' }));
+        throw new Error(errorData.error || 'Failed to get balance');
+      }
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // If team has API key, balance will be null (no credits needed)
+      if (data.hasTeamApiKey) {
+        setBalance(null);
+        setIsTeamMember(true);
+        setTeamName(data.teamName || null);
+      } else {
+        setBalance(data.balance);
+        setIsTeamMember(data.isTeamMember || false);
+        setTeamName(data.teamName || null);
+      }
     } catch (error) {
       console.error('Failed to load balance:', error);
-      setBalance(0);
+      // Fallback to individual balance on error
+      try {
+        const bal = await getBalance(user.id);
+        setBalance(bal);
+        setIsTeamMember(false);
+        setTeamName(null);
+      } catch (fallbackError) {
+        console.error('Fallback balance load also failed:', fallbackError);
+        setBalance(0);
+        setIsTeamMember(false);
+        setTeamName(null);
+      }
     }
     setLoading(false);
   };
@@ -216,6 +254,69 @@ export default function CreditBalance({
 
   // Low balance warning (< 20 credits)
   const isLow = balance !== null && balance < 20;
+
+  // Team member with API key - show team indicator
+  if (isTeamMember && balance === null) {
+    if (compact) {
+      return (
+        <div 
+          style={styles.byokContainer}
+          title={`Using team API key from ${teamName || 'team'}`}
+        >
+          <span style={styles.byokIcon}>👥</span>
+          <span style={styles.byokText}>Team</span>
+        </div>
+      );
+    }
+    return (
+      <div style={styles.byokContainer}>
+        <span style={styles.byokIcon}>👥</span>
+        <span style={styles.byokLabel}>Team API Key</span>
+        {teamName && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>({teamName})</span>}
+      </div>
+    );
+  }
+
+  // Team member using pooled credits
+  if (isTeamMember && balance !== null) {
+    if (compact) {
+      return (
+        <button 
+          onClick={onBuyCredits}
+          style={{
+            ...styles.compactContainer,
+            ...(isLow ? styles.lowBalance : {}),
+          }}
+          title={`${balance} team credits remaining (from ${teamName || 'team leader'}) - Click to buy more`}
+        >
+          <span style={styles.icon}>⚡</span>
+          <span style={styles.compactBalance}>{balance}</span>
+          <span style={styles.compactLabel}>team</span>
+        </button>
+      );
+    }
+    return (
+      <div style={styles.container}>
+        <div style={{
+          ...styles.balanceSection,
+          ...(isLow ? styles.lowBalance : {}),
+        }}>
+          <span style={styles.icon}>⚡</span>
+          <span style={styles.balance}>{balance?.toLocaleString()}</span>
+          <span style={styles.label}>team credits</span>
+          {teamName && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>({teamName})</span>}
+        </div>
+        {showBuyButton && (
+          <button onClick={onBuyCredits} style={styles.buyButton}>
+            + Buy
+          </button>
+        )}
+        {isLow && (
+          <span style={styles.lowWarning}>Low</span>
+        )}
+      </div>
+    );
+  }
 
   if (compact) {
     return (

@@ -3,6 +3,9 @@
  * For initiating checkout from the frontend
  */
 
+import { authenticatedFetch } from '@/lib/utils/authenticated-fetch';
+import type { Session } from '@supabase/supabase-js';
+
 /**
  * Check if Stripe is configured
  */
@@ -21,12 +24,19 @@ export async function createCheckoutSession(options: {
   accessToken: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    // Create checkout session via our API
-    const response = await fetch('/api/stripe/checkout', {
+    // Create a minimal session-like object from accessToken for authenticatedFetch
+    // authenticatedFetch only needs access_token, so we create a minimal object
+    // Type assertion is safe because authenticatedFetch only uses session?.access_token
+    const session: Session | null = options.accessToken ? {
+      access_token: options.accessToken,
+    } as Session : null;
+
+    // Create checkout session via our API using authenticatedFetch
+    const response = await authenticatedFetch('/api/stripe/checkout', {
       method: 'POST',
+      session,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${options.accessToken}`,
       },
       body: JSON.stringify({
         packageId: options.packageId,

@@ -4,7 +4,7 @@ import { OpenAI } from 'openai';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createServerClient } from '@/lib/supabase/client';
 import { getBalance, deductCredits, getCreditCost } from '@/lib/supabase/credits';
-import { getTeamApiKey } from '@/lib/supabase/teams';
+import { getTeamApiKey, getTeamLeaderId } from '@/lib/supabase/teams';
 import type { CreditAction } from '@/lib/supabase/types';
 
 // Lazy initialization for Pinecone
@@ -340,11 +340,29 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
+    let authenticatedSupabase = supabase; // Default to unauthenticated client
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      
+      // Create authenticated client for RLS policies
+      if (user && !authError) {
+        // Create a new client with the user's access token for RLS
+        const { createClient } = await import('@supabase/supabase-js');
+        authenticatedSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          }
+        );
+      }
     }
 
     // Credit action for web processing
@@ -383,6 +401,7 @@ export async function POST(req: NextRequest) {
       }
       
       if (!userId) {
+        console.error('[Web] No userId found - authHeader:', !!authHeader, 'userId:', userId);
         return NextResponse.json({ 
           error: 'Please sign in to use credits, add your own API key, or join a team.' 
         }, { status: 401 });
@@ -391,11 +410,16 @@ export async function POST(req: NextRequest) {
       // Get credit cost for this action
       creditCost = await getCreditCost(creditAction);
       
-      // Check if user has enough credits
-      const balance = await getBalance(userId);
+      // Check if user is in a team - use leader's pooled credits
+      const leaderId = await getTeamLeaderId(userId);
+      const creditUserId = leaderId && leaderId !== userId ? leaderId : userId;
+      
+      // Check if user has enough credits (use authenticated client for RLS)
+      const balance = await getBalance(creditUserId, authenticatedSupabase);
       if (balance < creditCost) {
+        const creditOwner = leaderId && leaderId !== userId ? 'team leader' : 'you';
         return NextResponse.json({ 
-          error: `Insufficient credits. You need ${creditCost} credits but have ${balance}. Buy more credits, use your own API key, or join a team.`,
+          error: `Insufficient credits. You need ${creditCost} credits but ${creditOwner} has ${balance}. Buy more credits, use your own API key, or join a team.`,
           creditsNeeded: creditCost,
           currentBalance: balance,
         }, { status: 402 });
@@ -578,12 +602,16 @@ Try using a direct article URL or a page with static HTML content.`
     let remainingBalance: number | null = null;
     if (!isUsingBYOK && userId && creditCost > 0) {
       try {
-        const deductResult = await deductCredits(userId, creditAction, {
+        // Use leader's credits if team member
+        const leaderId = await getTeamLeaderId(userId);
+        const creditUserId = leaderId && leaderId !== userId ? leaderId : userId;
+        
+        const deductResult = await deductCredits(creditUserId, creditAction, {
           description: `Processed web: "${extracted.title.substring(0, 40)}${extracted.title.length > 40 ? '...' : ''}"`,
           referenceType: 'document',
           referenceId: pageId,
-          metadata: { url: normalizedUrl, domain, chunks: chunks.length },
-        });
+          metadata: { url: normalizedUrl, domain, chunks: chunks.length, requestedBy: userId, isTeamDeduction: leaderId && leaderId !== userId },
+        }, authenticatedSupabase);
         
         if (deductResult.success) {
           remainingBalance = deductResult.balance;

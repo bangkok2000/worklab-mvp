@@ -3,24 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Input from '@/app/components/ui/Input';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { loadProjects, syncProjects, Project } from '@/lib/supabase/sync';
 
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  documentCount: number;
-  conversationCount: number;
-  insightCount: number;
-  color: string;
-  tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Project interface is now imported from sync.ts
 
 const PROJECT_COLORS = ['#7c3aed', '#5b21b6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6']; // More muted primary colors
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { user, session } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewProject, setShowNewProject] = useState(false);
@@ -28,6 +20,7 @@ export default function ProjectsPage() {
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMounted, setIsMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
@@ -44,46 +37,72 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  const loadProjects = () => {
+  const loadProjectsData = async () => {
     if (!isMounted) return;
+    setIsLoading(true);
     try {
-      const saved = localStorage.getItem('moonscribe-projects');
-      if (saved) {
-        const projectsList = JSON.parse(saved);
-        
-        // Count insights per project
-        const insightsData = localStorage.getItem('moonscribe_insights_v2');
-        let insightsByProject: Record<string, number> = {};
-        if (insightsData) {
-          const parsed = JSON.parse(insightsData);
-          if (parsed.insights) {
-            parsed.insights.forEach((i: any) => {
-              if (!i.isArchived && i.projectId) {
-                insightsByProject[i.projectId] = (insightsByProject[i.projectId] || 0) + 1;
-              }
-            });
-          }
+      // Load from cloud (if paid/team) or localStorage (if free)
+      const loadedProjects = await loadProjects(user, session?.access_token);
+      
+      // Count insights per project (from localStorage for now, will be updated when insights sync is implemented)
+      const insightsData = localStorage.getItem('moonscribe_insights_v2');
+      let insightsByProject: Record<string, number> = {};
+      if (insightsData) {
+        const parsed = JSON.parse(insightsData);
+        if (parsed.insights) {
+          parsed.insights.forEach((i: any) => {
+            if (!i.isArchived && i.projectId) {
+              insightsByProject[i.projectId] = (insightsByProject[i.projectId] || 0) + 1;
+            }
+          });
         }
-        
-        setProjects(projectsList.map((p: any) => ({
-          ...p,
-          createdAt: new Date(p.createdAt),
-          updatedAt: new Date(p.updatedAt),
-          tags: p.tags || [],
-          insightCount: insightsByProject[p.id] || 0, // Use actual count from insights
-        })));
       }
+      
+      // Count documents and conversations from localStorage (for now)
+      const projectsWithCounts = loadedProjects.map((p: Project) => {
+        const contentData = localStorage.getItem(`moonscribe-project-content-${p.id}`);
+        const conversationData = localStorage.getItem(`moonscribe-project-${p.id}-conversations`);
+        const documents = contentData ? JSON.parse(contentData) : [];
+        const conversations = conversationData ? JSON.parse(conversationData) : [];
+        
+        return {
+          ...p,
+          documentCount: documents.length || 0,
+          conversationCount: conversations.length || 0,
+          insightCount: insightsByProject[p.id] || 0,
+        };
+      });
+      
+      setProjects(projectsWithCounts);
     } catch (e) {
       console.error('Failed to load projects:', e);
+      // Fallback to localStorage only
+      try {
+        const saved = localStorage.getItem('moonscribe-projects');
+        if (saved) {
+          const projectsList = JSON.parse(saved);
+          setProjects(projectsList.map((p: any) => ({
+            ...p,
+            createdAt: new Date(p.createdAt),
+            updatedAt: new Date(p.updatedAt),
+            tags: p.tags || [],
+            insightCount: 0,
+          })));
+        }
+      } catch (fallbackError) {
+        console.error('Fallback load also failed:', fallbackError);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProjects();
+    loadProjectsData();
     
     // Listen for insight changes to update project counts
     const handleInsightChange = () => {
-      loadProjects();
+      loadProjectsData();
     };
     window.addEventListener('moonscribe-insights-changed', handleInsightChange);
     window.addEventListener('storage', handleInsightChange);
@@ -92,14 +111,26 @@ export default function ProjectsPage() {
       window.removeEventListener('moonscribe-insights-changed', handleInsightChange);
       window.removeEventListener('storage', handleInsightChange);
     };
-  }, [isMounted]);
+  }, [isMounted, user, session]);
 
-  const saveProjects = (newProjects: Project[]) => {
+  const saveProjects = async (newProjects: Project[]) => {
     setProjects(newProjects);
-    localStorage.setItem('moonscribe-projects', JSON.stringify(newProjects));
+    // Sync to cloud (if paid/team) or localStorage (if free)
+    try {
+      if (session?.access_token) {
+        await syncProjects(newProjects, user, session.access_token);
+      } else {
+        // No session - save to localStorage only
+        localStorage.setItem('moonscribe-projects', JSON.stringify(newProjects));
+      }
+    } catch (error) {
+      console.error('Failed to sync projects:', error);
+      // Fallback to localStorage
+      localStorage.setItem('moonscribe-projects', JSON.stringify(newProjects));
+    }
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
 
     const newProject: Project = {
@@ -115,7 +146,7 @@ export default function ProjectsPage() {
       updatedAt: new Date(),
     };
 
-    saveProjects([...projects, newProject]);
+    await saveProjects([...projects, newProject]);
     setNewProjectName('');
     setNewProjectDesc('');
     setShowNewProject(false);
@@ -123,16 +154,22 @@ export default function ProjectsPage() {
     router.push(`/app/projects/${newProject.id}`);
   };
 
-  const handleDeleteProject = (id: string, e: React.MouseEvent) => {
+  const handleDeleteProject = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const project = projects.find(p => p.id === id);
     const projectName = project?.name || 'this project';
     
     if (confirm(`Are you sure you want to delete "${projectName}"?\n\nThis will permanently delete:\n• All documents and sources\n• All conversations\n• All insights\n\nThis action cannot be undone.`)) {
-      saveProjects(projects.filter(p => p.id !== id));
+      const updatedProjects = projects.filter(p => p.id !== id);
+      await saveProjects(updatedProjects);
+      
+      // Clean up localStorage
       localStorage.removeItem(`moonscribe-project-${id}-documents`);
       localStorage.removeItem(`moonscribe-project-${id}-conversations`);
       localStorage.removeItem(`moonscribe-project-content-${id}`);
+      
+      // TODO: Also delete from Supabase if cloud sync is enabled
+      // This will be handled by the sync utility when we implement delete API
     }
   };
 
@@ -243,7 +280,18 @@ export default function ProjectsPage() {
       </div>
 
       {/* Projects */}
-      {filteredProjects.length === 0 ? (
+      {isLoading ? (
+        <div style={{
+          padding: '4rem',
+          background: 'rgba(15, 15, 35, 0.6)',
+          border: '1px solid rgba(124, 58, 237, 0.15)',
+          borderRadius: '12px',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+          <p style={{ color: '#64748b' }}>Loading projects...</p>
+        </div>
+      ) : filteredProjects.length === 0 ? (
         <div style={{
           padding: '4rem',
           background: 'rgba(15, 15, 35, 0.6)',

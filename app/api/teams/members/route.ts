@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * GET /api/teams/members - Get team members
@@ -8,29 +9,53 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
     
+    // Extract token and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized. Invalid or expired session.' }, { status: 401 });
+    }
+    
+    // Create authenticated client for RLS
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+    
     // First check if user owns a team
-    const { data: ownedTeam } = await supabase
+    const { data: ownedTeam } = await authenticatedSupabase
       .from('teams')
       .select('id, name, owner_id')
       .eq('owner_id', user.id)
-      .single();
+      .maybeSingle();
     
     let teamId = ownedTeam?.id;
     
     // If not owner, check membership
     if (!teamId) {
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await authenticatedSupabase
         .from('team_members')
         .select('team_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+      
+      if (membershipError) {
+        console.error('[Teams Members API] Error checking membership:', membershipError);
+      }
       
       teamId = membership?.team_id;
     }
@@ -39,64 +64,102 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'You are not in a team' }, { status: 404 });
     }
     
-    // Get team details
-    const { data: team } = await supabase
+    // Use service role client to bypass RLS for team member lookups
+    const serviceSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+    
+    // Get team details (use service key to bypass RLS)
+    const { data: team } = await serviceSupabase
       .from('teams')
       .select('id, name, owner_id')
       .eq('id', teamId)
-      .single();
+      .maybeSingle();
     
     if (!team) {
+      console.error('[Teams Members API] Team not found for teamId:', teamId);
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
     
-    // Get owner info
-    const { data: ownerProfile } = await supabase
+    // Get owner info (bypass RLS with service key)
+    const { data: ownerProfile } = await serviceSupabase
       .from('profiles')
       .select('id, email, full_name')
       .eq('id', team.owner_id)
-      .single();
+      .maybeSingle();
     
-    // Get all members
-    const { data: memberships, error: membersError } = await supabase
+    // Get all members (use service key to bypass RLS)
+    const { data: memberships, error: membersError } = await serviceSupabase
       .from('team_members')
       .select('user_id, role, joined_at')
       .eq('team_id', teamId);
     
     if (membersError) {
-      console.error('Error getting members:', membersError);
+      console.error('[Teams Members API] Error getting members:', membersError);
       return NextResponse.json({ error: 'Failed to get members' }, { status: 500 });
     }
     
-    // Get member profiles
+    console.log('[Teams Members API] Found memberships:', memberships?.length || 0, memberships);
+    
+    // Get member profiles (bypass RLS with service key)
     const memberIds = memberships?.map(m => m.user_id) || [];
-    const { data: memberProfiles } = await supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .in('id', memberIds);
+    let memberProfiles: any[] = [];
+    
+    if (memberIds.length > 0) {
+      const { data: profiles, error: profilesError } = await serviceSupabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', memberIds);
+      
+      if (profilesError) {
+        console.error('[Teams Members API] Error getting member profiles:', profilesError);
+      } else {
+        memberProfiles = profiles || [];
+        console.log('[Teams Members API] Found member profiles:', memberProfiles.length, memberProfiles.map(p => ({ id: p.id, email: p.email })));
+      }
+    }
     
     // Build members list
     const members = [
       // Owner first
       {
         id: team.owner_id,
-        email: ownerProfile?.email || 'Owner',
+        email: ownerProfile?.email || null,
         name: ownerProfile?.full_name || null,
         role: 'owner',
         joined_at: null,
       },
       // Then members
       ...(memberships || []).map(m => {
-        const profile = memberProfiles?.find(p => p.id === m.user_id);
+        const profile = memberProfiles.find(p => p.id === m.user_id);
         return {
           id: m.user_id,
-          email: profile?.email || 'Member',
+          email: profile?.email || null,
           name: profile?.full_name || null,
-          role: m.role,
+          role: m.role || 'member',
           joined_at: m.joined_at,
         };
       }),
     ];
+    
+    // Debug: Log the requesting user and returned members
+    console.log('[Teams Members API] Requesting user:', {
+      id: user.id,
+      email: user.email,
+    });
+    console.log('[Teams Members API] Returning members:', members.map(m => ({
+      id: m.id,
+      email: m.email,
+      name: m.name,
+      role: m.role,
+    })));
     
     return NextResponse.json({ members });
     
@@ -113,12 +176,32 @@ export async function DELETE(request: NextRequest) {
   try {
     const supabase = createServerClient();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    
+    // Extract token and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized. Invalid or expired session.' }, { status: 401 });
     }
+    
+    // Create authenticated client for RLS
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
     
     const { searchParams } = new URL(request.url);
     const targetUserId = searchParams.get('userId');
@@ -130,7 +213,7 @@ export async function DELETE(request: NextRequest) {
     // Check if removing self (leaving team)
     if (targetUserId === user.id) {
       // User is leaving the team
-      const { error: leaveError } = await supabase
+      const { error: leaveError } = await authenticatedSupabase
         .from('team_members')
         .delete()
         .eq('user_id', user.id);
@@ -144,18 +227,18 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Owner removing another member
-    const { data: ownedTeam } = await supabase
+    const { data: ownedTeam } = await authenticatedSupabase
       .from('teams')
       .select('id')
       .eq('owner_id', user.id)
-      .single();
+      .maybeSingle();
     
     if (!ownedTeam) {
       return NextResponse.json({ error: 'Only team owners can remove members' }, { status: 403 });
     }
     
     // Remove the member
-    const { error: removeError } = await supabase
+    const { error: removeError } = await authenticatedSupabase
       .from('team_members')
       .delete()
       .eq('team_id', ownedTeam.id)

@@ -70,11 +70,29 @@ export async function POST(req: NextRequest) {
     const supabase = createServerClient();
     const authHeader = req.headers.get('authorization');
     let userId: string | null = null;
+    let authenticatedSupabase = supabase; // Default to unauthenticated client
 
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      
+      // Create authenticated client for RLS policies
+      if (user && !authError) {
+        // Create a new client with the user's access token for RLS
+        const { createClient } = await import('@supabase/supabase-js');
+        authenticatedSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          }
+        );
+      }
     }
 
     // Credit action for audio transcription
@@ -116,7 +134,7 @@ export async function POST(req: NextRequest) {
       
       // Check credits balance before processing
       if (userId) {
-        const balance = await getBalance(userId);
+        const balance = await getBalance(userId, authenticatedSupabase);
         if (balance === null) {
           return NextResponse.json({ 
             error: 'Failed to check credit balance. Please try again.',
@@ -185,7 +203,7 @@ export async function POST(req: NextRequest) {
             minute: i + 1,
             total_minutes: durationMinutes,
           },
-        });
+        }, authenticatedSupabase);
         
         if (!deductResult.success) {
           allSuccess = false;

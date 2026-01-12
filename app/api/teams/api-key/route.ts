@@ -9,18 +9,39 @@ export async function PUT(request: NextRequest) {
   try {
     const supabase = createServerClient();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
+    }
+    
+    // Extract token and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized. Invalid or expired session.' }, { status: 401 });
     }
+    
+    // Create authenticated client for RLS
+    const { createClient } = await import('@supabase/supabase-js');
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
     
     const body = await request.json();
     const { apiKey, apiProvider = 'openai' } = body;
     
     // Get user's owned team
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await authenticatedSupabase
       .from('teams')
       .select('id')
       .eq('owner_id', user.id)
@@ -38,7 +59,7 @@ export async function PUT(request: NextRequest) {
     const encryptedKey = encryptApiKey(apiKey);
     
     // Update the team
-    const { error: updateError } = await supabase
+    const { error: updateError } = await authenticatedSupabase
       .from('teams')
       .update({
         api_key_encrypted: encryptedKey,
@@ -70,15 +91,36 @@ export async function DELETE(request: NextRequest) {
   try {
     const supabase = createServerClient();
     
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
     
+    // Extract token and get user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized. Invalid or expired session.' }, { status: 401 });
+    }
+    
+    // Create authenticated client for RLS
+    const { createClient } = await import('@supabase/supabase-js');
+    const authenticatedSupabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+    
     // Get user's owned team
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await authenticatedSupabase
       .from('teams')
       .select('id')
       .eq('owner_id', user.id)
@@ -89,7 +131,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Remove the API key
-    const { error: updateError } = await supabase
+    const { error: updateError } = await authenticatedSupabase
       .from('teams')
       .update({
         api_key_encrypted: null,
